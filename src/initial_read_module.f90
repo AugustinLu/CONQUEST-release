@@ -932,7 +932,9 @@ contains
          flag_write_xsf, md_cell_nhc, md_nhc_cell_mass, &
          md_calc_xlmass, md_equil_steps, md_equil_press, &
          md_tau_T_equil, md_tau_P_equil, md_p_drag, &
-         md_t_drag, md_cell_constraint, flag_write_extxyz, MDtimestep, md_ensemble
+         md_t_drag, md_cell_constraint, flag_write_extxyz, MDtimestep, md_ensemble, &
+         flag_variable_temperature, md_variable_temperature_method, &
+         md_variable_temperature_rate, md_initial_temperature, md_final_temperature
     use md_model,   only: md_tdep
     use move_atoms,         only: threshold_resetCD, &
          flag_stop_on_empty_bundle, &
@@ -1893,6 +1895,7 @@ contains
     else
        temp_ion           = fdf_double ('AtomMove.IonTemperature',300.0_double)
     end if
+
 !!$
 !!$
 !!$
@@ -2310,6 +2313,17 @@ contains
     end if
     flag_heat_flux = fdf_boolean('MD.HeatFlux', .false.)
 
+    !! Variable temperature
+    flag_variable_temperature = fdf_boolean('MD.VariableTemperature', .false.)
+    md_variable_temperature_method = fdf_string(20, 'MD.VariableTemperatureMethod', 'linear')
+    md_variable_temperature_rate = fdf_double('MD.VariableTemperatureRate', 0.0_double)
+    md_initial_temperature = fdf_double('MD.InitialTemperature',temp_ion)
+    md_final_temperature = fdf_double('MD.FinalTemperature',temp_ion)
+    ! Override temp_ion if md_initial_temperature is set
+    if (flag_variable_temperature .and. (abs(md_initial_temperature-temp_ion) > RD_ERR)) then
+        temp_ion = md_initial_temperature
+    end if
+
     ! Barostat
     target_pressure    = fdf_double('AtomMove.TargetPressure', zero)
     md_box_mass        = fdf_double('MD.BoxMass', one)
@@ -2653,8 +2667,10 @@ contains
          numN_neutral_atom_projector, pseudo_type, OLDPS, SIESTA, ABINIT
     use input_module,         only: leqi, chrcap
     use control,    only: MDn_steps
-    use md_control, only: md_ensemble
-    use omp_module, only: init_threads
+    use md_control, only: md_ensemble, &
+                          ! TODO: Check if those variables are needed
+                          flag_variable_temperature, md_variable_temperature_method, &
+                          md_initial_temperature, md_final_temperature, md_variable_temperature_rate
 
     implicit none
 
@@ -2662,12 +2678,11 @@ contains
     logical :: vary_mu
     character(len=80) :: titles
     character(len=3) :: ensemblestr
-    integer :: NODES
+    integer :: NODES 
     real(double) :: mu, HNL_fac
 
     ! Local variables
     integer :: n, stat
-    integer :: threads
     character(len=10) :: today, the_time
     character(len=15) :: job_str
     character(len=5)  :: timezone
@@ -2712,7 +2727,10 @@ contains
        ensemblestr = md_ensemble
        call chrcap(ensemblestr,3)
        write(io_lun, fmt='(4x,a15,a3," MD run for ",i5," steps ")') job_str, ensemblestr, MDn_steps
-       write(io_lun, fmt='(6x,"Initial ion temperature: ",f9.3,"K")') temp_ion
+       write(io_lun, fmt='(6x,"Initial thermostat temperature: ",f9.3,"K")') temp_ion
+       if (md_final_temperature .ne. md_initial_temperature) then
+         write(io_lun, fmt='(6x,"Final thermostat temperature: ",f9.3,"K")') md_final_temperature
+       end if
        if(flag_XLBOMD) write(io_lun, fmt='(6x,"Using extended Lagrangian formalism")')
     else if(leqi(runtype,'lbfgs')) then
        write(io_lun, fmt='(4x,a15,"L-BFGS atomic relaxation")') job_str
@@ -2849,13 +2867,6 @@ contains
        write(io_lun,fmt="(/4x,'The calculation will be performed on ',i5,' processes')") NODES
     else
        write(io_lun,fmt="(/4x,'The calculation will be performed on ',i5,' process')") NODES
-    end if
-
-    call init_threads(threads)
-    if(threads>1) then
-       write(io_lun,fmt="(/4x,'The calculation will be performed on ',i5,' threads')") threads
-    else if (threads==1) then
-       write(io_lun,fmt="(/4x,'The calculation will be performed on ',i5,' thread')") threads
     end if
     
     if(.NOT.flag_diagonalisation) &
