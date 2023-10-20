@@ -665,7 +665,8 @@ contains
   !!  CREATION DATE
   !!   2013/07/02
   !!  MODIFICATION HISTORY
-  !!
+  !!   2023/10/17 Jianbo Lin
+  !!     Modify deallocate order to match with allocate order in allocate_CSmember
   !!  SOURCE
   !!
   subroutine deallocate_CSmember(set)
@@ -692,23 +693,27 @@ contains
     integer :: lun_db
     character(20) :: file_name
 
-    deallocate(set%xcover, STAT=stat_alloc)
-    if(stat_alloc.NE.0) &
-       call cq_abort('Error deallocating set%xcover:', set%mx_mcover)
-    deallocate(set%ycover, STAT=stat_alloc)
-    if(stat_alloc.NE.0) &
-       call cq_abort('Error deallocating set%ycover:', set%mx_mcover)
-    deallocate(set%zcover, STAT=stat_alloc)
-    if(stat_alloc.NE.0) &
-       call cq_abort('Error deallocating set%zcover:', set%mx_mcover)
     deallocate(set%ig_cover, STAT=stat_alloc)
     if(stat_alloc.NE.0) &
        call cq_abort('Error deallocating set%ig_cover:', set%mx_mcover)
+    deallocate(set%zcover, STAT=stat_alloc)
+    if(stat_alloc.NE.0) &
+       call cq_abort('Error deallocating set%zcover:', set%mx_mcover)
+    deallocate(set%ycover, STAT=stat_alloc)
+    if(stat_alloc.NE.0) &
+       call cq_abort('Error deallocating set%ycover:', set%mx_mcover)
+    deallocate(set%xcover, STAT=stat_alloc)
+    if(stat_alloc.NE.0) &
+       call cq_abort('Error deallocating set%xcover:', set%mx_mcover)
+    nullify(set%xcover,set%ycover,set%zcover, &
+              set%ig_cover)
+
     if (associated(set%iprim_group)) then
       deallocate(set%iprim_group, STAT=stat_alloc)
       if(stat_alloc.NE.0) &
          !ORI call cq_abort('Error deallocating set%iprim_group:', prim%mx_iprim)
          call cq_abort('Error deallocating set%iprim_group:')
+      nullify(set%iprim_group)
     endif
 
     return
@@ -738,6 +743,8 @@ contains
   !!     Changed nx_in_cover allocatable to pointer (gcc 4.4.7 issue)
   !!    2019/11/04 15:14 dave
   !!     Replace call to indexx with call to heapsort_integer_index
+  !!    2023/10/17 Jianbo Lin
+  !!     Correct the deallocate order of local variables
   !!  SOURCE
   !!
   subroutine allocate_CSmember(set,groups,nx_in_cover,ny_in_cover,nz_in_cover, &
@@ -927,12 +934,12 @@ contains
       call cq_abort('Error allocating arrays related to set:', set%mx_mcover)
 
     ! Deallocation.
-    deallocate (nrepx,nrepy,nrepz, STAT=stat_alloc)
-    if (stat_alloc.NE.0) &
-      call cq_abort('Error deallocating nrepx,y,z:', groups%mx_gedge)
-    deallocate (ind_min,ngcx_min,ngcy_min,ngcz_min,min_sort, STAT=stat_alloc)
+    deallocate (min_sort,ngcz_min,ngcy_min,ngcx_min,ind_min, STAT=stat_alloc)
     if (stat_alloc.NE.0) &
       call cq_abort('Error deallocating ind_min,ngcx,y,z_min,min_sort::', groups%mx_gcell)
+    deallocate (nrepz,nrepy,nrepx, STAT=stat_alloc)
+    if (stat_alloc.NE.0) &
+      call cq_abort('Error deallocating nrepx,y,z:', groups%mx_gedge)
 
     return
   end subroutine allocate_CSmember
@@ -1060,7 +1067,7 @@ contains
     endif
 
     ! Deallocation.
-    deallocate (nx_in_cover,ny_in_cover,nz_in_cover, STAT=stat_alloc)
+    deallocate (nz_in_cover,ny_in_cover,nx_in_cover, STAT=stat_alloc)
     if (stat_alloc.NE.0) &
       call cq_abort('Error deallocating nx_in_cover:', set%ng_cover)
 
@@ -1216,6 +1223,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2023/06/15 Jianbo Lin
   !!     Modify from updateMembers_cs to have an independent updating CS
+  !!   2023/10/18 Jianbo Lin
+  !!     Make CS every time from updated bundle
   !!  SOURCE
   !!
   subroutine updateMembers_cs_ML
@@ -1239,9 +1248,9 @@ contains
     ! Update members in ML_CS
     call deallocate_CSmember(ML_CS)
     call allocate_CSmember(ML_CS,parts,nx_in_cover,ny_in_cover,nz_in_cover, &
-         nmodx,nmody,nmodz,dcellx,dcelly,dcellz)
+         nmodx,nmody,nmodz,dcellx,dcelly,dcellz,bundle)
     call cover_update_mparts(ML_CS,parts,nx_in_cover,ny_in_cover,nz_in_cover, &
-         nmodx,nmody,nmodz,dcellx,dcelly,dcellz)
+         nmodx,nmody,nmodz,dcellx,dcelly,dcellz,bundle)
     return
   end subroutine updateMembers_cs_ML
   
