@@ -109,6 +109,8 @@ contains
   !!    Changes to new XC interface
   !!   2019/12/26 tsuyoshi
   !!    Removed flag_no_atomic_densities
+  !!   2020/12/13 lionel
+  !!    Added EXX initialise and finalise
   !!   2022/06/09 08:35 dave
   !!    Changed name of D2 set-up routine, added only to module use
   !!   2023/08/22 J.Lin
@@ -124,7 +126,8 @@ contains
                                  flag_only_dispersion, flag_neutral_atom, &
                                  flag_atomic_stress, flag_heat_flux, &
                                  flag_full_stress, area_moveatoms, &
-                                 atomic_stress, non_atomic_stress, flag_MLFF, min_layer
+                                 atomic_stress, non_atomic_stress, flag_MLFF, min_layer, &
+                                 flag_self_consistent
     use GenComms,          only: inode, ionode, my_barrier, end_comms, &
                                  cq_abort
     use initial_read,      only: read_and_write
@@ -135,9 +138,11 @@ contains
     use cover_module,      only: make_cs, D2_CS
     use dimens,            only: r_dft_d2
     use DFT_D2,            only: set_para_D2, dispersion_D2
-    use pseudo_tm_module,   only: make_neutral_atom
+    use pseudo_tm_module,  only: make_neutral_atom
     use angular_coeff_routines, only: set_fact
     use maxima_module,          only: lmax_ps, lmax_pao
+    !use exx_module,             only: initialise_exx, finalise_exx, get_X_params
+    !use exx_types,              only: exx_scheme
     use XC, only: init_xc
     use mlff,               only: get_MLFF
     use mlff_type,               only: set_ML
@@ -244,6 +249,11 @@ contains
 !****lat>$
        return
     end if
+    !if ( flag_exx .and. flag_self_consistent ) then
+       !call get_X_params( )
+       !call initialise_exx(exx_scheme)
+    !end if
+
     call initial_H(start, start_L, find_chdens, fixed_potential, &
                    vary_mu, total_energy,std_level_loc+1)
 
@@ -335,8 +345,6 @@ contains
   !!    Adding check for maximum angular momentum for Bessel functions
   !!   2022/06/09 08:36 dave
   !!    Change name of D2 set-up routine
-  !!   2023/10/18 J.Lin
-  !!    Added machine learning statements
   !!  SOURCE
   !!
   subroutine set_up(find_chdens,level)
@@ -351,13 +359,12 @@ contains
                                       iprint_gen, flag_perform_cDFT,   &
                                       nspin, min_layer,                &
                                       glob2node, flag_XLBOMD,          &
-                                      flag_neutral_atom, flag_diagonalisation,&
-                                      flag_mlff
+                                      flag_neutral_atom, flag_diagonalisation
     use memory_module,          only: reg_alloc_mem, reg_dealloc_mem,  &
                                       type_dbl, type_int
     use group_module,           only: parts
     use cover_module,           only: BCS_parts, make_cs, make_iprim,  &
-                                      send_ncover, D2_CS, ML_CS
+                                      send_ncover, D2_CS
     use mult_module,            only: immi
     use construct_module
     use matrix_data,            only: rcut, max_range
@@ -365,8 +372,7 @@ contains
     use atoms,                  only: distribute_atoms
     use dimens,                 only: n_grid_x, n_grid_y, n_grid_z,    &
                                       r_core_squared, r_h, &
-                                      n_my_grid_points, r_dft_d2, &
-                                      r_ML_des
+                                      n_my_grid_points, r_dft_d2
     use fft_module,             only: set_fft_map, fft3
     use GenComms,               only: cq_abort, my_barrier, inode,     &
                                       ionode, gcopy
@@ -593,24 +599,6 @@ contains
               D2_CS%nx_origin, D2_CS%ny_origin, D2_CS%nz_origin
       end if
       call set_para_D2
-   end if
-
-    ! Generate MLCS
-    if (flag_mlff) then
-      if ((inode == ionode) .and. (iprint_gen > 2) ) &
-           write (io_lun, '(/1x,"The MLFF is performed in this calculation.")')
-      call make_cs(inode-1, r_ML_des, ML_CS, parts, bundle, ni_in_cell, &
-                   x_atom_cell, y_atom_cell, z_atom_cell)
-      if ( (inode == ionode) .and. (iprint_gen > 3) ) then
-        write (io_lun, '(/8x,"+++ ML_CS%ng_cover:",i10)')       &
-              ML_CS%ng_cover
-        write (io_lun, '(8x,"+++ ML_CS%ncoverx, y, z:",3i8)')   &
-              ML_CS%ncoverx, ML_CS%ncovery, ML_CS%ncoverz
-        write (io_lun, '(8x,"+++ ML_CS%nspanlx, y, z:",3i8)')   &
-              ML_CS%nspanlx, ML_CS%nspanly, ML_CS%nspanlz
-        write (io_lun, '(8x,"+++ ML_CS%nx_origin, y, z:",3i8)') &
-              ML_CS%nx_origin, ML_CS%ny_origin, ML_CS%nz_origin
-      end if
    end if
 
    ! external potential - first set up angular momentum bits
