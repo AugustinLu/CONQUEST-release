@@ -110,6 +110,7 @@ contains
   !!   2019/12/26 tsuyoshi
   !!    Removed flag_no_atomic_densities
   !!   2022/06/09 08:35 dave
+!!    Changed name of D2 set-up routine, added only to module usep
   !!    Changed name of D2 set-up routine, added only to module use
   !!   2023/08/22 J.Lin
   !!    Added machine learning statements
@@ -124,7 +125,8 @@ contains
                                  flag_only_dispersion, flag_neutral_atom, &
                                  flag_atomic_stress, flag_heat_flux, &
                                  flag_full_stress, area_moveatoms, &
-                                 atomic_stress, non_atomic_stress, flag_MLFF, min_layer
+                                 atomic_stress, non_atomic_stress, flag_MLFF, min_layer, &
+                                 min_layer, flag_self_consistent
     use GenComms,          only: inode, ionode, my_barrier, end_comms, &
                                  cq_abort
     use initial_read,      only: read_and_write
@@ -202,7 +204,6 @@ contains
     if(lmax_tot<8) lmax_tot = 8
     call set_fact(lmax_tot)
     if(flag_neutral_atom) call make_neutral_atom
-    !if (.not. flag_MLFF) &
     call set_up(find_chdens,std_level_loc+1)
     
     call my_barrier()
