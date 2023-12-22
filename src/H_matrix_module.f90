@@ -182,6 +182,8 @@ contains
   !!   Changed matS, matKE, matNL and matNA to be spin_SF dependent
   !!  2019/01/31 16:00 nakata
   !!   Moved dump_matrix(NSmatrix) to sub:get_S_matrix
+  !!  2021/07/19 15:46 dave
+  !!   Removed writing out of charge density
   !!  2020/14/11 16:00 LAT
   !!   Add matK, matX dump
   !!  2021/07/19 15:46 dave

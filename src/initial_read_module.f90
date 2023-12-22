@@ -155,10 +155,6 @@ contains
   !!    Added bibliography
   !!   2019/11/18 tsuyoshi
   !!    Removed flag_MDold
-  !!   2020/12/28 18:34 Lionel
-  !!    Added EXX poisson solver and scheme for G=0`
-  !!   2021/01/14 16:50 Lionel
-  !!    EXX: added gto_file setup and read GTO info
   !!  SOURCE
   !!
   subroutine read_and_write(start, start_L, inode, ionode,          &
@@ -536,7 +532,7 @@ contains
     ! Set up various lengths, volumes, reciprocals etc. for convenient use
     call set_dimensions(inode, ionode,HNL_fac, non_local, n_species, &
          non_local_species, core_radius)
-    ! 
+    !
     ! write out some information on the run
     if (inode == ionode) &
          call write_info(titles, mu, vary_mu, HNL_fac, numprocs)
@@ -2106,6 +2102,14 @@ contains
     !
 !!$
 !!$
+!!$
+!!$
+!!$  M A C H I N E    L E A R N I N G
+    flag_MLFF = fdf_boolean('General.MLFF',.false.)                               ! for MLFF
+    if (flag_MLFF) r_ML_des = fdf_double('MLFF.Descriptor_range',15.0_double)     ! for MLFF
+
+!!$
+!!$
 !!$  M O L E C U L A R    D Y N A M I C S
 !!$
 !!$
@@ -2126,6 +2130,12 @@ contains
           call cq_warn(sub_name,' AtomMove.ReuseSFcoeff should be true if AtomMove.ReuseDM is true.')
           flag_SFcoeffReuse = .true.
        endif
+    endif
+    ! jianbo 2023/06/09
+    if(flag_MLFF) then
+       call cq_warn(sub_name,' AtomMove.ReuseSFcoeff and AtomMove.ReuseDM should be false if General.MLFF is true.')
+       flag_SFcoeffReuse = .false.
+       flag_LmatrixReuse = .false.
     endif
 
     ! tsuyoshi 2019/12/27
@@ -2172,6 +2182,10 @@ contains
        find_chdens    = fdf_boolean('SC.MakeInitialChargeFromK',.true.)
        if (flag_XLBOMD) restart_X=fdf_boolean('XL.LoadX', .true.)
        if (flag_multisite .or. flag_basis_set==blips) read_option = fdf_boolean('Basis.LoadCoeffs', .true.)
+       if(flag_MLFF) then
+         call cq_warn(sub_name,' General.LoadDM should be false if General.MLFF is true.')
+         restart_DM = .false.
+       endif
     else
        flag_read_velocity = fdf_boolean('AtomMove.ReadVelocity',.false.)
        restart_DM         = fdf_boolean('General.LoadDM', .false.)
@@ -2305,6 +2319,36 @@ contains
        call fdf_endblock
     end if
     flag_heat_flux = fdf_boolean('MD.HeatFlux', .false.)
+
+    ! Variable temperature
+    flag_variable_temperature = fdf_boolean('MD.VariableTemperature', .false.)
+    md_variable_temperature_method = fdf_string(20, 'MD.VariableTemperatureMethod', 'linear')
+    md_variable_temperature_rate = fdf_double('MD.VariableTemperatureRate', 0.0_double)
+    md_initial_temperature = fdf_double('MD.InitialTemperature',temp_ion)
+    md_final_temperature = fdf_double('MD.FinalTemperature',temp_ion)
+    ! Override temp_ion if md_initial_temperature is set
+    if (flag_variable_temperature .and. (abs(md_initial_temperature-temp_ion) > RD_ERR)) then
+        if (abs(temp_ion-300) > RD_ERR) then
+            call cq_warn(sub_name,'AtomMove.IonTemperature is set and MD.VariableTemperature is true.')
+          end if
+        temp_ion = md_initial_temperature
+    end if
+
+    ! Check for consistency
+    if (flag_variable_temperature) then
+        if (md_ensemble == 'nve') then
+            call cq_abort('NVE ensemble with MD.VariableTemperature set to true is NOT allowed')
+        end if
+        ! Verify sign of temperature change rate
+        if (abs(md_final_temperature-md_initial_temperature) > RD_ERR) then
+            if (md_variable_temperature_rate/(md_final_temperature-md_initial_temperature) < 0 ) then
+                call cq_abort('The temperature change rate is incompatible with the requested final temperature')
+            end if
+        end if
+
+
+
+    end if
 
     ! Barostat
     target_pressure    = fdf_double('AtomMove.TargetPressure', zero)
@@ -2649,7 +2693,10 @@ contains
          numN_neutral_atom_projector, pseudo_type, OLDPS, SIESTA, ABINIT
     use input_module,         only: leqi, chrcap
     use control,    only: MDn_steps
-    use md_control, only: md_ensemble
+    use md_control, only: md_ensemble, &
+                          ! TODO: Check if those variables are needed
+                          flag_variable_temperature, md_variable_temperature_method, &
+                          md_initial_temperature, md_final_temperature, md_variable_temperature_rate
     use omp_module, only: init_threads
 
     implicit none
@@ -2708,7 +2755,10 @@ contains
        ensemblestr = md_ensemble
        call chrcap(ensemblestr,3)
        write(io_lun, fmt='(4x,a15,a3," MD run for ",i5," steps ")') job_str, ensemblestr, MDn_steps
-       write(io_lun, fmt='(6x,"Initial ion temperature: ",f9.3,"K")') temp_ion
+       write(io_lun, fmt='(6x,"Initial thermostat temperature: ",f9.3,"K")') temp_ion
+       if (md_final_temperature .ne. md_initial_temperature) then
+         write(io_lun, fmt='(6x,"Final thermostat temperature: ",f9.3,"K")') md_final_temperature
+       end if
        if(flag_XLBOMD) write(io_lun, fmt='(6x,"Using extended Lagrangian formalism")')
     else if(leqi(runtype,'lbfgs')) then
        write(io_lun, fmt='(4x,a15,"L-BFGS atomic relaxation")') job_str
@@ -2853,7 +2903,7 @@ contains
     else if (threads==1) then
        write(io_lun,fmt="(/4x,'The calculation will be performed on ',i5,' thread')") threads
     end if
-    
+
     if(.NOT.flag_diagonalisation) &
          write(io_lun,fmt='(10x,"Density Matrix range  = ",f7.4,1x,a2)') &
          dist_conv*r_c, d_units(dist_units)

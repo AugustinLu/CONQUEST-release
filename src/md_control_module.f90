@@ -2533,11 +2533,10 @@ contains
   !!  PURPOSE
   !!   Read thermostat temperature for MD restart
   !!  AUTHOR
-  !!   Zamaan Raza
+  !!   Anh Khoa Augustin Lu
   !!  CREATION DATE
-  !!   2018/08/12 10:19
+  !!   2023/10/10
   !!  MODIFICATION HISTORY
-  !!   2023/10/xx Anh Khoa Augustin Lu
   !!    Read temperature of the thermostat for restart runs
   !!  SOURCE
   !!
