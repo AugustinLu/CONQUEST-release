@@ -178,7 +178,7 @@ contains
          ni_in_cell, area_moveatoms,      &
          io_lun, flag_only_dispersion,    &
          flag_basis_set, blips, PAOs,     &
-         atomf, sf, paof,                 &
+         atomf, sf, paof, flag_MLFF,      &
          flag_SpinDependentSF, nspin_SF,  &
          flag_Multisite,                  &
          flag_cdft_atom, flag_local_excitation, &
@@ -773,7 +773,8 @@ contains
   !!     Added ASE output file setup ; default is F
   !!   2022/12/14 10:01 dave and tsuyoshi
   !!     Update test for solution method (diagon vs ordern) following issue #47
-  !!  TODO
+  !!   2023/08/22 J.Lin
+  !!    Added machine learning flag, General.MLFF
   !!  SOURCE
   !!
   subroutine read_input(start, start_L, titles, vary_mu,&
@@ -834,14 +835,15 @@ contains
          flag_opt_cell, cell_constraint_flag, flag_variable_cell, &
          cell_en_tol, optcell_method, cell_stress_tol, &
          flag_stress, flag_full_stress, rng_seed, &
-         flag_atomic_stress, flag_heat_flux, flag_DumpMatrices, flag_calc_pol, flag_do_pol_calc, &
+         flag_atomic_stress, flag_heat_flux, flag_DumpMatrices, flag_MLFF, &
+         flag_calc_pol, flag_do_pol_calc, &
          i_pol_dir, i_pol_dir_st, i_pol_dir_end
     use dimens, only: GridCutoff,    &
          n_grid_x, n_grid_y, n_grid_z, r_c,         &
          RadiusSupport, RadiusAtomf, RadiusMS, RadiusLD, &
          NonLocalFactor, InvSRange,                      &
          min_blip_sp, flag_buffer_old, AtomMove_buffer,  &
-         r_dft_d2, r_exx
+         r_dft_d2, r_exx, r_ML_des
     use block_module, only: in_block_x, in_block_y, in_block_z, &
          blocks_raster, blocks_hilbert
     use species_module, only: species_label, charge, mass, n_species,  &
@@ -2094,6 +2096,14 @@ contains
     !
 !!$
 !!$
+!!$
+!!$
+!!$  M A C H I N E    L E A R N I N G
+    flag_MLFF = fdf_boolean('General.MLFF',.false.)                               ! for MLFF
+    if (flag_MLFF) r_ML_des = fdf_double('MLFF.Descriptor_range',15.0_double)     ! for MLFF
+
+!!$
+!!$
 !!$  M O L E C U L A R    D Y N A M I C S
 !!$
 !!$
@@ -2114,6 +2124,12 @@ contains
           call cq_warn(sub_name,' AtomMove.ReuseSFcoeff should be true if AtomMove.ReuseDM is true.')
           flag_SFcoeffReuse = .true.
        endif
+    endif
+    ! jianbo 2023/06/09
+    if(flag_MLFF) then
+       call cq_warn(sub_name,' AtomMove.ReuseSFcoeff and AtomMove.ReuseDM should be false if General.MLFF is true.')
+       flag_SFcoeffReuse = .false.
+       flag_LmatrixReuse = .false.
     endif
 
     ! tsuyoshi 2019/12/27
@@ -2160,6 +2176,10 @@ contains
        find_chdens    = fdf_boolean('SC.MakeInitialChargeFromK',.true.)
        if (flag_XLBOMD) restart_X=fdf_boolean('XL.LoadX', .true.)
        if (flag_multisite .or. flag_basis_set==blips) read_option = fdf_boolean('Basis.LoadCoeffs', .true.)
+       if(flag_MLFF) then
+         call cq_warn(sub_name,' General.LoadDM should be false if General.MLFF is true.')
+         restart_DM = .false.
+       endif
     else
        flag_read_velocity = fdf_boolean('AtomMove.ReadVelocity',.false.)
        restart_DM         = fdf_boolean('General.LoadDM', .false.)
