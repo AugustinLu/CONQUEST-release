@@ -187,15 +187,8 @@ contains
          flag_Multisite,                  &
          flag_cdft_atom, flag_local_excitation, &
          flag_diagonalisation, flag_vary_basis, &
-         flag_MDcontinue, flag_SFcoeffReuse,    &
-         flag_exx
-    use exx_types,     only: exx_gto, exx_gto_poisson
-    !use read_gto_info, only: read_gto
-    use read_gto_info, only: read_gto_new
-    !use gto_format,    only: gto
-    use gto_format_new,    only: gto
-    
-    use cdft_data, only: cDFT_NAtoms, & 
+         flag_MDcontinue, flag_SFcoeffReuse
+    use cdft_data, only: cDFT_NAtoms, &
          cDFT_NumberAtomGroups, cDFT_AtomList
     use memory_module,          only: reg_alloc_mem, type_dbl
     use primary_module,         only: bundle, make_prim
@@ -203,9 +196,8 @@ contains
     use species_module,         only: n_species, species, charge,      &
          non_local_species,               &
          nsf_species, npao_species,       &
-         natomf_species, charge_up, charge_dn, &
-         gto_file
-    use density_module,         only: flag_InitialAtomicSpin
+         natomf_species, charge_up, charge_dn
+    use density_module, only: flag_InitialAtomicSpin
     use GenComms,               only: my_barrier, cq_abort, cq_warn
     use pseudopotential_data,   only: non_local, read_pseudopotential
     use pseudopotential_common, only: core_radius, pseudo_type, OLDPS, &
@@ -290,25 +282,9 @@ contains
        end do
     end if
     !if(iprint_init>4) write(io_lun,fmt='(10x,"Proc: ",i4," done pseudo")') inode
-    !
-    call my_barrier()
-    !
-    ! If EXX with GTO open and read species' GTO files
-    if ( flag_exx .and. (exx_gto .or. exx_gto_poisson) ) then
-       !
-       allocate(gto_file(n_species),STAT=stat)
-       if(stat /= 0) call cq_abort("Error allocating gto_file in read_and_write: ",n_species,stat)
-       allocate(gto(n_species),STAT=stat)       
-       if(stat /= 0) call cq_abort ("Error allocating gto in read_and_write",stat)
-       !
-       call read_gto_new(inode,ionode,n_species)
-       !call read_gto(inode,ionode,n_species)
-       !
-    end if
-    !
+
     ! Initialise group data for partitions and read in partitions and atoms
     call my_barrier()
-    !
     def = ' '
     atom_coord_file = fdf_string(80,'IO.Coordinates',def)
     if(leqi(def,atom_coord_file)) call cq_abort("No coordinate file specified: please set with IO.Coordinates")
@@ -946,11 +922,10 @@ contains
     use constraint_module,     only: flag_RigidBonds,constraints,SHAKE_tol, &
          RATTLE_tol,maxiterSHAKE,maxiterRATTLE, &
          const_range,n_bond
-    use exx_types, only: exx_scheme, exx_mem, exx_overlap, exx_alloc,    &
-         exx_cartesian, exx_radius, exx_hgrid, exx_psolver, ewald_alpha, &
-         exx_debug, exx_pscheme, exx_filter, exx_filter_thr, exx_filter_extent, &
-         exx_gto, exx_gto_poisson
-    use multisiteSF_module, only: flag_MSSF_smear, MSSF_Smear_Type, &
+    use exx_types, only: exx_scheme, exx_mem, exx_overlap, exx_alloc,       &
+         exx_cartesian, exx_radius, exx_hgrid, exx_psolver, &
+         exx_debug, exx_Kij, exx_Kkl, p_scheme
+    use multisiteSF_module, only: flag_MSSF_smear, MSSF_Smear_Type,                      &
          MSSF_Smear_center, MSSF_Smear_shift, MSSF_Smear_width, &
          flag_LFD_ReadTVEC, LFD_TVEC_read,                      &
          LFD_kT, LFD_ChemP, flag_LFD_useChemPsub,               &
@@ -1928,7 +1903,6 @@ contains
     else
        temp_ion           = fdf_double ('AtomMove.IonTemperature',300.0_double)
     end if
-
 !!$
 !!$
 !!$
@@ -1985,12 +1959,12 @@ contains
        flag_exx = .true.
        exx_siter = fdf_integer('EXX.StartAfterIter', 1 )
        exx_scf   = fdf_integer('EXX.MethodSCF',      0 )
-       r_exx     = fdf_double ('EXX.Xrange'   ,   zero )
+       r_exx     = fdf_double ('EXX.Krange'   ,   zero )
        !
     else if ( flag_functional_type == functional_hartree_fock ) then
        flag_exx = .true.
        exx_scf  = fdf_integer('EXX.MethodSCF', 0)
-       r_exx    = fdf_double ('EXX.Xrange', zero)
+       r_exx    = fdf_double ('EXX.Krange', zero)
        !
     else
        ! don't touch we need it because matX is setup in set_dimensions 
@@ -2017,30 +1991,20 @@ contains
        end if
        ! To control accuracy during scf
        exx_scf_tol   = sc_tolerance
-       !
-       exx_gto        = fdf_boolean('EXX.GTO', .false.)
-       exx_gto_poisson= fdf_boolean('EXX.GTOPoisson', .false.)
+       ! Grid spacing for PAO discretisation in EXX
        exx_hgrid  = fdf_double ('EXX.GridSpacing',zero)
-       exx_radius = fdf_double ('EXX.IntegRadius',zero)
-       exx_scheme = fdf_integer('EXX.Scheme',       3 ) 
-       exx_debug  = fdf_boolean('EXX.Debug',  .false. )
-       exx_overlap= fdf_boolean('EXX.Overlap',.true.  )
-       !
-       exx_filter = fdf_boolean('EXX.Filter', .false.  )
-       exx_filter_extent = fdf_integer('EXX.FilterGrid', 2 )
-       exx_filter_thr    = fdf_double('EXX.FilterThreshold',  1.0e-10_double )
-       !
-       exx_cartesian  = fdf_boolean('EXX.PAOCartesian',     .true.)
-       exx_alloc      = fdf_boolean('EXX.DynamicAllocation',.true.)
-       exx_psolver    = fdf_string (20,'EXX.PoissonSolver', 'fftw')
-
-       if(exx_psolver == 'fftw') then
-          exx_pscheme   = fdf_string (20,'EXX.FFTWSolver','ewald')
-          if(exx_pscheme == 'ewald') then
-             ewald_alpha = fdf_double('EXX.FFTWEwaldAlpha',3.0_double)
-          end if          
-       end if
-       !exx_mem = 1
+       exx_radius = fdf_double ('EXX.IntegRadius',0.00_double)
+       ! debug mode
+       exx_Kij       = .true.
+       exx_Kkl       = .true.
+       exx_cartesian = .true.
+       exx_overlap   = .true.
+       exx_alloc     = .false.
+       exx_psolver   = 'fftw'
+       p_scheme      = 'pulay'
+       exx_scheme    = 1
+       exx_mem       = 1
+       exx_debug     = .false.
     end if
 !!$
 !!$
@@ -2142,14 +2106,6 @@ contains
     !
 !!$
 !!$
-!!$
-!!$
-!!$  M A C H I N E    L E A R N I N G
-    flag_MLFF = fdf_boolean('General.MLFF',.false.)                               ! for MLFF
-    if (flag_MLFF) r_ML_des = fdf_double('MLFF.Descriptor_range',15.0_double)     ! for MLFF
-
-!!$
-!!$
 !!$  M O L E C U L A R    D Y N A M I C S
 !!$
 !!$
@@ -2170,12 +2126,6 @@ contains
           call cq_warn(sub_name,' AtomMove.ReuseSFcoeff should be true if AtomMove.ReuseDM is true.')
           flag_SFcoeffReuse = .true.
        endif
-    endif
-    ! jianbo 2023/06/09
-    if(flag_MLFF) then
-       call cq_warn(sub_name,' AtomMove.ReuseSFcoeff and AtomMove.ReuseDM should be false if General.MLFF is true.')
-       flag_SFcoeffReuse = .false.
-       flag_LmatrixReuse = .false.
     endif
 
     ! tsuyoshi 2019/12/27
@@ -2355,36 +2305,6 @@ contains
        call fdf_endblock
     end if
     flag_heat_flux = fdf_boolean('MD.HeatFlux', .false.)
-
-    ! Variable temperature
-    flag_variable_temperature = fdf_boolean('MD.VariableTemperature', .false.)
-    md_variable_temperature_method = fdf_string(20, 'MD.VariableTemperatureMethod', 'linear')
-    md_variable_temperature_rate = fdf_double('MD.VariableTemperatureRate', 0.0_double)
-    md_initial_temperature = fdf_double('MD.InitialTemperature',temp_ion)
-    md_final_temperature = fdf_double('MD.FinalTemperature',temp_ion)
-    ! Override temp_ion if md_initial_temperature is set
-    if (flag_variable_temperature .and. (abs(md_initial_temperature-temp_ion) > RD_ERR)) then
-        if (abs(temp_ion-300) > RD_ERR) then
-            call cq_warn(sub_name,'AtomMove.IonTemperature is set and MD.VariableTemperature is true.')
-          end if
-        temp_ion = md_initial_temperature
-    end if
-
-    ! Check for consistency
-    if (flag_variable_temperature) then
-        if (md_ensemble == 'nve') then
-            call cq_abort('NVE ensemble with MD.VariableTemperature set to true is NOT allowed')
-        end if
-        ! Verify sign of temperature change rate
-        if (abs(md_final_temperature-md_initial_temperature) > RD_ERR) then
-            if (md_variable_temperature_rate/(md_final_temperature-md_initial_temperature) < 0 ) then
-                call cq_abort('The temperature change rate is incompatible with the requested final temperature')
-            end if
-        end if
-
-
-
-    end if
 
     ! Barostat
     target_pressure    = fdf_double('AtomMove.TargetPressure', zero)
@@ -2729,10 +2649,8 @@ contains
          numN_neutral_atom_projector, pseudo_type, OLDPS, SIESTA, ABINIT
     use input_module,         only: leqi, chrcap
     use control,    only: MDn_steps
-    use md_control, only: md_ensemble, &
-                          ! TODO: Check if those variables are needed
-                          flag_variable_temperature, md_variable_temperature_method, &
-                          md_initial_temperature, md_final_temperature, md_variable_temperature_rate
+    use md_control, only: md_ensemble
+    use omp_module, only: init_threads
 
     implicit none
 
@@ -2740,11 +2658,12 @@ contains
     logical :: vary_mu
     character(len=80) :: titles
     character(len=3) :: ensemblestr
-    integer :: NODES 
+    integer :: NODES
     real(double) :: mu, HNL_fac
 
     ! Local variables
     integer :: n, stat
+    integer :: threads
     character(len=10) :: today, the_time
     character(len=15) :: job_str
     character(len=5)  :: timezone
@@ -2789,10 +2708,7 @@ contains
        ensemblestr = md_ensemble
        call chrcap(ensemblestr,3)
        write(io_lun, fmt='(4x,a15,a3," MD run for ",i5," steps ")') job_str, ensemblestr, MDn_steps
-       write(io_lun, fmt='(6x,"Initial thermostat temperature: ",f9.3,"K")') temp_ion
-       if (md_final_temperature .ne. md_initial_temperature) then
-         write(io_lun, fmt='(6x,"Final thermostat temperature: ",f9.3,"K")') md_final_temperature
-       end if
+       write(io_lun, fmt='(6x,"Initial ion temperature: ",f9.3,"K")') temp_ion
        if(flag_XLBOMD) write(io_lun, fmt='(6x,"Using extended Lagrangian formalism")')
     else if(leqi(runtype,'lbfgs')) then
        write(io_lun, fmt='(4x,a15,"L-BFGS atomic relaxation")') job_str
@@ -2929,6 +2845,13 @@ contains
        write(io_lun,fmt="(/4x,'The calculation will be performed on ',i5,' processes')") NODES
     else
        write(io_lun,fmt="(/4x,'The calculation will be performed on ',i5,' process')") NODES
+    end if
+
+    call init_threads(threads)
+    if(threads>1) then
+       write(io_lun,fmt="(/4x,'The calculation will be performed on ',i5,' threads')") threads
+    else if (threads==1) then
+       write(io_lun,fmt="(/4x,'The calculation will be performed on ',i5,' thread')") threads
     end if
     
     if(.NOT.flag_diagonalisation) &
