@@ -81,3 +81,105 @@ CONQUEST can use OpenMP for multi-threading; some multi-threading is available t
 Compiler flags to enable OpenMP are dependent on the vendor, but should be specified via ``COMPFLAGS`` and ``LINKFLAGS`` in the ``system.make`` file.  If compiling with OpenMP then you should also change the variable ``OMP_DUMMY`` in the same file to be blank to enable the number of threads to be included in the output.
 
 On some systems, the default stack size for OpenMP is set to be rather small, and this can cause a segmentation fault when running with multiple threads.  We recommend testing the effect of the environment variable ``OMP_STACKSIZE`` (and suggest setting it to 50M or larger as a first test).
+
+
+Compilation on Ubuntu
+~~~~~~~~~~~~~~~
+Most of the required packages are available on Ubuntu's Advanced Packaging Tool (APT) and can be installed via the below commands.
+This installation method has been confirmed for standalone Ubuntu 22.04 as well as the Windows Subsystem for Linux (WSL).
+
+```bash
+# Install needed packages
+sudo apt update
+sudo apt upgrade
+
+sudo apt install -y build-essential # gcc and other tools for software development
+
+sudo apt install -y openmpi-bin libopenmpi-dev # MPI
+sudo apt install -y libfftw3-dev # FFT
+sudo apt install -y libblas-dev liblapack-dev libscalapack-openmpi-dev # Linear algebra
+```
+
+For libXC, separate compilation is needed:
+
+```bash
+# Install libxc
+cd $HOME && mkdir local
+cd $HOME/local && mkdir src && cd src
+
+cd $HOME/local/src
+wget http://www.tddft.org/programs/libxc/down.php?file=6.2.2/libxc-6.2.2.tar.gz -O libxc.tar.gz
+tar -zxf libxc.tar.gz
+cd libxc-6.2.2 && ./configure --prefix=$HOME/local
+make -j4
+make check && make install
+```
+
+
+```bash
+# Download CONQUEST
+cd $HOME/local/src
+git clone https://github.com/OrderN/CONQUEST-release.git conquest_master
+cd conquest_master/src
+```
+
+```bash
+# Prepare system.make file for Ubuntu. For develop branch, use system/system.make
+cat > system.make << EOF
+#
+
+# Set compilers
+FC=mpif90
+F77=mpif77
+
+# Linking flags
+LINKFLAGS= -L\${HOME}/local/lib -L/usr/local/lib -fopenmp
+ARFLAGS=
+
+# Compilation flags
+# NB for gcc10 you need to add -fallow-argument-mismatch
+COMPFLAGS= -O3 \$(XC_COMPFLAGS) -fallow-argument-mismatch
+COMPFLAGS_F77= \$(COMPFLAGS)
+
+# Set BLAS and LAPACK libraries
+# MacOS X
+# BLAS= -lvecLibFort
+# Intel MKL use the Intel tool
+# Generic
+BLAS= -llapack -lblas
+
+# Full library call; remove scalapack if using dummy diag module
+LIBS= \$(FFT_LIB) \$(XC_LIB) -lscalapack-openmpi \$(BLAS)
+
+# LibXC compatibility (LibXC below) or Conquest XC library
+
+# Conquest XC library
+#XC_LIBRARY = CQ
+#XC_LIB =
+#XC_COMPFLAGS =
+
+# LibXC compatibility
+# Choose LibXC version: v4 (deprecated) or v5/6 (v5 and v6 have the same interface)
+# XC_LIBRARY = LibXC_v4
+XC_LIBRARY = LibXC_v5
+XC_LIB = -lxcf90 -lxc
+#XC_COMPFLAGS = -I/usr/local/include
+XC_COMPFLAGS = -I\${HOME}/local/include -I/usr/local/include
+
+# Set FFT library
+FFT_LIB=-lfftw3
+FFT_OBJ=fft_fftw3.o
+
+# Matrix multiplication kernel type
+MULT_KERN = default
+# Use dummy DiagModule or not
+DIAG_DUMMY =
+
+EOF
+```
+
+```
+# Compile
+dos2unix ./makedeps # Some windows/unix incompatibilities may occur
+make -j4 # Or make -j`nproc`  # Uses all cores available
+```
