@@ -1033,32 +1033,32 @@ MD.Ensemble (*string*)
     *default*: nve
 
 MD.Thermostat (*string*)
-    values: none/nhc/svr
+    values: none/nhc/berendsen/svr
 
     Thermostat type
 
     ``none``
         No thermostat (used for calculating temperature only)
-    ``nhc``
-        Nose-Hoover chain
+    ``berendsen``
+        Berendsen weak coupling thermostat
     ``svr``
-        Stochastic velocity rescaling (Bussi)
+        Stochastic velocity rescaling
 
     *default*: none
 
 MD.Barostat (*string*)
-    values: none/iso-mttk/ortho-mttk/mttk
+    values: none/berendsen/iso-mttk/ortho-mttk/mttk
 
     Barostat type. The following are the only valid thermostat/barostat
-    combinations for the NPT ensemble:  ``nhc``/ ``pr``, ``svr``/ ``pr``
+    combinations for the NPT ensemble: ``berendsen``/ ``berendsen``,
+    ``nhc``/ ``pr``, ``svr``/ ``pr``
 
     ``none``
         No barostat (used for calculating pressure only)
+    ``berendsen``
+        Berendsen weak coupling barostat
     ``pr``
         Parrinello-Rahman (extended system) barostat
-    ``mttk``
-        Martyna-Tuckerman-Tobias-Klein Barostat
-
 
     *default*: none
 
@@ -1140,6 +1140,11 @@ MD.nMTS (*integer*)
 
     *default*: 1
 
+MD.BerendsenEquil (*integer*)
+    Equilibrate the system for :math:`n` steps using Berendsen weak coupling
+
+    *default*: 0
+
 MD.TDEP (*boolean*)
     Dump data in a format readable by the Temperature Dependent Effective
     Potential (TDEP) code.
@@ -1162,7 +1167,7 @@ MD.VariableTemperature (*boolean*)
     *default*: F
 
 MD.VariableTemperatureMethod (*string*)
-    Type of temperature profile. Onlye ``linear`` profile is implemented
+    Type of temperature profile. Only ``linear`` temperature profile is implemented.
 
     *default*: linear
 
@@ -1173,12 +1178,12 @@ MD.VariableTemperatureRate (*real*)
     *default*: 0.0
 
 MD.InitialTemperature(*real*)
-    Initial temperature
+    Initial temperature.
 
     *default*: same as AtomMove.IonTemperature
 
 MD.FinalTemperature(*real*)
-    Final temperature
+    Final temperature.
 
     *default*: same as AtomMove.IonTemperature
 

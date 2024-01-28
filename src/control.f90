@@ -802,9 +802,9 @@ contains
       call get_MLFF
     else
       if (flag_fire_qMD) then
-        call get_E_and_F(fixed_potential, vary_mu, energy0, .true., .true.)
+        call get_E_and_F(fixed_potential, vary_mu, energy0, .true., .true.,0)
       else
-        call get_E_and_F(fixed_potential, vary_mu, energy0, .true., .false.)
+        call get_E_and_F(fixed_potential, vary_mu, energy0, .true., .false.,0)
       end if
     end if
     min_layer = min_layer + 1
@@ -932,6 +932,7 @@ contains
          atomic_stress = zero
          non_atomic_stress = zero
        end if
+
        call thermo%get_temperature_and_ke(baro, ion_velocity, &
                                           mdl%ion_kinetic_energy)
        if (inode==ionode .and. flag_debug_mlff) &
@@ -958,9 +959,11 @@ contains
                         fire_N,fire_N2,fire_P0,fire_alpha) ! SA 20150204
        else
           call vVerlet_v_dthalf(MDtimestep,ion_velocity,tot_force,flag_movable)
+
           ! The velocity Verlet dt position update plus box update(s)
           call update_pos_and_box(baro, nequil, flag_movable)
        end if
+
        ! Constrain position
        if (flag_RigidBonds) &
          call correct_atomic_position(ion_velocity,MDtimestep)
@@ -988,6 +991,7 @@ contains
        !   We need to update flag_movable, since the order of x_atom_cell (or id_glob) 
        !   may change after the atomic positions are updated.
        call check_move_atoms(flag_movable)
+       
        min_layer = min_layer - 1
        if (flag_fire_qMD) then
           if (flag_MLFF) then
@@ -1137,7 +1141,7 @@ contains
        if (inode==ionode .and. flag_debug_mlff) &
           write(*,*) 'check stress baro%get_pressure_and_stress second velocity:', stress,baro%P_int*HaBohr3ToGPa,&
                baro%P_ext/HaBohr3ToGPa
- 
+
        if (nequil > 0) then
           nequil = nequil - 1
           if (abs(baro%P_int - baro%P_ext) < md_equil_press) nequil = 0

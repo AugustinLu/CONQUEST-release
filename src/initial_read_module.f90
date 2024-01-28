@@ -532,7 +532,7 @@ contains
     ! Set up various lengths, volumes, reciprocals etc. for convenient use
     call set_dimensions(inode, ionode,HNL_fac, non_local, n_species, &
          non_local_species, core_radius)
-    !
+
     ! write out some information on the run
     if (inode == ionode) &
          call write_info(titles, mu, vary_mu, HNL_fac, numprocs)
@@ -769,10 +769,6 @@ contains
   !!    Keywords for equilibration
   !!   2020/01/07 tsuyoshi 
   !!     Default setting of MakeInitialChargeFromK has been changed
-  !!   2020/12/14 lionel
-  !!     EXX: added filtering option for EXX and cleaning
-  !!   2020/01/14 lionel
-  !!     EXX: added GTO option
   !!   2022/10/28 15:56 lionel
   !!     Added ASE output file setup ; default is F
   !!   2022/12/14 10:01 dave and tsuyoshi
@@ -1989,12 +1985,12 @@ contains
        exx_scf_tol   = sc_tolerance
        ! Grid spacing for PAO discretisation in EXX
        exx_hgrid  = fdf_double ('EXX.GridSpacing',zero)
-       exx_radius = fdf_double ('EXX.IntegRadius',0.00_double)
+       exx_radius = fdf_double ('EXX.IntegRadius',0.00_double) 
        ! debug mode
        exx_Kij       = .true.
        exx_Kkl       = .true.
-       exx_cartesian = .true.
-       exx_overlap   = .true.
+       exx_cartesian = .true. 
+       exx_overlap   = .true. 
        exx_alloc     = .false.
        exx_psolver   = 'fftw'
        p_scheme      = 'pulay'
@@ -2326,27 +2322,28 @@ contains
     md_variable_temperature_rate = fdf_double('MD.VariableTemperatureRate', 0.0_double)
     md_initial_temperature = fdf_double('MD.InitialTemperature',temp_ion)
     md_final_temperature = fdf_double('MD.FinalTemperature',temp_ion)
+
     ! Override temp_ion if md_initial_temperature is set
     if (flag_variable_temperature .and. (abs(md_initial_temperature-temp_ion) > RD_ERR)) then
         if (abs(temp_ion-300) > RD_ERR) then
-            call cq_warn(sub_name,'AtomMove.IonTemperature is set and MD.VariableTemperature is true.')
-          end if
+            call cq_warn(sub_name,'AtomMove.IonTemperature will be ignored since MD.VariableTemperature is true.')
+        end if
         temp_ion = md_initial_temperature
     end if
 
     ! Check for consistency
     if (flag_variable_temperature) then
         if (md_ensemble == 'nve') then
-            call cq_abort('NVE ensemble with MD.VariableTemperature set to true is NOT allowed')
+            call cq_abort('NVE ensemble with MD.VariableTemperature set to true is NOT allowed.')
         end if
         ! Verify sign of temperature change rate
         if (abs(md_final_temperature-md_initial_temperature) > RD_ERR) then
             if (md_variable_temperature_rate/(md_final_temperature-md_initial_temperature) < 0 ) then
-                call cq_abort('The temperature change rate is incompatible with the requested final temperature')
+                call cq_abort('The temperature change rate is incompatible with the requested final temperature.')
             end if
+        else ! initial and final temperature are equal
+            call cq_abort('MD.InitialTemperature and MD.FinalTemperature are the same.')
         end if
-
-
 
     end if
 
@@ -2694,10 +2691,10 @@ contains
     use input_module,         only: leqi, chrcap
     use control,    only: MDn_steps
     use md_control, only: md_ensemble, &
-                          ! TODO: Check if those variables are needed
                           flag_variable_temperature, md_variable_temperature_method, &
                           md_initial_temperature, md_final_temperature, md_variable_temperature_rate
     use omp_module, only: init_threads
+    use multiply_kernel, only: kernel_id
 
     implicit none
 
@@ -2755,7 +2752,7 @@ contains
        ensemblestr = md_ensemble
        call chrcap(ensemblestr,3)
        write(io_lun, fmt='(4x,a15,a3," MD run for ",i5," steps ")') job_str, ensemblestr, MDn_steps
-       write(io_lun, fmt='(6x,"Initial thermostat temperature: ",f9.3,"K")') temp_ion
+       write(io_lun, fmt='(6x,"Initial ion temperature: ",f9.3,"K")') temp_ion
        if (md_final_temperature .ne. md_initial_temperature) then
          write(io_lun, fmt='(6x,"Final thermostat temperature: ",f9.3,"K")') md_final_temperature
        end if
@@ -2903,7 +2900,7 @@ contains
     else if (threads==1) then
        write(io_lun,fmt="(/4x,'The calculation will be performed on ',i5,' thread')") threads
     end if
-
+    write(io_lun,fmt='(/4x,"Using the ",a," matrix multiplication kernel")') kernel_id
     if(.NOT.flag_diagonalisation) &
          write(io_lun,fmt='(10x,"Density Matrix range  = ",f7.4,1x,a2)') &
          dist_conv*r_c, d_units(dist_units)
