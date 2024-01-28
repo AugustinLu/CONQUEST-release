@@ -20,8 +20,7 @@ contains
     use numbers,      only: zero, one, two, three, four, five, six, fifteen, sixteen
     use numbers,      only: half, quarter, very_small, pi, twopi, fourpi
     use exx_types,    only: unit_matrix_write, tmr_std_exx_evalpao
-    use exx_types,    only: exx_overlap, exx_cartesian, exx_gto, exx_gto_poisson
-    use exx_evalgto,  only: exx_gto_on_grid_new
+    use exx_types,    only: exx_overlap, exx_cartesian
 
     use angular_coeff_routines, only: evaluate_pao
     use dimens,                 only: r_h   
