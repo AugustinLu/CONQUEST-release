@@ -184,10 +184,6 @@ contains
   !!   Moved dump_matrix(NSmatrix) to sub:get_S_matrix
   !!  2021/07/19 15:46 dave
   !!   Removed writing out of charge density
-  !!  2020/14/11 16:00 LAT
-  !!   Add matK, matX dump
-  !!  2021/07/19 15:46 dave
-  !!   Removed writing out of charge density
   !! SOURCE
   !!
   subroutine get_H_matrix(rebuild_KE_NL, fixed_potential, electrons, &
@@ -400,10 +396,6 @@ contains
           !
           exx_niter = exx_niter + 1
           !
-          !if ( exx_niter > 2 ) then
-          !   stop
-          !end if
-          !
        end if
 !****lat>$
     endif ! flag_build_Hatomf
@@ -437,8 +429,6 @@ contains
     if (iprint_ops > 3) then
        if (nspin == 1) then
           call dump_matrix("NH",    matH(1), inode)
-          call dump_matrix("NK",    matK(1), inode)
-          call dump_matrix("NX",    matX(1), inode)
        else
           call dump_matrix("NH_up", matH(1), inode)
           call dump_matrix("NH_dn", matH(2), inode)
