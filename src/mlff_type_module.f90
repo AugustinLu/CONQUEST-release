@@ -23,17 +23,16 @@
 module mlff_type
 
   use datatypes
-  use energy, only: disp_energy
   use GenComms,               only: cq_abort
   use timer_module,           only: start_timer,stop_timer
   use timer_stdclocks_module, only: tmr_std_allocation
-  use energy, only: ml_energy
+  use energy, only: ml_energy_hartree
 
   implicit none
 
   save
 
-  logical :: flag_debug_mlff = .TRUE. ! .FALSE. ! control output level from mlff for debug
+  logical :: flag_debug_mlff = .FALSE. ! .TRUE. ! control output level from mlff for debug
   logical :: flag_time_mlff =  .TRUE. ! .FALSE. ! control output level from mlff for timing
 
 !! Modified from * matrix_module/matrix *
