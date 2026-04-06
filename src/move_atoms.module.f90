@@ -4983,7 +4983,7 @@ contains
          matrix_scale, matrix_transpose, matSFcoeff_tran
     use matrix_data,     only: Lrange, Hrange, Srange, SFcoeff_range
     use store_matrix,    only: matrix_store_global, InfoMatrixFile, grab_InfoMatGlobal, grab_matrix2, &
-         set_atom_coord_diff
+         set_atom_coord_diff, deallocate_InfoMatrixFile
     use UpdateInfo, only: Matrix_CommRebuild, Report_UpdateMatrix
     use memory_module,   only: reg_alloc_mem, type_dbl, reg_dealloc_mem
 
@@ -5126,6 +5126,7 @@ contains
        call my_barrier()
        call Matrix_CommRebuild(InfoGlob,InfoMat,Lrange,L_trans,matL,nfile,symm,n_matrix=nspin)
        if(flag_debug_move_atoms) call Report_UpdateMatrix("Lmat")
+       call deallocate_InfoMatrixFile(nfile, InfoMat)
     endif
 
     if(flag_K) then
@@ -5133,6 +5134,7 @@ contains
        call my_barrier()
        call Matrix_CommRebuild(InfoGlob,InfoMat,Hrange,H_trans,matK,nfile,n_matrix=nspin)
        if(flag_debug_move_atoms) call Report_UpdateMatrix("Kmat")
+       call deallocate_InfoMatrixFile(nfile, InfoMat)
     endif
 
     if(flag_S) then
@@ -5141,6 +5143,7 @@ contains
        call my_barrier()
        call Matrix_CommRebuild(InfoGlob,InfoMat,Srange,S_trans,matS,nfile,symm,n_matrix=nspin_SF)
        if(flag_debug_move_atoms) call Report_UpdateMatrix("Smat")
+       call deallocate_InfoMatrixFile(nfile, InfoMat)
     endif
 
     if(flag_SFcoeff) then
@@ -5152,6 +5155,7 @@ contains
        call my_barrier()
        call Matrix_CommRebuild(InfoGlob,InfoMat,SFcoeff_range,SFcoeff_trans,matSFcoeff,nfile,n_matrix=nspin_SF)
        if(flag_debug_move_atoms) call Report_UpdateMatrix("SFc1")
+       call deallocate_InfoMatrixFile(nfile, InfoMat)
 
        do spin_SF = 1,nspin_SF
           call matrix_scale(zero,matSFcoeff_tran(spin_SF))
