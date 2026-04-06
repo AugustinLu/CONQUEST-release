@@ -1,33 +1,36 @@
-# Memory Leak Investigation Report
+# Memory Leak Investigation Report (Updated)
 
-## Multi-Site Support Functions (MSSF) Leak
+Upon deeper static analysis after identifying that `b_rem` is properly deallocated at the end of the `kpart` loop (and thus the commented out `deallocate(b_rem)` is correct behavior), the root cause of the continuous, scaling memory leak during MD operations has been located.
 
-### 1. File: `src/multisiteSF_module.f90`
-- **Line(s):** 1411-1414, 1435-1436
-- **Routine:** `LFD_make_Subspace_halo`
-- **Reason:** The array `b_rem` is dynamically allocated multiple times inside a heavily-used loop (over `kpart=1, ahalo%np_in_halo`). At the end of the `kpart` loop, there is a conditional block that attempts to deallocate `b_rem`:
-  ```fortran
-  1411: call start_timer(tmr_std_allocation)
-  1412: if(allocated(b_rem)) deallocate(b_rem)
-  1413: call stop_timer(tmr_std_allocation)
-  ```
-  However, later down at the end of the subroutine (lines 1435-1436), the explicit `deallocate` for `b_rem` is explicitly commented out:
-  ```fortran
-  1435: !deallocate(b_rem,STAT=stat)
-  1436: !if(stat/=0) call cq_abort('LFD_make_Subspace_halo: error deallocating b_rem')
-  ```
-  Depending on control flow, if `b_rem` remains allocated upon exit from `LFD_make_Subspace_halo`, Fortran might not garbage collect it depending on compiler behavior (since `b_rem` doesn't have `intent(out)` or a structured lifecycle). Additionally, repeated `allocate()` calls inside the loop without guarantee of cleanup can continuously consume heap memory over the duration of a simulation.
-- **Risk Level:** **High**. `LFD_make_Subspace_halo` is called repeatedly whenever the MSSF representations and matrices are updated in the MD/optimization loop. If memory fails to be reclaimed properly per atom/partition, this will cause memory footprint to grow continuously with the number of MD steps.
+## Critical Memory Leak: Unfreed File Read Matrices (`InfoMat`)
 
----
+### 1. File: `src/move_atoms.module.f90`
+- **Line(s):** 5125-5153 (Inside `update_pos_and_matrices`)
+- **Reason:** The `update_pos_and_matrices` subroutine is called on every MD step to update the `L`, `K`, `S`, and `SFcoeff` matrices across MPI ranks. For each matrix type requested, the subroutine calls `grab_matrix2` (e.g., `call grab_matrix2('L', inode, nfile, InfoMat, InfoGlob, index=0, n_matrix=nspin)`).
 
-## Other Package-Wide Findings
+  Inside `src/store_matrix_module.f90` at line 1242, `grab_matrix2` executes `allocate(InfoMat(nfile), STAT=stat_alloc)`. It then loops through files and allocates several sub-arrays within each `InfoMat` struct (e.g., `alpha_i`, `idglob_i`, `jmax_i`, `beta_j_i`, `rvec_Pij`, `data_Lold`, etc.).
 
-### 2. File: `src/cdft_module.f90`
-- **Line(s):** 84, 88-90, 92, 96, 105, 108-110
-- **Routine:** `init_cdft`
-- **Reason:** Standard Fortran `allocate` is used to allocate several arrays and `allocate_temp_matrix` is used for `matWc` and `matHzero` during initialization (`init_cdft`). However, there is no corresponding `end_cdft` subroutine, nor any `deallocate` or `free_temp_matrix` calls anywhere in `cdft_module.f90` for `matWc`, `cDFT_Vc`, `cDFT_W`, `flag_cdft_atom`, `bwgrid`, or `matHzero`.
-- **Risk Level:** **Low/Moderate**. This is an initialization routine, so the leak is fixed in size (a one-time hit per run). It won't grow infinitely like the MSSF issue during an MD loop, but it reflects orphaned memory.
+  However, `update_pos_and_matrices` never calls `deallocate_InfoMatrixFile(nfile, InfoMat)` after `Matrix_CommRebuild`. Therefore, **multiple sets of matrices representing the entire system size are allocated on every single MD step and never freed.** Since MSSF requires updating an additional set of matrices (`SFcoeff`), the leak is noticeably worse per step when MSSF is enabled compared to standard MD (which only updates `L`, `K`, `S`), perfectly matching the provided memory plot.
+- **Risk Level:** **Critical**. This scales with system size and MD steps. It is the primary cause of the continuous memory ramp.
 
-### Note on `allocate_temp_matrix` / `free_temp_matrix` usage:
-Across the entire package, matrix wrappers that use `allocate_temp_matrix` (like those in `force_module.f90`, `S_matrix_module.f90`, `McWeeny.f90`, `pao_minimisation.module.f90`, etc.) were systematically checked. Every temporary matrix allocated during a cyclic loop like force/energy calculations or LFD routines appears strictly paired with a `free_temp_matrix` call within the same subroutine, limiting standard memory leaks from these objects.
+### 2. File: `src/XLBOMD_module.f90`
+- **Line(s):** 539-550 (Inside `initial_XLBOMD`), 621 (Inside `Do_XLBOMD`)
+- **Reason:** Similar to the above issue, `grab_matrix2` is called repeatedly to load `X`, `Xvel`, and `S` matrices into `InfoMat`, but `deallocate_InfoMatrixFile` is never invoked, orphaning all read data per call.
+- **Risk Level:** **High**. If XLBOMD is running, this causes another per-step/per-initialization leak.
+
+### 3. File: `src/S_matrix_module.f90`
+- **Line(s):** 878 (Inside `get_S_matrix`)
+- **Reason:** When `flag_readT` or `restart_T` is true, `grab_matrix2` is used to load `T` into `Info`, but `Info` is never deallocated via `deallocate_InfoMatrixFile`.
+- **Risk Level:** **High**. Dependent on how often `get_S_matrix` triggers a read.
+
+### 4. File: `src/initialisation_module.f90`
+- **Line(s):** 1226, 1253, 1273, 1279 (Inside `initial_phis`)
+- **Reason:** During matrix startup, `grab_matrix2` is called to load `SFcoeff`, `T`, `L`, and `K` without being followed by `deallocate_InfoMatrixFile`.
+- **Risk Level:** **Low/Moderate**. This only occurs once at program start, so it represents a flat initialization cost rather than a continuous per-step leak.
+
+## Other Findings
+
+### 5. File: `src/cdft_module.f90`
+- **Line(s):** 84-115 (Inside `init_cdft`)
+- **Reason:** Standard Fortran `allocate` is used to allocate several arrays and `allocate_temp_matrix` is used for `matWc` and `matHzero` during initialization (`init_cdft`). However, there is no corresponding `end_cdft` subroutine to release `matWc`, `cDFT_Vc`, `cDFT_W`, `flag_cdft_atom`, `bwgrid`, or `matHzero`.
+- **Risk Level:** **Low**. Flat memory cost at startup if CDFT is active.
