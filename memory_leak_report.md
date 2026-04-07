@@ -6,17 +6,17 @@ This report documents the confirmed sources of memory leaks found during deep st
 
 ## 1. Critical Continuous Leak: Unfreed `InfoMat` Read Matrices
 
-When CONQUEST reads saved or checkpointed matrices from the file system, it invokes `grab_matrix2` (located in `src/store_matrix_module.f90`). This subroutine dynamically allocates an array of `InfoMat` derived types, and inside each element, allocates several deep nested arrays (`alpha_i`, `idglob_i`, `jmax_i`, `beta_j_i`, `rvec_Pij`, `data_Lold`, etc.) proportional to the system size and number of spins.
+When CONQUEST reads saved or checkpointed matrices from the file system, it invokes `grab_matrix2` (located in `src/store_matrix_module.f90`). This subroutine dynamically allocates an array of `InfoMat` derived types, and inside each element, allocates several deep nested arrays (`alpha_i`, `idglob_i`, `jmax_i`, `beta_j_i`, `rvec_Pij`, `data_Lold`, etc.) proportional to the number of atoms per MPI process and number of spins.
 
-While `store_matrix_module` provides a `deallocate_InfoMatrixFile` subroutine to cleanly free this memory, several core loops inside CONQUEST invoke `grab_matrix2` without ever calling the deallocation routine, causing massive chunks of memory to be orphaned per step.
+While `store_matrix_module` provides a `deallocate_InfoMatrixFile` subroutine to cleanly free this memory, several core loops inside CONQUEST invoke `grab_matrix2` without ever calling the deallocation routine, causing massive chunks of memory to be orphaned per step per MPI rank.
 
 ### Detailed Findings:
 
 **1. File:** `src/move_atoms.module.f90` (The Primary MD Leak)
 - **Location:** Inside `update_pos_and_matrices` (approx. Lines 5120-5160)
-- **Reason:** Called on **every MD step**, `update_pos_and_matrices` reads matrix components (`L`, `K`, `S`) across MPI ranks to propagate them forward.
+- **Reason:** Called on **every MD step**, `update_pos_and_matrices` reads matrix components (`L`, `K`, `S`) across MPI ranks to propagate them forward. The `InfoMat` array structures are dynamically allocated for the local atoms managed by that rank.
 - **Why MSSF made it worse:** When MSSF is active (`flag_SFcoeff`), an additional matrix structure (`SFcoeff`) is allocated and read. Thus, the MSSF leak scale directly correlates to this extra `InfoMat` block being leaked on top of the standard MD baseline.
-- **Risk Level:** **Critical**. This continuous leak scales with system size and MD iterations. (A patch for this specific location has been provided).
+- **Risk Level:** **Critical**. This continuous leak scales directly with the number of **atoms per MPI process** and the number of MD iterations. (A patch for this specific location has been provided).
 
 **2. File:** `src/XLBOMD_module.f90`
 - **Location:** Inside `initial_XLBOMD` and `Do_XLBOMD` (approx. Lines 539-550, 621)
