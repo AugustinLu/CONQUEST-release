@@ -402,7 +402,7 @@
       use numbers, ONLY: half, one, very_small
       use global_module, ONLY: io_lun,ni_in_cell,atom_coord,atom_coord_diff,rcellx,rcelly,rcellz
       use GenComms, ONLY: ionode
-      use store_matrix,ONLY: matrix_store_global, grab_InfoMatGlobal, set_atom_coord_diff
+      use store_matrix,ONLY: matrix_store_global, grab_InfoMatGlobal, set_atom_coord_diff, free_InfoMatGlobal
 
       implicit none
       ! passed variables
@@ -435,6 +435,8 @@
         call my_barrier()
         call reorder_Xhistories(MDiter)
       endif
+
+      call free_InfoMatGlobal(InfoGlob)
 
       return
       contains
@@ -523,7 +525,7 @@
       use GenComms, ONLY: inode, ionode
       use matrix_data, ONLY: Srange
       use mult_module, ONLY: matS,S_trans,matXL,matXLvel
-      use store_matrix, ONLY: grab_matrix2, InfoMatrixFile, matrix_store_global
+      use store_matrix, ONLY: grab_matrix2, InfoMatrixFile, matrix_store_global, deallocate_InfoMatrixFile
       use UpdateInfo, ONLY: Matrix_CommRebuild
 
       implicit none
@@ -539,16 +541,19 @@
       call grab_matrix2('X',inode,nfile,InfoMat,InfoGlob,index=0,n_matrix=nspin)
       !call Matrix_CommRebuild(InfoGlob,InfoMat,range,trans,matXL,nfile,symm,n_matrix=nspin)
       call Matrix_CommRebuild(InfoGlob,InfoMat,range,trans,matXL,nfile,n_matrix=nspin)
+      call deallocate_InfoMatrixFile(nfile, InfoMat)
       ! Fetches & reconstructs Xvel-matrix
       if (integratorXL.EQ.'velocityVerlet') then
         call grab_matrix2('Xvel',inode,nfile,InfoMat,InfoGlob,index=0,n_matrix=nspin)
         !call Matrix_CommRebuild(InfoGlob,InfoMat,range,trans,matXLvel,symm,nfile,n_matrix=nspin)
         call Matrix_CommRebuild(InfoGlob,InfoMat,range,trans,matXLvel,nfile,n_matrix=nspin)
+        call deallocate_InfoMatrixFile(nfile, InfoMat)
       endif
       ! Fetches & reconstructs S-matrix
       if (flag_propagateX) then
         call grab_matrix2('S',inode,nfile,InfoMat,InfoGlob,index=0,n_matrix=nspin_SF)
         call Matrix_CommRebuild(InfoGlob,InfoMat,Srange,S_trans,matS,nfile,symm,n_matrix=nspin_SF)
+        call deallocate_InfoMatrixFile(nfile, InfoMat)
       endif
 
       return
@@ -587,7 +592,7 @@
       use GenComms, ONLY: inode, ionode 
       use matrix_data, ONLY: LSrange,Lrange
       use mult_module, ONLY: LS_trans,L_trans, matXL_store, maxiter_Dissipation
-      use store_matrix, ONLY: grab_matrix2, InfoMatrixFile, matrix_store_global
+      use store_matrix, ONLY: grab_matrix2, InfoMatrixFile, matrix_store_global, deallocate_InfoMatrixFile
       use UpdateInfo, ONLY: Matrix_CommRebuild
       !db
       use global_module, ONLY: io_lun
@@ -620,6 +625,7 @@
       do istep = 1, maxiters+1
        call grab_matrix2('X',inode,nfile,InfoMat,InfoGlob,index=istep,n_matrix=nspin)
        call Matrix_CommRebuild(InfoGlob,InfoMat,range,trans,matXL_store(istep,:),nfile,n_matrix=nspin)
+       call deallocate_InfoMatrixFile(nfile, InfoMat)
       enddo
 
       ! ----- 2019/Nov/13: (comment by TM)   -----
