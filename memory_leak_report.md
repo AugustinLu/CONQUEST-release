@@ -1,10 +1,10 @@
 # Memory Leak Investigation Report
 
-This report documents the confirmed sources of memory leaks found during deep static analysis of the CONQUEST codebase. These memory leaks occur during Molecular Dynamics (MD) calculations, particularly scaling significantly with Multi-Site Support Functions (MSSF), as reflected in the `arachine400` and `mssf` growth metrics.
+This report documents the potential sources of memory leaks found during deep static analysis of the CONQUEST codebase. These memory leaks could occur during Molecular Dynamics (MD) calculations, particularly scaling significantly with Multi-Site Support Functions (MSSF), leading to increased memory occupation.
 
 ---
 
-## 1. Critical Continuous Leak: Unfreed `InfoMat` Read Matrices
+## 1. Continuous Leak: Unfreed `InfoMat` Read Matrices
 
 When CONQUEST reads saved or checkpointed matrices from the file system, it invokes `grab_matrix2` (located in `src/store_matrix_module.f90`). This subroutine dynamically allocates an array of `InfoMat` derived types, and inside each element, allocates several deep nested arrays (`alpha_i`, `idglob_i`, `jmax_i`, `beta_j_i`, `rvec_Pij`, `data_Lold`, etc.) proportional to the number of atoms per MPI process and number of spins.
 
@@ -12,16 +12,16 @@ While `store_matrix_module` provides a `deallocate_InfoMatrixFile` subroutine to
 
 ### Detailed Findings:
 
-**1. File:** `src/move_atoms.module.f90` (The Primary MD Leak)
+**1. File:** `src/move_atoms.module.f90` (The Primary MD Leak Candidate)
 - **Location:** Inside `update_pos_and_matrices` (approx. Lines 5120-5160)
 - **Reason:** Called on **every MD step**, `update_pos_and_matrices` reads matrix components (`L`, `K`, `S`) across MPI ranks to propagate them forward. The `InfoMat` array structures are dynamically allocated for the local atoms managed by that rank.
 - **Why MSSF made it worse:** When MSSF is active (`flag_SFcoeff`), an additional matrix structure (`SFcoeff`) is allocated and read. Thus, the MSSF leak scale directly correlates to this extra `InfoMat` block being leaked on top of the standard MD baseline.
-- **Risk Level:** **Critical**. This continuous leak scales directly with the number of **atoms per MPI process** and the number of MD iterations. (A patch for this specific location has been provided).
+- **Risk Level:** **Critical**. This continuous leak scales directly with the number of **atoms per MPI process** and the number of MD iterations.
 
 **2. File:** `src/XLBOMD_module.f90`
 - **Location:** Inside `initial_XLBOMD` and `Do_XLBOMD` (approx. Lines 539-550, 621)
-- **Reason:** `grab_matrix2` is called repeatedly to load the `X`, `Xvel`, and `S` matrices into `InfoMat`, but `deallocate_InfoMatrixFile` and `free_InfoMatGlobal` were never invoked.
-- **Risk Level:** **High** (if XL-BOMD is running). Similar to the main MD loop, this causes a continuous leak per XLBOMD propagation.
+- **Reason:** `grab_matrix2` is called repeatedly to load the `X`, `Xvel`, and `S` matrices into `InfoMat`, but `deallocate_InfoMatrixFile` and `free_InfoMatGlobal` are never invoked.
+- **Risk Level:** **High** (if XL-BOMD is running). Similar to the main MD loop, this could cause a continuous leak per XLBOMD propagation.
 
 **3. File:** `src/S_matrix_module.f90`
 - **Location:** Inside `get_S_matrix` (approx. Line 879)
@@ -45,4 +45,4 @@ While `store_matrix_module` provides a `deallocate_InfoMatrixFile` subroutine to
 ---
 
 ## Conclusion
-The most critical memory accumulation observed in standard `arachine400` profiles and the accelerated accumulation under `mssf` is driven by the missing `deallocate_InfoMatrixFile` calls inside `update_pos_and_matrices` within `src/move_atoms.module.f90`. A targeted patch has been prepared to fix this specific issue first, to allow for focused testing, with remaining minor leaks documented for subsequent cleanups.
+The most critical memory accumulation observed and the accelerated accumulation under MSSF is likely driven by the missing `deallocate_InfoMatrixFile` calls when `grab_matrix2` is invoked (especially inside `update_pos_and_matrices` within `src/move_atoms.module.f90`). Addressing the deallocations of the `InfoMat` allocations in these modules should resolve the memory leaks.
