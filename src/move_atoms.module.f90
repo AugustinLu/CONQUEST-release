@@ -4983,7 +4983,7 @@ contains
          matrix_scale, matrix_transpose, matSFcoeff_tran
     use matrix_data,     only: Lrange, Hrange, Srange, SFcoeff_range
     use store_matrix,    only: matrix_store_global, InfoMatrixFile, grab_InfoMatGlobal, grab_matrix2, &
-         set_atom_coord_diff
+         set_atom_coord_diff, deallocate_InfoMatrixFile, free_InfoMatGlobal
     use UpdateInfo, only: Matrix_CommRebuild, Report_UpdateMatrix
     use memory_module,   only: reg_alloc_mem, type_dbl, reg_dealloc_mem
 
@@ -5158,6 +5158,12 @@ contains
           call matrix_transpose(matSFcoeff(spin_SF), matSFcoeff_tran(spin_SF))
        enddo
     endif
+
+    ! Deallocate InfoMat and InfoGlob
+    if (flag_L .or. flag_K .or. flag_S .or. flag_SFcoeff) then
+       call deallocate_InfoMatrixFile(nfile, InfoMat)
+    end if
+    call free_InfoMatGlobal(InfoGlob)
 
     !Switch off Debugging
     !  flag_debug_move_atoms = .false.
