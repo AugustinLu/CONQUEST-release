@@ -27,7 +27,7 @@ SCALAPACK = -lscalapack-openmpi
 #XC_LIB = -lxcf90 -lxc
 XC_LIBRARY = LibXC_v5
 XC_LIB = -lxcf03 -lxc
-XC_COMPFLAGS = -I${HOME}/local/include -I/usr/local/include
+XC_COMPFLAGS = -I${HOME}/local/include -I/usr/local/include -I/usr/include
 
 # Set FFT library
 FFT_LIB=-lfftw3
