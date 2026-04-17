@@ -1911,6 +1911,7 @@ contains
             iter, en_conv * enthalpy_out, en_units(energy_units)
     end if
 
+    deallocate(config_start)
     call stop_timer(tmr_std_moveatoms)
     return
   end subroutine backtrack_linemin_full
