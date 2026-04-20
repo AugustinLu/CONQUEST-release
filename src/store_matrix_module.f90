@@ -1461,26 +1461,46 @@ contains
 
     if (associated(InfoMat)) then
        do ifile = 1, nfile
-          if (associated(InfoMat(ifile)%alpha_i)) deallocate (InfoMat(ifile)%alpha_i, STAT=stat_alloc)
-          if (stat_alloc/=0) call cq_abort('Error deallocating alpha_i:')
-          if (associated(InfoMat(ifile)%idglob_i)) deallocate (InfoMat(ifile)%idglob_i, STAT=stat_alloc)
-          if (stat_alloc/=0) call cq_abort('Error deallocating idglob_i:')
-          if (associated(InfoMat(ifile)%jmax_i)) deallocate (InfoMat(ifile)%jmax_i, STAT=stat_alloc)
-          if (stat_alloc/=0) call cq_abort('Error deallocating jmax_i:')
-          if (associated(InfoMat(ifile)%jbeta_max_i)) deallocate (InfoMat(ifile)%jbeta_max_i, STAT=stat_alloc)
-          if (stat_alloc/=0) call cq_abort('Error deallocating jbeta_max_i:')
-          if (associated(InfoMat(ifile)%ibeg_Pij)) deallocate (InfoMat(ifile)%ibeg_Pij, STAT=stat_alloc)
-          if (stat_alloc/=0) call cq_abort('Error deallocating ibeg_Pij:')
-          if (associated(InfoMat(ifile)%ibeg_dataL)) deallocate (InfoMat(ifile)%ibeg_dataL, STAT=stat_alloc)
-          if (stat_alloc/=0) call cq_abort('Error deallocating ibeg_dataL:')
-          if (associated(InfoMat(ifile)%beta_j_i)) deallocate (InfoMat(ifile)%beta_j_i, STAT=stat_alloc)
-          if (stat_alloc/=0) call cq_abort('Error deallocating beta_j_i:')
-          if (associated(InfoMat(ifile)%idglob_j)) deallocate (InfoMat(ifile)%idglob_j, STAT=stat_alloc)
-          if (stat_alloc/=0) call cq_abort('Error deallocating idglob_j:')
-          if (associated(InfoMat(ifile)%rvec_Pij)) deallocate (InfoMat(ifile)%rvec_Pij, STAT=stat_alloc)
-          if (stat_alloc/=0) call cq_abort('Error deallocating rvec_Pij:')
-          if (associated(InfoMat(ifile)%data_Lold)) deallocate (InfoMat(ifile)%data_Lold, STAT=stat_alloc)
-          if (stat_alloc/=0) call cq_abort('Error deallocating data_Lold:')
+          if (associated(InfoMat(ifile)%alpha_i)) then
+             deallocate (InfoMat(ifile)%alpha_i, STAT=stat_alloc)
+             if (stat_alloc/=0) call cq_abort('Error deallocating alpha_i:')
+          end if
+          if (associated(InfoMat(ifile)%idglob_i)) then
+             deallocate (InfoMat(ifile)%idglob_i, STAT=stat_alloc)
+             if (stat_alloc/=0) call cq_abort('Error deallocating idglob_i:')
+          end if
+          if (associated(InfoMat(ifile)%jmax_i)) then
+             deallocate (InfoMat(ifile)%jmax_i, STAT=stat_alloc)
+             if (stat_alloc/=0) call cq_abort('Error deallocating jmax_i:')
+          end if
+          if (associated(InfoMat(ifile)%jbeta_max_i)) then
+             deallocate (InfoMat(ifile)%jbeta_max_i, STAT=stat_alloc)
+             if (stat_alloc/=0) call cq_abort('Error deallocating jbeta_max_i:')
+          end if
+          if (associated(InfoMat(ifile)%ibeg_Pij)) then
+             deallocate (InfoMat(ifile)%ibeg_Pij, STAT=stat_alloc)
+             if (stat_alloc/=0) call cq_abort('Error deallocating ibeg_Pij:')
+          end if
+          if (associated(InfoMat(ifile)%ibeg_dataL)) then
+             deallocate (InfoMat(ifile)%ibeg_dataL, STAT=stat_alloc)
+             if (stat_alloc/=0) call cq_abort('Error deallocating ibeg_dataL:')
+          end if
+          if (associated(InfoMat(ifile)%beta_j_i)) then
+             deallocate (InfoMat(ifile)%beta_j_i, STAT=stat_alloc)
+             if (stat_alloc/=0) call cq_abort('Error deallocating beta_j_i:')
+          end if
+          if (associated(InfoMat(ifile)%idglob_j)) then
+             deallocate (InfoMat(ifile)%idglob_j, STAT=stat_alloc)
+             if (stat_alloc/=0) call cq_abort('Error deallocating idglob_j:')
+          end if
+          if (associated(InfoMat(ifile)%rvec_Pij)) then
+             deallocate (InfoMat(ifile)%rvec_Pij, STAT=stat_alloc)
+             if (stat_alloc/=0) call cq_abort('Error deallocating rvec_Pij:')
+          end if
+          if (associated(InfoMat(ifile)%data_Lold)) then
+             deallocate (InfoMat(ifile)%data_Lold, STAT=stat_alloc)
+             if (stat_alloc/=0) call cq_abort('Error deallocating data_Lold:')
+          end if
        enddo
        deallocate (InfoMat, STAT=stat_alloc)
        if (stat_alloc/=0) call cq_abort('Error deallocating InfoMat:', nfile)

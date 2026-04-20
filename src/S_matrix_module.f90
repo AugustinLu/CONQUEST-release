@@ -1447,6 +1447,7 @@ contains
        end do
     end do
     deallocate(work1,work2,work3,work4,work5,work6, STAT=stat)
+    deallocate(temp,temp2)
     if(stat/=0) call cq_abort("Error deallocating arrays for onsite S blip elements: ",blip_info(specj)%FullArraySize,this_nsfL)
     return
   end subroutine get_S_analytic
