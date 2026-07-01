@@ -432,14 +432,11 @@ second:   do
           ! Read supercell vector - for now it must be orthorhombic so
           ! we use x and y as dummy variables
           read(lun,*) r_super_x, x, y
-          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_warn('read_atomic_positions', &
-               'Non-orthorhombic cell support is under development. Please wait.')
+          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_abort('Non-orthorhombic cell support is under development. Please wait.')
           read(lun,*) x,r_super_y, y
-          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_warn('read_atomic_positions', &
-               'Non-orthorhombic cell support is under development. Please wait.')
+          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_abort('Non-orthorhombic cell support is under development. Please wait.')
           read(lun,*) x,y,r_super_z
-          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_warn('read_atomic_positions', &
-               'Non-orthorhombic cell support is under development. Please wait.')
+          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_abort('Non-orthorhombic cell support is under development. Please wait.')
           read(lun,*) ni_in_cell
          !2010.06.25 TM (Angstrom Units in coords file, but not pdb)
           if(dist_units == ang) then
@@ -536,6 +533,7 @@ second:   do
     call gcopy(species_glob,ni_in_cell)
     call gcopy(atom_coord, 3, ni_in_cell)
     call gcopy(flag_move_atom, 3, ni_in_cell)
+    lat_vec = 0.0_double
     lat_vec = 0.0_double
     lat_vec(1,1) = r_super_x
     lat_vec(2,2) = r_super_y
