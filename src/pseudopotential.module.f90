@@ -40,6 +40,8 @@
 !!    Added timers
 !!   2014/09/15 18:30 lat
 !!    fixed call start/stop_timer to timer_module (not timer_stdlocks_module !)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module pseudopotential_data
@@ -97,6 +99,8 @@ contains
 !!    Added timers
 !!   2011/12/09 L.Tong
 !!    Removed obsolete parameter number_of_bands
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine init_pseudo(e_core)
@@ -185,6 +189,8 @@ contains
 !!    Removed calculation of pseudofunctions for analytic blips
 !!   2016/07/20 16:30 nakata
 !!    Renamed naba_atm -> naba_atoms_of_blocks
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine set_pseudopotential()
@@ -192,7 +198,7 @@ contains
     use datatypes
     use GenBlas, only: axpy
     use numbers
-    use global_module, only: rcellx,rcelly,rcellz,id_glob,ni_in_cell, &
+    use global_module, only: lat_vec,id_glob,ni_in_cell, &
                              species_glob, nlpf, flag_basis_set,      &
                              blips, flag_analytic_blip_int
     use species_module, only: charge, species, nlpf_species
@@ -242,9 +248,9 @@ contains
     end if
 
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
 
     ! loop arround grid points in this domain, and for each
     ! point, get contributions to the short-range
@@ -527,6 +533,8 @@ contains
 !!    Added timers
 !!   2016/07/20 16:30 nakata
 !!    Renamed naba_atm -> naba_atoms_of_blocks
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine pseudopotential_derivatives(direction, dpseudofns )
@@ -534,7 +542,7 @@ contains
     use datatypes
     use numbers
     use species_module, only: species, nlpf_species
-    use global_module,  only: rcellx,rcelly,rcellz,id_glob,ni_in_cell, &
+    use global_module,  only: lat_vec,id_glob,ni_in_cell, &
                               species_glob, nlpf
     !  At present, these arrays are dummy arguments.
     use block_module,   only : nx_in_block,ny_in_block,nz_in_block,    &
@@ -570,9 +578,9 @@ contains
     call start_timer(tmr_std_pseudopot)
     gridfunctions(dpseudofns)%griddata = zero
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
 
     ! loop arround grid points in this domain, and for each
     ! point, get contributions to the short-range
@@ -936,6 +944,8 @@ contains
 !!    Added io_ routines from input_module
 !!   2015/06/08 lat
 !!    Added experimental backtrace
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine read_pseudopotential(inode, ionode)
@@ -1164,6 +1174,8 @@ contains
 !!    Changed float to real
 !!   2008/05/25 ast
 !!    Added timers
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine spline_pseudopotential()
@@ -1276,6 +1288,8 @@ contains
 !!   2011/12/09 L.Tong
 !!    Removed obsolete parameter number_of_bands, replaced two *
 !!    number_of_bands by ne_in_cell
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine get_core_correction(e_core)

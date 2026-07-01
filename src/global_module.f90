@@ -159,6 +159,8 @@
 !!    Added ASE output unit
 !!   2023/01/12 17:11 dave
 !!    Variables for polarisation calculation
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module global_module
@@ -180,7 +182,7 @@ module global_module
   integer, allocatable, dimension(:) :: id_glob_inv  ! gives global number for a CC atom
   integer, dimension(:), allocatable, target :: species_glob ! gives species 
   integer :: numprocs               ! number of processors
-  real(double), target :: rcellx,rcelly,rcellz  ! cell side lengths
+  real(double), target :: lat_vec(3,3)  ! cell side lengths
   real(double), allocatable, dimension(:), target :: x_atom_cell ! position of atom in sim cell (CC)
   real(double), allocatable, dimension(:), target :: y_atom_cell
   real(double), allocatable, dimension(:), target :: z_atom_cell

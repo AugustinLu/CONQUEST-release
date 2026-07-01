@@ -40,6 +40,8 @@
 !!   2017/03/08 15:00 nakata
 !!    Removed PAO_to_grid, do_PAO_transform, PAO_to_grad, do_PAO_grad_transform,
 !!    PAO_to_grid_global and PAO_to_grad_global, which are no longer used.
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module PAO_grid_transform_module
@@ -98,6 +100,8 @@ contains
 !!    single subroutine PAO_or_gradPAO_to_grid
 !!   2023/11/15 11:20 lionel
 !!    Added optional argument sys to evaluate_pao interface
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine PAO_or_gradPAO_to_grid(pao_fns, evaluate, direction)
@@ -108,7 +112,7 @@ contains
     use dimens, ONLY: r_h
     use GenComms, ONLY: inode, ionode
     use numbers
-    use global_module, ONLY: rcellx,rcelly,rcellz,id_glob,ni_in_cell, iprint_basis, species_glob, atomf
+    use global_module, ONLY: lat_vec,id_glob,ni_in_cell, iprint_basis, species_glob, atomf
     use species_module, ONLY: species, npao_species
     !  At present, these arrays are dummy arguments.
     use block_module, ONLY : nx_in_block,ny_in_block,nz_in_block, n_pts_in_block
@@ -171,11 +175,11 @@ contains
     ! --  Start of subroutine  ---
 
     ! No need to compute these here, since they are derived from globals
-    ! Store with rcellx, rcelly, rcellz?
+    ! Store with lat_vec(1,1), lat_vec(2,2), lat_vec(3,3)?
     ! Reduces code duplication
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz
 
     call my_barrier()
 
@@ -302,6 +306,8 @@ contains
 !!   Jul. 2002
 !!  MODIFICATION HISTORY
 !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine check_block &
@@ -309,7 +315,7 @@ contains
        npoint, ip_store, r_store, x_store, y_store, z_store,blocksize)
 
     use numbers
-    use global_module, ONLY: rcellx,rcelly,rcellz
+    use global_module, ONLY: lat_vec
     use group_module,  ONLY: blocks
     use block_module,  ONLY: nx_in_block,ny_in_block,nz_in_block!, &
 !         n_pts_in_block
@@ -334,9 +340,9 @@ contains
 
 
     rcut2 = rcut* rcut
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz
 
     dcellx_grid=dcellx_block/nx_in_block
     dcelly_grid=dcelly_block/ny_in_block

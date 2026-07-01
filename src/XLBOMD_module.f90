@@ -27,6 +27,8 @@
   !!     1. matX, matXvel, matX_store are now moved to mult_module, and 
   !!     their names were changed to matXL, matXLvel, matXL_store.
   !!     2. the three routines (grab_XXvelS, ...) are now moved to store_matrix.
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   module XLBOMD_module
@@ -72,6 +74,8 @@
     !!  CREATION DATE
     !!   2013/12/03 
     !!  MODIFICATION
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     !!
     subroutine immi_XL(parts,prim,gcs,myid)
@@ -190,6 +194,8 @@
     !!  MODIFICATION
     !!   2017/05/11 dave
     !!    Making consistent with immi_XL order with spin
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     !!
     subroutine fmmi_XL
@@ -271,6 +277,8 @@
     !!  CREATION DATE
     !!   2013/12/03
     !!  MODIFICATION
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     subroutine Do_XLBOMD(MDiter,dt)
       ! Module usage
@@ -315,6 +323,8 @@
     !!  MODIFICATION
     !!   2018/11/13 17:30 nakata
     !!    Changed matT and matTtran to be spin_SF dependent
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     !!
     subroutine get_initialL_XL()
@@ -385,6 +395,8 @@
     !!  MODIFICATION
     !!   2018/11/13 17:30 nakata
     !!    Changed matS to be spin_SF dependent
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     !!
     subroutine CommRebuild_matXL(MDiter,range,trans)
@@ -400,7 +412,7 @@
       use GenComms, ONLY: myid
  !2019/Nov/13
       use numbers, ONLY: half, one, very_small
-      use global_module, ONLY: io_lun,ni_in_cell,atom_coord,atom_coord_diff,rcellx,rcelly,rcellz
+      use global_module, ONLY: io_lun,ni_in_cell,atom_coord,atom_coord_diff,lat_vec
       use GenComms, ONLY: ionode
       use store_matrix,ONLY: matrix_store_global, grab_InfoMatGlobal, set_atom_coord_diff
 
@@ -516,6 +528,8 @@
     !!    Changed matS to be spin_SF dependent
     !!   2018/11/15 15:45 nakata
     !!    Bug fix: InfoXvel should be used for Xvel_2
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     subroutine grab_XXvelS(range,trans,InfoGlob)
       ! Module usage
@@ -580,6 +594,8 @@
     !!    Changing the filenames and tidying up the code
     !!   2019/11/15 tsuyoshi
     !!   
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     subroutine grab_Xhistories(range,trans,InfoGlob)
       ! Module usage
@@ -720,6 +736,8 @@
     !!  CREATION DATE
     !!   2013/12/03 
     !!  MODIFICATION
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     !!
     subroutine reorder_Xhistories(MDiter)
@@ -776,6 +794,8 @@
     !!  CREATION DATE
     !!   2013/12/03 
     !!  MODIFICATION
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     !!
     subroutine calc_dissipative_force(MDiter,dissipation)
@@ -830,6 +850,8 @@
     !!  CREATION DATE
     !!   2013/12/03 
     !!  MODIFICATION
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     !!
     subroutine Ready_XLBOMD()
@@ -956,6 +978,8 @@
     !!  CREATION DATE
     !!   2013/12/03 
     !!  MODIFICATION
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     !!
     subroutine propagate_matXL(MDiter,dt,matA,Arange)
@@ -1003,6 +1027,8 @@
     !!  MODIFICATION
     !!   2018/11/13 17:30 nakata
     !!    Removed matS, matL, L_S_LS and mult which was passed but not used
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     !!
     subroutine Verlet_matXL(MDiter,matA,Arange)
@@ -1131,6 +1157,8 @@
     !!  CREATION DATE
     !!   2013/12/03 
     !!  MODIFICATION
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
     !!  SOURCE
     !!
     subroutine vVerlet_matXL(MDiter,dt,matA,Arange)

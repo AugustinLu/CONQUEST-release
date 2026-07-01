@@ -38,6 +38,8 @@
 !!    Added get_r_on_support for calculations of stress, polarisation and TDDFT in periodic boundaries
 !!   2016/08/05 15:00 nakata
 !!    Renamed get_r_on_support -> get_r_on_atomfns
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module S_matrix_module
@@ -124,6 +126,8 @@ contains
 !!    Moved dump_matrix(NSmatrix) from sub:get_H_matrix and made it optional
 !!  TODO
 !!    
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine get_S_matrix(inode, ionode, build_AtomF_matrix, transform_AtomF_to_SF)
@@ -244,6 +248,8 @@ contains
 !!   
 !!  TODO
 !!    
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine get_S_matrix_PAO(inode, ionode)
@@ -309,6 +315,8 @@ contains
 !!
 !!  TODO
 !!    
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine get_S_matrix_blips(inode, ionode)
@@ -527,13 +535,15 @@ contains
 !!   2022/12/21 16:52 dave
 !!    Extending to allow calculation of exp(i.2pi.x/L) as well as x
 !!    New argument flag_func selects x, cos(2pi.x/L) or sin(2pi.x/L) with 0, 1 or 2
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!  
   subroutine get_r_on_atomfns(direction,flag_func,inputgf,gridfunc1,gridfunc2,gridfunc3)
 
     use datatypes
     use numbers
-    use global_module,               only: rcellx,rcelly,rcellz, atomf, species_glob, &
+    use global_module,               only: lat_vec, atomf, species_glob, &
          ni_in_cell, id_glob, atom_coord
     use cover_module,                only: DCS_parts
     use block_module,                only: nx_in_block,ny_in_block,nz_in_block, &
@@ -581,9 +591,9 @@ contains
          r_store(n_pts_in_block), STAT=stat)
     if(stat /= 0) call cq_abort(' Error allocating store in get_r_on_atomfns: ',n_pts_in_block)
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
     no_of_ib_ia = 0
     do iblock = 1, domain%groups_on_node
        if (iblock*n_pts_in_block > n_my_grid_points) call cq_abort('get_nonSC_force: igrid error ', igrid,n_my_grid_points)
@@ -741,6 +751,8 @@ contains
 !!    Removed flag_MDold
 !!   2022/10/25 16:58 dave
 !!    Updating output: Note that output_level is iprint+min_layer
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine Iter_Hott_InvS(output_level, n_L_iterations, tolerance,n_atoms,&
@@ -989,6 +1001,8 @@ contains
 !!    Removed TS_TS_T multiplication and replaced omega with Frobenius norm (basically same !)
 !!   12:12, 03/02/2006 drb 
 !   Reworked for new scheme
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine HotInvS_mm( matI, matS, matT0, matT1, matA, omega,n)
@@ -1061,6 +1075,8 @@ contains
 !!    Correctly coded
 !!   2011/11/15 08:03 dave
 !!    Changes to blip data
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine get_onsite_S(blip_co, matS, np, nn, ip, this_nsf, spec)
@@ -1204,6 +1220,8 @@ contains
 !!   2012/02 (roughly)
 !!  MODIFICATION HISTORY
 !!  
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!  
   subroutine get_S_analytic(blipL_co, blipR_co, blip_grad, matS, matT, dataM12, dataK, ip, j_in_halo, &
@@ -1468,6 +1486,8 @@ contains
 !!   
 !!  MODIFICATION HISTORY
 !!  
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!  
   subroutine get_dS_analytic_oneL(blipL_co, blipR_co, forS, forT, dataM12, dataK, ip, j_in_halo, &

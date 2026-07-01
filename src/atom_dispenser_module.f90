@@ -18,7 +18,7 @@ module atom_dispenser
 
   use datatypes
   use group_module, ONLY: parts
-  use global_module, ONLY: flag_fractional_atomic_coords,rcellx,rcelly,rcellz, &
+  use global_module, ONLY: flag_fractional_atomic_coords,lat_vec, &
                            flag_MDdebug,shift_in_bohr,Iprint_MD
   use GenComms, ONLY: cq_abort
 
@@ -54,6 +54,8 @@ contains
   !!   2013/08/21
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine atom2part(x,y,z,ind_part,px,py,pz,atom_id)
@@ -110,9 +112,9 @@ contains
     z_eps = z + eps
     if (flag_ortho) then ! if the system is orthorhombic.
       ! Calculate the partition lengths.
-      plen_x = rcellx/real(parts%ngcellx,double)
-      plen_y = rcelly/real(parts%ngcelly,double)
-      plen_z = rcellz/real(parts%ngcellz,double)
+      plen_x = lat_vec(1,1)/real(parts%ngcellx,double)
+      plen_y = lat_vec(2,2)/real(parts%ngcelly,double)
+      plen_z = lat_vec(3,3)/real(parts%ngcellz,double)
       !x_eps = x_eps - floor(x_eps)
       !y_eps = y_eps - floor(y_eps)
       !z_eps = z_eps - floor(z_eps)
@@ -122,9 +124,9 @@ contains
     else ! if NOT orthorhombic.
       call cq_abort('ERROR in atom2part: flag_ortho ')
       ! You need to consider alpha, beta and gamma, but leave it for now.
-      plen_x = rcellx/real(parts%ngcellx,double)
-      plen_y = rcelly/real(parts%ngcelly,double)
-      plen_z = rcellz/real(parts%ngcellz,double)
+      plen_x = lat_vec(1,1)/real(parts%ngcellx,double)
+      plen_y = lat_vec(2,2)/real(parts%ngcelly,double)
+      plen_z = lat_vec(3,3)/real(parts%ngcellz,double)
     endif
 
     ! DB
@@ -134,7 +136,7 @@ contains
     if (flag_MDdebug) then
       write (lun, '(a,1x,i8)') "## Globel atom ID: ", atom_id
       write (lun, '(a,1x,l5,1x,f15.10)') "Fractional? / eps: ", flag_fractional_atomic_coords, eps
-      write (lun, '(a,1x,3f15.10)') "cell lengths: ", rcellx, rcelly, rcellz
+      write (lun, '(a,1x,3f15.10)') "cell lengths: ", lat_vec(1,1), lat_vec(2,2), lat_vec(3,3)
       !write (lun, '(a,1x,3i8)') "# of parts: ", parts%ngcellx, parts%ngcelly, parts%ngcellz
       write (lun, '(a,1x,3f15.10)') "Partition lengths: ", plen_x, plen_y, plen_z
       write (lun, '(a,1x,6f15.10)') "x,y,z; x,y,z_eps: ", x, y, z, x_eps, y_eps, z_eps
@@ -175,6 +177,8 @@ contains
   !!    2013/07/01
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine allatom2part(ind_part)
@@ -236,9 +240,9 @@ contains
     eps = shift_in_bohr
     if (flag_ortho) then
       ! Calculate the partition lengths
-      plen_x = rcellx/real(parts%ngcellx,double)
-      plen_y = rcelly/real(parts%ngcelly,double)
-      plen_z = rcellz/real(parts%ngcellz,double)
+      plen_x = lat_vec(1,1)/real(parts%ngcellx,double)
+      plen_y = lat_vec(2,2)/real(parts%ngcelly,double)
+      plen_z = lat_vec(3,3)/real(parts%ngcellz,double)
       if (flag_MDdebug .AND. inode.EQ.ionode) &
         write (lun,*) "plen_x,y,z:", plen_x,plen_y,plen_z !DB
       ! Get the partition (sim-cell gp (CC)) to which each atom belongs.

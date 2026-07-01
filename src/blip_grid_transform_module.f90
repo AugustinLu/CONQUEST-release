@@ -48,6 +48,8 @@
 !!    Adding local blip-to-grid and grid-to-blip transforms
 !!   2014/09/15 18:30 lat
 !!    fixed call start/stop_timer to timer_module (not timer_stdlocks_module !)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 module blip_grid_transform_module
 
@@ -93,6 +95,8 @@ contains
 !!    Removed blip module and variables passed to transform
 !!   2016/07/29 18:30 nakata
 !!    Renamed supports_on_atom -> blips_on_atom
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine blip_to_support_new(myid, support)
@@ -173,13 +177,15 @@ contains
 !!    Added timers
 !!   2016/07/14 16:30 nakata
 !!    Renamed naba_blk_supp -> naba_blocks_of_atoms
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine do_blip_transform_new(iprim, data_blip, nsf)
 
     use datatypes
     use numbers
-    use global_module,   ONLY: rcellx,rcelly,rcellz, area_basis
+    use global_module,   ONLY: lat_vec, area_basis
     use group_module,    ONLY: blocks
     use primary_module,  ONLY: bundle
     use cover_module,    ONLY: BCS_blocks
@@ -238,9 +244,9 @@ contains
     nblkz=nz_in_block
 
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
 
     nxmin_grid=(naba_blocks_of_atoms%nxmin(iprim)-1)*nblkx  
     nxmax_grid= naba_blocks_of_atoms%nxmax(iprim)*nblkx-1
@@ -727,6 +733,8 @@ contains
 !!    Removed blip module and variables passed to transform
 !!   2016/07/29 18:30 nakata
 !!    Renamed supports_on_atom -> blips_on_atom
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine blip_to_grad_new(myid, direction, support)
@@ -793,13 +801,15 @@ contains
 !!    Added timers
 !!   2016/07/14 16:30 nakata
 !!    Renamed naba_blk_supp -> naba_blocks_of_atoms
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine do_blip_grad_transform_new(direction, iprim, data_blip, nsf)
 
     use datatypes
     use numbers
-    use global_module,   ONLY: rcellx,rcelly,rcellz, area_basis
+    use global_module,   ONLY: lat_vec, area_basis
     use group_module,    ONLY: blocks
     use primary_module,  ONLY: bundle
     use cover_module,    ONLY: BCS_blocks
@@ -856,9 +866,9 @@ contains
     nblky=ny_in_block
     nblkz=nz_in_block
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
 
     nxmin_grid=(naba_blocks_of_atoms%nxmin(iprim)-1)*nblkx  
     nxmax_grid= naba_blocks_of_atoms%nxmax(iprim)*nblkx-1
@@ -1175,6 +1185,8 @@ contains
 !!  TODO
 !!   I think this subroutine can include the work by 
 !!   blip_to_grad_transform TM
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine blip_to_gradgrad_new(myid, direction1, direction2, gg_support)
@@ -1251,13 +1263,15 @@ contains
 !!    Added timers
 !!   2016/07/14 16:30 nakata
 !!    Renamed naba_blk_supp -> naba_blocks_of_atoms
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine do_blip_gradgrad_transform_new(n_d, iprim, data_blip, nsf)
 
     use datatypes
     use numbers
-    use global_module,   ONLY: rcellx,rcelly,rcellz, area_basis
+    use global_module,   ONLY: lat_vec, area_basis
     use group_module,    ONLY: blocks
     use primary_module,  ONLY: bundle
     use cover_module,    ONLY: BCS_blocks
@@ -1314,9 +1328,9 @@ contains
     nblky=ny_in_block
     nblkz=nz_in_block
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
 
     nxmin_grid=(naba_blocks_of_atoms%nxmin(iprim)-1)*nblkx  
     nxmax_grid= naba_blocks_of_atoms%nxmax(iprim)*nblkx-1
@@ -1643,6 +1657,8 @@ contains
 !!    Removed blip module and variables passed to transform
 !!   2016/07/06 17:30 nakata
 !!    Removed unused comm_naba_blocks_of_atoms and naba_blk_supp
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine inverse_blip_transform_new(myid, dsupport, data_dblip, n_prim)
@@ -1726,6 +1742,8 @@ contains
 !!    Removed unused comm_naba_blocks_of_atoms
 !!   2016/07/14 16:30 nakata
 !!    Renamed naba_blk_supp -> naba_blocks_of_atoms
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine do_inverse_blip_new(myid, iprim, data_dblip, nsf)
@@ -1733,7 +1751,7 @@ contains
     ! modules
     use datatypes
     use numbers
-    use global_module,       ONLY:rcellx,rcelly,rcellz, area_basis
+    use global_module,       ONLY:lat_vec, area_basis
     use group_module,        ONLY:blocks
     use primary_module,      ONLY:bundle
     use cover_module,        ONLY:BCS_blocks
@@ -1816,9 +1834,9 @@ contains
     nblky=ny_in_block
     nblkz=nz_in_block
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
 
     nxmin_grid=(naba_blocks_of_atoms%nxmin(iprim)-1)*nblkx
     nxmax_grid= naba_blocks_of_atoms%nxmax(iprim)*nblkx-1
@@ -2295,6 +2313,8 @@ contains
 !!    Removed blip module and variables passed to transform
 !!   2016/07/06 17:30 nakata
 !!    Removed unused comm_naba_blocks_of_atoms and naba_blk_supp
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine inverse_blip_to_grad_new(myid, direction, dsupport, data_dblip, n_prim)
@@ -2372,13 +2392,15 @@ contains
 !!    Removed unused comm_naba_blocks_of_atoms
 !!   2016/07/14 16:30 nakata
 !!    Renamed naba_blk_supp -> naba_blocks_of_atoms
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine do_inverse_blip_to_grad_new(myid, direction, iprim, data_dblip, NSF)
 
     use datatypes
     use numbers
-    use global_module,       ONLY:rcellx,rcelly,rcellz, area_basis
+    use global_module,       ONLY:lat_vec, area_basis
     use group_module,        ONLY:blocks
     use primary_module,      ONLY:bundle
     use cover_module,        ONLY:BCS_blocks
@@ -2455,9 +2477,9 @@ contains
     nblky=ny_in_block
     nblkz=nz_in_block
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
 
     nxmin_grid=(naba_blocks_of_atoms%nxmin(iprim)-1)*nblkx
     nxmax_grid= naba_blocks_of_atoms%nxmax(iprim)*nblkx-1
@@ -2734,6 +2756,8 @@ contains
 !!   2011/11/17
 !!  MODIFICATION HISTORY
 !!   
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine do_local_blip_to_grid(blip_inf, nsf, coeff_array, size, local_grid, ngrid, grid_spacing)

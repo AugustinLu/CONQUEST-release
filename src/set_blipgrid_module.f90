@@ -40,6 +40,8 @@
 !!    Renamed naba_atm -> naba_atoms_of_blocks, halo_atm -> halo_atoms_of_blocks
 !!   2016/08/01 17:30 nakata
 !!    Introduced atomf
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module set_blipgrid_module
@@ -129,6 +131,8 @@ contains
 !!    Renamed rcut_supp -> rcut_atomf
 !!   2019/11/29 13:49 dave
 !!    Changed warning for core/atomf to be less sensitive
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine set_blipgrid(myid,rcut_atomf,rcut_proj)
@@ -297,6 +301,8 @@ contains
 !!    Added cq_abort
 !!   2016/07/06 17:30 nakata
 !!    Renamed comm_in_BG -> comm_in_BtoG and comBG -> comm_naba_blocks_of_atoms
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine get_naba_BCSblk(rcut,naba_blk,comm_naba_blocks_of_atoms)
@@ -306,7 +312,7 @@ contains
     use group_module,   ONLY: blocks,parts
     use primary_module, ONLY: bundle
     use cover_module,   ONLY: BCS_blocks,DCS_parts
-    use global_module,  ONLY: rcellx,rcelly,rcellz,numprocs
+    use global_module,  ONLY: lat_vec,numprocs
     use block_module,   ONLY: nx_in_block,ny_in_block,nz_in_block
     use GenComms, ONLY: cq_abort, myid
     use species_module, ONLY: n_species
@@ -345,9 +351,9 @@ contains
     ncoverz=BCS_blocks%ncoverz
     ncoveryz=BCS_blocks%ncovery*BCS_blocks%ncoverz
 
-    dcellx_part=rcellx/parts%ngcellx ; dcellx_block=rcellx/blocks%ngcellx
-    dcelly_part=rcelly/parts%ngcelly ; dcelly_block=rcelly/blocks%ngcelly
-    dcellz_part=rcellz/parts%ngcellz ; dcellz_block=rcellz/blocks%ngcellz
+    dcellx_part=lat_vec(1,1)/parts%ngcellx ; dcellx_block=lat_vec(1,1)/blocks%ngcellx
+    dcelly_part=lat_vec(2,2)/parts%ngcelly ; dcelly_block=lat_vec(2,2)/blocks%ngcelly
+    dcellz_part=lat_vec(3,3)/parts%ngcellz ; dcellz_block=lat_vec(3,3)/blocks%ngcellz
 
     dcellx_grid=dcellx_block/nx_in_block
     dcelly_grid=dcelly_block/ny_in_block
@@ -541,6 +547,8 @@ contains
 !!   2016/07/14 16:30 nakata
 !!    Renamed max_naba_blk_supp -> max_naba_blocks_of_atoms
 !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine get_naba_BCSblk_max(rcut,max_naba_blocks_of_atoms, max_recv_node_BtoG)
@@ -550,7 +558,7 @@ contains
     use group_module,   ONLY: blocks,parts
     use primary_module, ONLY: bundle
     use cover_module,   ONLY: BCS_blocks,DCS_parts
-    use global_module,  ONLY: rcellx,rcelly,rcellz,numprocs
+    use global_module,  ONLY: lat_vec,numprocs
     use block_module,   ONLY: nx_in_block,ny_in_block,nz_in_block
     use GenComms, ONLY: cq_abort
     use species_module, ONLY: n_species
@@ -583,9 +591,9 @@ contains
     ncoverz=BCS_blocks%ncoverz
     ncoveryz=BCS_blocks%ncovery*BCS_blocks%ncoverz
 
-    dcellx_part=rcellx/parts%ngcellx ; dcellx_block=rcellx/blocks%ngcellx
-    dcelly_part=rcelly/parts%ngcelly ; dcelly_block=rcelly/blocks%ngcelly
-    dcellz_part=rcellz/parts%ngcellz ; dcellz_block=rcellz/blocks%ngcellz
+    dcellx_part=lat_vec(1,1)/parts%ngcellx ; dcellx_block=lat_vec(1,1)/blocks%ngcellx
+    dcelly_part=lat_vec(2,2)/parts%ngcelly ; dcelly_block=lat_vec(2,2)/blocks%ngcelly
+    dcellz_part=lat_vec(3,3)/parts%ngcellz ; dcellz_block=lat_vec(3,3)/blocks%ngcellz
 
     dcellx_grid=dcellx_block/nx_in_block
     dcelly_grid=dcelly_block/ny_in_block
@@ -686,6 +694,8 @@ contains
 !! 
 !!  MODIFICATION HISTORY
 !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine distsq_blk_atom &
@@ -755,13 +765,15 @@ contains
 !!  MODIFICATION HISTORY
 !!   2006/07/06 08:27 dave
 !!    Changed to use cq_abort
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine get_naba_DCSprt(rcut,naba_set,halo_set)
 
     use datatypes
     use numbers,        ONLY: RD_ERR
-    use global_module,  ONLY: rcellx,rcelly,rcellz,numprocs, id_glob, species_glob, sf, nlpf, paof
+    use global_module,  ONLY: lat_vec,numprocs, id_glob, species_glob, sf, nlpf, paof
     use species_module, ONLY: nsf_species, nlpf_species, npao_species, n_species
     use group_module,   ONLY: parts,blocks
     use primary_module, ONLY: domain
@@ -787,9 +799,9 @@ contains
     do ia = 1,n_species
        rcutsq(ia)=rcut(ia)*rcut(ia)
     end do
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz
 
     dcellx_grid=dcellx_block/nx_in_block
     dcelly_grid=dcelly_block/ny_in_block
@@ -1010,13 +1022,15 @@ contains
 !!  MODIFICATION HISTORY
 !!   2008/05/16 ast
 !!    Added timers
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine get_naba_DCSprt_max(rcut,max_naba_prt,max_naba_atm,max_halo_part,max_halo_nodes)
 
     use datatypes
     use numbers,        ONLY: RD_ERR
-    use global_module,  ONLY: rcellx,rcelly,rcellz,numprocs, id_glob, species_glob, sf, nlpf, paof
+    use global_module,  ONLY: lat_vec,numprocs, id_glob, species_glob, sf, nlpf, paof
     use species_module, ONLY: nsf_species, nlpf_species, npao_species, n_species
     use group_module,   ONLY: parts,blocks
     use primary_module, ONLY: domain
@@ -1049,9 +1063,9 @@ contains
     allocate(ihalo(DCS_parts%mx_mcover),STAT=ierr)
     if(ierr/=0) call cq_abort("Error allocating icover in getDCSprtmax: ",DCS_parts%mx_mcover,ierr)
     call stop_timer(tmr_std_allocation)
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz
 
     dcellx_grid=dcellx_block/nx_in_block
     dcelly_grid=dcelly_block/ny_in_block
@@ -1167,6 +1181,8 @@ contains
 !!    Renamed comm_in_BG -> comm_in_BtoG and comBG -> comm_naba_blocks_of_atoms
 !!   2016/07/14 16:30 nakata
 !!    Renamed naba_supp -> naba_atm_set
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine make_sendinfo_BtoG(myid,naba_atm_set,comm_naba_blocks_of_atoms)
@@ -1382,6 +1398,8 @@ contains
 !!    Renamed comm_in_BG -> comm_in_BtoG
 !!   2016/07/14 16:30 nakata
 !!    Renamed naba_supp -> naba_atm_set
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine make_sendinfo_BtoG_max(myid,naba_atm_set,max_send_node,max_sent_pairs,max_recv_call)
@@ -1515,6 +1533,8 @@ contains
 !!   2016/07/06 17:30 nakata
 !!    Renamed subroutine make_table_BG -> make_table_BtoG
 !!    Renamed comm_in_BG -> comm_in_BtoG and comBG to comm_naba_blocks_of_atoms
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine make_table_BtoG(myid,comm_naba_blocks_of_atoms)
@@ -1744,7 +1764,7 @@ contains
 
     use datatypes
     use numbers,       ONLY:very_small
-    use global_module, ONLY:rcellx,rcelly,rcellz,x_atom_cell,y_atom_cell,z_atom_cell
+    use global_module, ONLY:lat_vec,x_atom_cell,y_atom_cell,z_atom_cell
     use group_module,  ONLY:parts,blocks
     use primary_module,ONLY:domain,bundle
     use cover_module,  ONLY:DCS_parts
@@ -1779,9 +1799,9 @@ contains
     ncoverz=2*DCS_parts%ncoverz+1
     ncoveryz=(2*DCS_parts%ncovery+1)*ncoverz
 
-    dcellx_part=rcellx/parts%ngcellx ; dcellx_block=rcellx/blocks%ngcellx
-    dcelly_part=rcelly/parts%ngcelly ; dcelly_block=rcelly/blocks%ngcelly
-    dcellz_part=rcellz/parts%ngcellz ; dcellz_block=rcellz/blocks%ngcellz
+    dcellx_part=lat_vec(1,1)/parts%ngcellx ; dcellx_block=lat_vec(1,1)/blocks%ngcellx
+    dcelly_part=lat_vec(2,2)/parts%ngcelly ; dcelly_block=lat_vec(2,2)/blocks%ngcelly
+    dcellz_part=lat_vec(3,3)/parts%ngcellz ; dcellz_block=lat_vec(3,3)/blocks%ngcellz
 
     if(npair < 1) call cq_abort('npair in make_table <1 ?? : npair = ',nnd_rem,iprim)
     do ipair=1,npair
@@ -1895,6 +1915,8 @@ contains
 !!    Renamed naba_atm -> naba_atoms_of_blocks, halo_atm -> halo_atoms_of_blocks
 !!   2016/08/01 17:30 nakata
 !!    Introduced atomf instead of sf and paof
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine free_blipgrid

@@ -22,6 +22,8 @@
 !!    Changed Info type from allocatable to pointer (fix gcc 4.4.7 compile issue)
 !!   2018/07/11 12:21 dave
 !!    Removed ambiguous and unnecessary parts and blocks variables, and added test for empty bundle
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module UpdateMember_module
@@ -71,6 +73,8 @@ contains
   !!   - Removed iteration
   !!   2018/07/11 12:01 dave
   !!    Added empty bundle flag to force redistribution of partitions to processes
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine group_update_mparts(velocity, flag_empty_bundle)
@@ -364,6 +368,8 @@ contains
   !!   2013/07/02
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine deallocate_PSmember
@@ -436,6 +442,8 @@ contains
   !!   2013/07/02
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine allocate_PSmember(groups)
@@ -543,13 +551,15 @@ contains
   !!   2013/07/02
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine primary_update_mparts
 
     ! Module usage
     use basic_types
-    use global_module, ONLY: rcellx,rcelly,rcellz,x_atom_cell,y_atom_cell,z_atom_cell, &
+    use global_module, ONLY: lat_vec,x_atom_cell,y_atom_cell,z_atom_cell, &
                              id_glob
     use GenComms, ONLY: cq_abort,inode
     use group_module, ONLY: parts
@@ -579,9 +589,9 @@ contains
     endif
     !! ---------- DEBUG ---------- !!
 
-    dcellx = rcellx / parts%ngcellx
-    dcelly = rcelly / parts%ngcelly
-    dcellz = rcellz / parts%ngcellz
+    dcellx = lat_vec(1,1) / parts%ngcellx
+    dcelly = lat_vec(2,2) / parts%ngcelly
+    dcellz = lat_vec(3,3) / parts%ngcellz
     bundle%nm_nodgroup=0  ; bundle%nm_nodbeg=0
     bundle%nm_nodbeg(1)=1 ; n_prim = 0
     do ng = 1, parts%ng_on_node(inode)
@@ -666,6 +676,8 @@ contains
   !!   2013/07/02
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine deallocate_CSmember(set)
@@ -738,6 +750,8 @@ contains
   !!     Changed nx_in_cover allocatable to pointer (gcc 4.4.7 issue)
   !!    2019/11/04 15:14 dave
   !!     Replace call to indexx with call to heapsort_integer_index
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine allocate_CSmember(set,groups,nx_in_cover,ny_in_cover,nz_in_cover, &
@@ -745,7 +759,7 @@ contains
 
     ! Module usage
     use basic_types
-    use global_module, ONLY: rcellx,rcelly,rcellz
+    use global_module, ONLY: lat_vec
     use GenComms, ONLY: cq_abort
     use functions, ONLY: heapsort_integer_index
     ! DB
@@ -811,9 +825,9 @@ contains
       call cq_abort('Error allocating ind_min,ngcx,y,z_min,min_sort:', groups%mx_gcell)
 
     ! Conversion factors from unit cell lengths -> groups.
-    dcellx = rcellx/real(groups%ngcellx,double)
-    dcelly = rcelly/real(groups%ngcelly,double)
-    dcellz = rcellz/real(groups%ngcellz,double)
+    dcellx = lat_vec(1,1)/real(groups%ngcellx,double)
+    dcelly = lat_vec(2,2)/real(groups%ngcelly,double)
+    dcellz = lat_vec(3,3)/real(groups%ngcellz,double)
 
     ! Refer to make_cs.
     nmodx = ((groups%ngcellx+set%nspanlx-1)/groups%ngcellx)*groups%ngcellx
@@ -966,6 +980,8 @@ contains
   !!     Changed nx_in_cover allocatable to pointer (gcc 4.4.7 issue)
   !!    2017/08/29 jack baker & dave
   !!     Removed rcellx references (redundant)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine cover_update_mparts(set,groups,nx_in_cover,ny_in_cover,nz_in_cover, &
@@ -1095,6 +1111,8 @@ contains
   !!    Added empty bundle flag to force redistribution of partitions to processes
   !!   2019/11/18 11:49 dave
   !!    Split to update group and then covering sets
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine updateMembers_group(velocity,flag_empty_bundle)
@@ -1147,6 +1165,8 @@ contains
   !!    Split to update group and then covering sets
   !!   2019/12/13 13:28 dave
   !!    Removed redundant velocity argument
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine updateMembers_cs

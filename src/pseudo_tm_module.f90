@@ -30,6 +30,8 @@
 !!    Adding stress
 !!   2019/04/08 zamaan
 !!    Added off-diagonal elements of stress tensor contribution
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module pseudo_tm_module
@@ -112,6 +114,8 @@ contains
 !!    Added experimental backtrace
 !!   2017/04/24 11:52 dave
 !!    Updated rcutmax for neutral atom
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine init_pseudo_tm(ecore, ncf_out) 
@@ -379,6 +383,8 @@ contains
 !!   18:19, 2003/02/27 dave
 !!  MODIFICATION HISTORY
 !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine deallocate_pseudo_tm
@@ -452,13 +458,15 @@ contains
 !!    Added if loop for NA projectors to avoid making pseudopotential on grid
 !!   2018/11/16 tsuyoshi
 !!    Debug for ghost atoms
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine set_tm_pseudo
 
     use datatypes
     use numbers
-    use global_module, only: rcellx,rcelly,rcellz,id_glob, ni_in_cell, &
+    use global_module, only: lat_vec,id_glob, ni_in_cell, &
                              iprint_pseudo, species_glob, nlpf,        &
                              flag_basis_set, blips,                    &
                              IPRINT_TIME_THRES3, flag_analytic_blip_int, &
@@ -537,9 +545,9 @@ contains
     end if
 
 
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz
 
     !  This subroutine assumes Troullier-Martin's pseudopotential.
     ! For Siesta-styly, the local part of the pseudopotentials is made by the
@@ -964,6 +972,8 @@ contains
 !!    Added atomic stress contributions
 !!   2020/09/08 17:18 dave (via tsuyoshi)
 !!    Bug fix for local_HF_force
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine loc_pp_derivative_tm ( hf_force, density, size )
@@ -971,7 +981,7 @@ contains
     use datatypes
     use numbers
     use dimens, only: grid_point_volume, n_my_grid_points
-    use global_module, only: rcellx,rcelly,rcellz,id_glob, iprint_pseudo, &
+    use global_module, only: lat_vec,id_glob, iprint_pseudo, &
          species_glob, nlpf,ni_in_cell, flag_neutral_atom, dens, &
          flag_full_stress, flag_stress, flag_atomic_stress, atomic_stress, min_layer
     use block_module, only : n_pts_in_block
@@ -1036,9 +1046,9 @@ contains
     loc_HF_stress = zero
     loc_G_stress = zero
 
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz
 
     ! get Hartree potential
     call start_timer(tmr_std_allocation)
@@ -1448,6 +1458,8 @@ contains
 !!  MODIFICATION HISTORY
 !!   2016/07/20 16:30 nakata
 !!    Renamed naba_atm -> naba_atoms_of_blocks
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine nonloc_pp_derivative_tm(direction, dpseudofns)
@@ -1455,7 +1467,7 @@ contains
     use datatypes
     use GenComms, only: inode,ionode
     use numbers
-    use global_module, only: rcellx,rcelly,rcellz,id_glob,ni_in_cell,iprint_pseudo, species_glob, nlpf
+    use global_module, only: lat_vec,id_glob,ni_in_cell,iprint_pseudo, species_glob, nlpf
     use species_module, only: species, nlpf_species
     !  At present, these arrays are dummy arguments.
     use block_module, only : nx_in_block,ny_in_block,nz_in_block, &
@@ -1501,9 +1513,9 @@ contains
     call start_timer(tmr_std_pseudopot)
     gridfunctions(dpseudofns)%griddata = zero
 
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz
 
     no_of_ib_ia = 0
 
@@ -1858,6 +1870,8 @@ contains
 !!    Changed float to real
 !!   2016/02/09 08:17 dave
 !!    Changed to use erfc from functions module
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine get_energy_shift(e_core)
@@ -2289,6 +2303,8 @@ contains
 !!    Changed splint calls into explicit calculations (faster, removed some bug)
 !!   2018/03/08 11:04 dave  
 !!    Tiny correction to use paoVNA delta in splining instead of pao (though they are same)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!  
   subroutine make_neutral_atom
@@ -3056,6 +3072,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2017/06/01 16:53 dave
   !!    Changed to remove result argument
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   real(double) function overlapRadials( radial1, radial2, delta, l )
@@ -3121,6 +3139,8 @@ contains
 !!  MODIFICATION HISTORY
 !!   2008/03/03 18:37 dave
 !!    Removed dsqrt
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine check_block &
@@ -3128,7 +3148,7 @@ contains
        npoint, ip_store, r_store, x_store, y_store, z_store) 
 
     use numbers
-    use global_module, only: rcellx,rcelly,rcellz
+    use global_module, only: lat_vec
     use group_module,  only: blocks
     use block_module,  only: nx_in_block,ny_in_block,nz_in_block, &
          n_pts_in_block
@@ -3152,9 +3172,9 @@ contains
 
 
     rcut2 = rcut* rcut
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
 
     ipoint=0
     npoint=0

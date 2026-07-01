@@ -16,6 +16,8 @@
 !!    conductivity calculations
 !!  2022/09/30 08:31 dave
 !!    Rearranging definitions and locations of types
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module md_model
@@ -28,7 +30,7 @@ module md_model
   use global_module,    only: ni_in_cell, io_lun, atom_coord, &
                               atom_vels, species_glob, iprint_MD, &
                               flag_MDcontinue, flag_MDdebug, x_atom_cell, &
-                              y_atom_cell, z_atom_cell, rcellx, rcelly, rcellz
+                              y_atom_cell, z_atom_cell, lat_vec
   use rng,              only: type_rng
 
   implicit none
@@ -49,6 +51,8 @@ module md_model
   !!   Container for one step of MD data 
   !!  AUTHOR
   !!   Zamaan Raza
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   type type_md_model
@@ -141,6 +145,8 @@ contains
   !!   Initialiase the MD model 
   !!  AUTHOR
   !!   Zamaan Raza 
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine init_model(mdl, ensemble, timestep, thermo, baro)
@@ -166,9 +172,9 @@ contains
     mdl%ensemble = ensemble
     mdl%timestep = timestep
     mdl%species       => species_glob
-    mdl%lat_a         => rcellx
-    mdl%lat_b         => rcelly
-    mdl%lat_c         => rcellz
+    mdl%lat_a         => lat_vec(1,1)
+    mdl%lat_b         => lat_vec(2,2)
+    mdl%lat_c         => lat_vec(3,3)
     mdl%pos_x         => x_atom_cell
     mdl%pos_y         => y_atom_cell
     mdl%pos_z         => z_atom_cell
@@ -222,6 +228,8 @@ contains
   !!   Initialiase the MD model 
   !!  AUTHOR
   !!   Zamaan Raza 
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine get_cons_qty(mdl)
@@ -281,6 +289,8 @@ contains
   !!   Print MD output at the end of each ionic step
   !!  AUTHOR
   !!   Zamaan Raza 
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine print_md_energy(mdl)
@@ -344,6 +354,8 @@ contains
   !!   dump thermodynamics stats to a file 
   !!  AUTHOR
   !!   Zamaan Raza 
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine dump_stats(mdl, filename, nequil)
@@ -419,6 +431,8 @@ contains
   !!   Dump all relevant restart/analysis-relevant data to file 
   !!  AUTHOR
   !!   Zamaan Raza 
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine dump_frame(mdl, filename)
@@ -476,6 +490,8 @@ contains
   !!   Dump the heat flux for Green-Kubo thermal conductivity
   !!  AUTHOR
   !!   Zamaan Raza 
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine dump_heat_flux(mdl, filename)
@@ -513,6 +529,8 @@ contains
   !!   dump an array of atomic data to file (positions, velocities, forces) 
   !!  AUTHOR
   !!   Zamaan Raza 
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine dump_mdl_atom_arr(mdl, lun, arr)
@@ -539,6 +557,8 @@ contains
   !!   Dump a MD step for TDEP postprocessing
   !!  AUTHOR
   !!   Zamaan Raza
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine dump_tdep(mdl)

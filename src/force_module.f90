@@ -77,6 +77,8 @@
 !!    include off-diagonal elements.
 !!   2019/05/08 zamaan
 !!    Added atomic contributions to stress for computing heat flux
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module force_module
@@ -227,6 +229,8 @@ contains
   !!    Secure ASE printing when using ordern
   !!   2025/01/20 17:07 dave
   !!    Add constraints on stress when constraining cell optimisation
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine force(fixed_potential, vary_mu, n_cg_L_iterations, &
@@ -258,7 +262,7 @@ contains
                                       nspin, spin_factor, &
                                       flag_analytic_blip_int, &
                                       flag_neutral_atom, flag_stress, &
-                                      rcellx, rcelly, rcellz, flag_mix_L_SC_min, &
+                                      lat_vec, flag_mix_L_SC_min, &
                                       flag_atomic_stress, non_atomic_stress, &
                                       flag_heat_flux, cell_constraint_flag, &
                                       atom_coord, species_glob, min_layer, &
@@ -782,21 +786,21 @@ contains
        else if (leqi(cell_constraint_flag,'a/b') .or. leqi(cell_constraint_flag,'b/a')) then
           call print_stress(trim(prefix)//" Orig  stress:     ", stress, -2, write_ase) ! Force output
           ! Desired ratio
-          scaleC = rcelly/rcellx
+          scaleC = lat_vec(2,2)/lat_vec(1,1)
           ! Average x-y stress
           stress(1,1) = (stress(1,1) + stress(2,2))/(one + scaleC)
           stress(2,2) = scaleC*stress(1,1)
        else if (leqi(cell_constraint_flag,'a/c') .or. leqi(cell_constraint_flag,'c/a')) then
           call print_stress(trim(prefix)//" Orig  stress:     ", stress, -2, write_ase) ! Force output
           ! Desired ratio
-          scaleC = rcellz/rcellx
+          scaleC = lat_vec(3,3)/lat_vec(1,1)
           ! Average x-z stress
           stress(1,1) = (stress(1,1) + stress(3,3))/(one + scaleC)
           stress(3,3) = scaleC*stress(1,1)
        else if (leqi(cell_constraint_flag,'c/b') .or. leqi(cell_constraint_flag,'b/c')) then
           call print_stress(trim(prefix)//" Orig  stress:     ", stress, -2, write_ase) ! Force output
           ! Desired ratio
-          scaleC = rcelly/rcellz
+          scaleC = lat_vec(2,2)/lat_vec(3,3)
           ! Average y-z stress
           stress(3,3) = (stress(3,3) + stress(2,2))/(one + scaleC)
           stress(2,2) = scaleC*stress(3,3)
@@ -826,7 +830,7 @@ contains
        call print_stress(trim(prefix)//" non-SCF stress:   ", nonSCF_stress, 3)
        if(flag_dft_D2) call print_stress(trim(prefix)//" DFT-D2 stress:    ", disp_stress, 3)
        call print_stress(trim(prefix)//" Total stress:     ", stress, -2, write_ase) ! Force output
-       volume = rcellx*rcelly*rcellz
+       volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
        ! We need pressure in GPa, and only diagonal terms output
        scale = -HaBohr3ToGPa/volume
        if(inode==ionode.AND.iprint_MD + min_layer>=1) &
@@ -988,6 +992,8 @@ contains
   !!    Added atomic stress contributions
   !!   2025/03/20 16:07 dave
   !!    Added electron number gradient contribution to S-Pulay force and stress
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine pulay_force(p_force, KE_force, fixed_potential, vary_mu,  &
@@ -1659,6 +1665,8 @@ contains
 !!  TODO
 !!    Fix this so that it doesn't loop over all processors ! Follow
 !!    set_pseudo 13/05/2002 dave
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine get_HF_force(hf_force, density, n_atoms, size)
@@ -1673,7 +1681,7 @@ contains
     use pseudopotential_data, only: ps_exponent, core_radius_2, &
          radius_max, n_points_max, local_pseudopotential, &
          d2_local_pseudopotential
-    use global_module, only: rcellx,rcelly,rcellz,id_glob, &
+    use global_module, only: lat_vec,id_glob, &
          species_glob, nlpf, ni_in_cell
     use block_module, only : nx_in_block,ny_in_block,nz_in_block, &
          n_pts_in_block
@@ -1743,9 +1751,9 @@ contains
 
     call hartree (density, h_potential, maxngrid, h_energy)
 
-    dcellx_block = rcellx / blocks%ngcellx
-    dcelly_block = rcelly / blocks%ngcelly
-    dcellz_block = rcellz / blocks%ngcellz
+    dcellx_block = lat_vec(1,1) / blocks%ngcellx
+    dcelly_block = lat_vec(2,2) / blocks%ngcelly
+    dcellz_block = lat_vec(3,3) / blocks%ngcellz
 
     dcellx_grid = dcellx_block / nx_in_block
     dcelly_grid = dcelly_block / ny_in_block
@@ -2062,6 +2070,8 @@ contains
   !!    Removed unused PAO_to_grad
   !!   2019/05/08 zamaan
   !!    Added atomic stress contributions
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_HF_non_local_force(HF_NL_force, what_force, n_atoms)
@@ -2549,6 +2559,8 @@ contains
   !!    Added off-diagonal elements of KE_stress
   !!   2019/05/08 zamaan
   !!    Added atomic stress contributions
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_KE_force(KE_force, n_atoms)
@@ -2802,6 +2814,8 @@ contains
   !!    Added atomic stress contributions
   !!   2019/10/21 14:22 dave
   !!    Bug fix: missing term in 1-and-2 centre part
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_HNA_force(NA_force)
@@ -3268,6 +3282,8 @@ contains
 !!    Changed to use new matrix mults
 !!   21/06/2001 dave
 !!    Added ROBODoc header and included in force_module
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine matrix_diagonal(matA, matB, diagonal, range, inode)
@@ -3332,6 +3348,8 @@ contains
 !!   2019/05/07
 !!  MODIFICATION HISTORY
 !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine matrix_diagonal_stress(matA, matB, stress, range, inode, diagonal)
@@ -3490,6 +3508,8 @@ contains
   !!    Added minus sign to non-SCF PCC force for consistency with non-SCF part
   !!   2023/07/24 16:00 dave
   !!    Bug fix for non-SCF NA stress (remove Hartree stress terms)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_nonSC_correction_force(NSCforce, density_out, inode, &
@@ -3499,7 +3519,7 @@ contains
     use numbers
     use species_module,      only: species
     use GenComms,            only: gsum, cq_warn
-    use global_module,       only: rcellx, rcelly, rcellz, id_glob,    &
+    use global_module,       only: lat_vec, id_glob,    &
                                    ni_in_cell, species_glob, dens,     &
                                    area_moveatoms, IPRINT_TIME_THRES3, &
                                    flag_pcc_global, nspin, spin_factor, &
@@ -3592,9 +3612,9 @@ contains
 
     NSCforce = zero
 
-    dcellx_block = rcellx / blocks%ngcellx
-    dcelly_block = rcelly / blocks%ngcelly
-    dcellz_block = rcellz / blocks%ngcellz
+    dcellx_block = lat_vec(1,1) / blocks%ngcellx
+    dcelly_block = lat_vec(2,2) / blocks%ngcelly
+    dcellz_block = lat_vec(3,3) / blocks%ngcellz
 
     dcellx_grid = dcellx_block / nx_in_block
     dcelly_grid = dcelly_block / ny_in_block
@@ -4157,6 +4177,8 @@ contains
   !!    only a small distance from a grid point; this comes from a hard PCC charge
   !!    giving a gradient at r=0 that is not zero.  We now linearly interpolate between
   !!    zero and the gradient at the second grid point (an approximation, but reasonable)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_pcc_force(pcc_force, inode, ionode, n_atoms, size, density_out,xc_energy_ret)
@@ -4165,7 +4187,7 @@ contains
     use numbers
     use species_module,      only: species
     use GenComms,            only: gsum
-    use global_module,       only: rcellx, rcelly, rcellz, id_glob,    &
+    use global_module,       only: lat_vec, id_glob,    &
                                    ni_in_cell, species_glob, dens,     &
                                    area_moveatoms, IPRINT_TIME_THRES3, &
                                    nspin, spin_factor, flag_self_consistent, &
@@ -4234,9 +4256,9 @@ contains
     xc_potential = zero
     xc_epsilon = zero
 
-    dcellx_block = rcellx / blocks%ngcellx
-    dcelly_block = rcelly / blocks%ngcelly
-    dcellz_block = rcellz / blocks%ngcellz
+    dcellx_block = lat_vec(1,1) / blocks%ngcellx
+    dcelly_block = lat_vec(2,2) / blocks%ngcelly
+    dcellz_block = lat_vec(3,3) / blocks%ngcellz
 
     dcellx_grid = dcellx_block / nx_in_block
     dcelly_grid = dcelly_block / ny_in_block
@@ -4460,6 +4482,8 @@ contains
 !!   28 March 2019
 !!  MODIFICATION HISTORY
 !!  
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!  
 subroutine print_stress(label, str_mat, print_level,print_ase)
@@ -4468,7 +4492,7 @@ subroutine print_stress(label, str_mat, print_level,print_ase)
   use numbers
   use units
   use GenComms,       only: inode, ionode, cq_abort
-  use global_module,  only: iprint_MD, flag_full_stress, rcellx, rcelly, rcellz, min_layer
+  use global_module,  only: iprint_MD, flag_full_stress, lat_vec, min_layer
   use global_module,  only: ni_in_cell, flag_diagonalisation
   use input_module,   only: io_close
   
@@ -4486,7 +4510,7 @@ subroutine print_stress(label, str_mat, print_level,print_ase)
   
   if (inode==ionode) then
      if (iprint_MD + min_layer >= print_level) then
-        volume = rcellx*rcelly*rcellz
+        volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
         scale = HaBohr3ToGPa/volume
         if (flag_full_stress) then
            write(io_lun,fmt=fmt) label, str_mat(1,:)*scale, ' GPa'!en_units(energy_units)
@@ -4557,6 +4581,8 @@ end subroutine print_stress
 !!   28 March 2019
 !!  MODIFICATION HISTORY
 !!  
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!  
 subroutine check_atomic_stress
