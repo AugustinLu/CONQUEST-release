@@ -24,6 +24,8 @@
 !!    Off-diagonal elements of stress tensor added
 !!   2021/07/22 14:26 dave
 !!    Added get_xc_energy routine (and associated)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !! SOURCE
 !!
 module XC
@@ -94,6 +96,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2018/02/15 11:56 dave
   !!    Define flag_is_GGA for LibXC
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine init_xc
@@ -302,6 +306,8 @@ contains
   !!   2020/05/26
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_xc_refs
@@ -341,6 +347,8 @@ contains
   !!  CREATION DATE
   !!   2018/02/13
   !!  MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_xc_potential(density, xc_potential, xc_epsilon,     &
@@ -506,6 +514,8 @@ contains
   !!    Bug fix: introduced test for presence of density_out (only used for GGA, PCC)
   !!   2018/02/15 10:46 dave
   !!    Added branch based on presence of density_out to call to libxc_dpotential
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_dxc_potential(density, dxc_potential, nsize, density_out)
@@ -594,6 +604,8 @@ contains
   !!    Changed to use flag_is_GGA
   !!   2021/05/17 10:45 dave
   !!    Tidying and small changes (mainly using stride for vsigma and vrho indexing)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_libxc_potential(density, xc_potential, xc_epsilon, xc_energy, size, x_energy)
@@ -890,6 +902,8 @@ contains
   !!    Bug fix: moved scaling of diff_rho inside GGA if loop
   !!   2021/05/20 11:52 dave
   !!    Tidying select clause
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_libxc_dpotential(density, dxc_potential, size, density_out)
@@ -1120,6 +1134,8 @@ contains
   !!  CREATION DATE
   !!   2021/07/22
   !!  MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_libxc_energy(density, xc_energy, size)
@@ -1297,6 +1313,8 @@ contains
   !!    Renamed (added _LDA_PZ81) as part of refactoring
   !!   2018/06/11 17:38 dave
   !!    Bug fix for bug #91 - factor of spin_factor required for non-spin polarised
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_xc_potential_LDA_PZ81(density, xc_potential, xc_epsilon,     &
@@ -1426,6 +1444,8 @@ contains
   !!     Removed third, it is now defined in numbers module
   !!   2018/06/11 17:39 dave
   !!     Bug fix for bug #91 adding factor of spin_factor to account for lack of spin
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_GTH_xc_potential(density, xc_potential, xc_epsilon, &
@@ -1534,6 +1554,8 @@ contains
   !!   zeta)**third undefined.  Therefore to fix this I added a
   !!   constraint that zeta must be in between -one and one.
   !! - Used separate subroutine PW92_G for G(rs)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine Vxc_of_r_LSDA_PW92(nspin, rho_r, eps_x, eps_c, Vx, Vc)
@@ -1847,6 +1869,8 @@ contains
   !!     calculations.
   !!   2014/09/24 L.Truflandier
   !!   - Added optional x_energy_total for output
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_xc_potential_LSDA_PW92(density, xc_potential,       &
@@ -1948,6 +1972,8 @@ contains
   !! MODIFICATION HISTORY
   !!   2018/06/15 12:25 dave
   !!    Removed local spin_factor variable (now use equivalent from global_module)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine eps_xc_of_r_GGA_PBE(nspin, flavour, rho_r, grho_r, eps_x,&
@@ -2289,6 +2315,8 @@ contains
   !!    Removed spin_factor from use statement (global to module now)
   !!   2019/05/13 10:36 dave
   !!    Bug fix for generalised stress
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine get_xc_potential_GGA_PBE(density, xc_potential,            &
@@ -2458,6 +2486,8 @@ contains
   !!     Removed rcellx references (redundant)
   !!   2018/06/15 12:25 dave
   !!    Removed spin_factor from use statement (global to module now)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine get_xc_potential_hyb_PBE0(density, xc_potential, exx_a,     &
@@ -2616,6 +2646,8 @@ contains
   !!  CREATION DATE
   !!   2021/07/22
   !!  MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_xc_energy(density, xc_energy, size)
@@ -2736,6 +2768,8 @@ contains
   !!  CREATION DATE
   !!   02/03/95 and 2021/07/22
   !!  MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_xc_energy_LDA_PZ81(density, xc_energy, size)
@@ -2830,6 +2864,8 @@ contains
   !!  CREATION DATE
   !!   14:45, 25/03/2003 and 2021/07/22 14:51 
   !!  MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_GTH_xc_energy(density, xc_energy, size)
@@ -2912,6 +2948,8 @@ contains
   !!  CREATION DATE
   !!   22/03/2011 and 2021/07/22 14:52
   !!  MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_xc_energy_LSDA_PW92(density, xc_energy_total, size)
@@ -2984,6 +3022,8 @@ contains
   !! CREATION DATE 
   !!   2012/04/27 and 2021/07/22 14:54 dave
   !! MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine get_xc_energy_GGA_PBE(density, xc_energy, grid_size, flavour)
@@ -3072,6 +3112,8 @@ contains
   !! CREATION DATE
   !!   2014/09/24 and 2021/07/22 15:00 dave
   !! MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine get_xc_energy_hyb_PBE0(density, xc_energy, grid_size, exx_a, flavour )
@@ -3167,6 +3209,8 @@ contains
   !!   - renamed grad_density_xyz to grad_density
   !!   2017/08/29 jack baker & dave
   !!     Removed rcellx references (redundant)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine build_gradient(density, grad_density, size)
@@ -3205,15 +3249,15 @@ contains
     call fft3(density, rdensity, size, -1)
 
     ! Compute the derivative with respect to x
-    rdensity_tmp = -rdensity * minus_i * recip_vector(:,1)!*rcellx/n_grid_x
+    rdensity_tmp = -rdensity * minus_i * recip_vector(:,1)!*lat_vec(1,1)/n_grid_x
     call fft3(grad_density(:,1), rdensity_tmp, size, 1)
 
     ! Compute the derivative with respect to y
-    rdensity_tmp = -rdensity * minus_i * recip_vector(:,2)!*rcelly/n_grid_y
+    rdensity_tmp = -rdensity * minus_i * recip_vector(:,2)!*lat_vec(2,2)/n_grid_y
     call fft3(grad_density(:,2), rdensity_tmp, size, 1)
 
     ! Compute the derivative with respect to z
-    rdensity_tmp = -rdensity * minus_i * recip_vector(:,3)!*rcellz/n_grid_z
+    rdensity_tmp = -rdensity * minus_i * recip_vector(:,3)!*lat_vec(3,3)/n_grid_z
     call fft3(grad_density(:,3), rdensity_tmp, size, 1)
 
     return
@@ -3256,6 +3300,8 @@ contains
   !!    Renamed (added _LDA_PZ81) as part of refactoring
   !!   2018/06/11 17:40 dave
   !!    Bug fix for bug #91 adding factor of spin_factor to account for lack of spin
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_dxc_potential_LDA_PZ81(density, dxc_potential, size)
@@ -3370,6 +3416,8 @@ contains
   !!    Removed third, it is now defined in numbers module
   !    2018/06/11 17:40 dave
   !!    Bug fix for bug #91 adding factor of spin_factor to account for lack of spin
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_GTH_dxc_potential(density, dxc_potential, size)
@@ -3471,6 +3519,8 @@ contains
   !!    Corrected (changed) 1 to one in log (1 + 1/denominator)
   !!   2011/12/13 L.Tong
   !     Removed third, it is now defined in numbers module
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_dxc_potential_LDA_PW92(density, dxc_potential, size, &
@@ -3663,6 +3713,8 @@ contains
   !!    Removed rcellx references (redundant)
   !!   2018/06/12 11:11 dave
   !!    Fixing missing factors of spin_factor for non-spin polarisation (this routine only does zero spin)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_dxc_potential_GGA_PBE(density, density_out, &
@@ -4110,6 +4162,8 @@ contains
   !!     dVxc(spin1) / drho(spin2) at grid point n.
   !!   2018/06/15 12:25 dave
   !!    Removed spin_factor from use statement (global to module now)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine get_dxc_potential_LSDA_PW92(density,                &
@@ -4359,6 +4413,8 @@ contains
   !! CREATION DATE
   !!   2013/03/01
   !! MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine PW92_G(rs, A, alpha1, beta1, beta2, beta3, beta4, p, &

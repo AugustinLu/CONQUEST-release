@@ -75,6 +75,8 @@
 !!    Adding in routines for dipole correction in slabs with surface charges
 !!    from L. Bengtsson PRB 59, 12301 (1999) and J. Neugebauer and M. Scheffler,
 !!    PRB 46, 16067 (1992)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 module density_module
 
@@ -218,13 +220,15 @@ contains
   !!    Bug fix: for the output of the number of electrons
   !!   2019/08/16 12:18 dave
   !!    Replaced call for spline interpolation with direct evaluation
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine set_atomic_density(flag_set_density,level)
 
     use datatypes
     use numbers
-    use global_module,       only: rcellx, rcelly, rcellz, id_glob, &
+    use global_module,       only: lat_vec, id_glob, &
                                    ni_in_cell, iprint_SC,           &
                                    species_glob, dens, ne_in_cell,  &
                                    ne_spin_in_cell,                 &
@@ -307,9 +311,9 @@ contains
     end if
 
     ! determine the block and grid spacing
-    dcellx_block = rcellx / blocks%ngcellx
-    dcelly_block = rcelly / blocks%ngcelly
-    dcellz_block = rcellz / blocks%ngcellz
+    dcellx_block = lat_vec(1,1) / blocks%ngcellx
+    dcelly_block = lat_vec(2,2) / blocks%ngcelly
+    dcellz_block = lat_vec(3,3) / blocks%ngcellz
     dcellx_grid = dcellx_block / nx_in_block
     dcelly_grid = dcelly_block / ny_in_block
     dcellz_grid = dcellz_block / nz_in_block
@@ -523,13 +527,15 @@ contains
   !!    Renamed naba_atm -> naba_atoms_of_blocks
   !!   2019/08/16 12:19 dave
   !!    Replaced call for spline interpolation with explicit evaluation
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine set_density_pcc()
 
     use datatypes
     use numbers,             only: zero, one, six
-    use global_module,       only: rcellx, rcelly, rcellz, id_glob, &
+    use global_module,       only: lat_vec, id_glob, &
                                    ni_in_cell, iprint_SC,           &
                                    species_glob, dens, ne_in_cell,  &
                                    IPRINT_TIME_THRES3, min_layer
@@ -578,9 +584,9 @@ contains
     ! call scal(n_my_grid_points,zero,density,1)
 
     ! determine the block and grid spacing
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
 
     ! loop around grid points in this domain, and for each
     ! point, get contributions to the charge density from atoms which are
@@ -778,6 +784,8 @@ contains
   !!    Introduced matKatomf
   !!   2016/10/28 17:30 nakata
   !!    Introduce matK -> matKatomf transformations
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_electronic_density(denout, electrons, atom_fns, &
@@ -925,6 +933,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2022/05/18 13:52 dave
   !!    Added to density_module
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_surface_dipole(h_potential, rho_tot, size)
@@ -1132,6 +1142,8 @@ contains
   !!   2025/02/12
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_average_potential(h_potential, rho_tot, size)
@@ -1221,6 +1233,8 @@ contains
   !!   2025/02/12
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_average_potential
@@ -1286,6 +1300,8 @@ contains
   !!    Introduced atomf
   !!   2016/09/16 17:00 nakata
   !!    Introduced RadiusAtomf instead of RadiusSupport
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine build_Becke_weights
@@ -1297,7 +1313,7 @@ contains
     use primary_module,      only: domain
     use set_blipgrid_module, only: naba_atoms_of_blocks
     use GenComms,            only: gsum, cq_abort, inode, ionode
-    use global_module,       only: rcellx, rcelly, rcellz, iprint_SC, &
+    use global_module,       only: lat_vec, iprint_SC, &
                                    atomf, paof, sf,                   &
                                    ni_in_cell, species_glob,          &
                                    id_glob, io_lun,                   &
@@ -1340,9 +1356,9 @@ contains
     allocate(bw(no_of_ib_ia),STAT=stat)
     bw = -one
     no_of_ib_ia=0
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz
     ! atomcharge = zero   ! LT: seems to be redundant 2011/06/18
     if(flag_perform_cdft) bwgrid = zero
     do blk=1, domain%groups_on_node
@@ -1524,6 +1540,8 @@ contains
   !!    Introduced atomf
   !!   2016/09/16 17:00 nakata
   !!    Introduced RadiusAtomf instead of RadiusSupport
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine build_Becke_weight_forces(weight_force)
@@ -1535,7 +1553,7 @@ contains
     use primary_module,      only: domain
     use set_blipgrid_module, only: naba_atoms_of_blocks
     use GenComms,            only: gsum, cq_abort, inode, ionode
-    use global_module,       only: rcellx, rcelly, rcellz, iprint_SC, &
+    use global_module,       only: lat_vec, iprint_SC, &
                                    atomf, paof, sf,                   &
                                    ni_in_cell, species_glob,          &
                                    id_glob, io_lun, flag_cdft_atom,   &
@@ -1579,9 +1597,9 @@ contains
     if (inode == ionode .AND. iprint_SC >= 2)&
          write(io_lun, fmt='(2x,"Entering build_Becke_weight_forces")')
     no_of_ib_ia = 0
-    dcellx_block = rcellx / blocks%ngcellx
-    dcelly_block = rcelly / blocks%ngcelly
-    dcellz_block = rcellz / blocks%ngcellz
+    dcellx_block = lat_vec(1,1) / blocks%ngcellx
+    dcelly_block = lat_vec(2,2) / blocks%ngcelly
+    dcellz_block = lat_vec(3,3) / blocks%ngcellz
     ! atomcharge = zero       ! LT seems redundant 2011/06/18
     do blk=1, domain%groups_on_node
        xblock = (domain%idisp_primx(blk) + domain%nx_origin-1) * dcellx_block
@@ -1870,6 +1888,8 @@ contains
   !!    Removed unused pao_H_sf_rem
   !!   2016/08/08 15:30 nakata
   !!    Renamed supportfns -> atomfns
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine build_Becke_weight_matrix(matWc, ngroups)
@@ -1974,6 +1994,8 @@ contains
   !!    Renamed naba_atm -> naba_atoms_of_blocks
   !!   2016/08/01 17:30 nakata
   !!    Introduced atomf instead of sf
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine build_Becke_charges(atomch, chden, size)
@@ -2083,6 +2105,8 @@ contains
   !!   2009
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   real(double) function s(mu)
@@ -2134,6 +2158,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2013/03/06 17:04 dave
   !!   - Added check for size of s
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   real(double) function t(mu)
@@ -2194,6 +2220,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2011/07/20 17:47 dave
   !!    Extended table list significantly
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine assign_atomic_radii
@@ -2337,6 +2365,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2011/10/06 14:00 dave
   !!    Finalising for cDFT
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine check_block(xblock, yblock, zblock, xatom, yatom, zatom, &
@@ -2344,7 +2374,7 @@ contains
                          z_store, r_store, blocksize, natoms)
 
     use numbers
-    use global_module, only: rcellx,rcelly,rcellz
+    use global_module, only: lat_vec
     use group_module,  only: blocks
     use block_module,  only: nx_in_block, ny_in_block, nz_in_block!, &
     ! n_pts_in_block
@@ -2366,9 +2396,9 @@ contains
     integer      :: ipoint, iz, iy, ix, at
     real(double) :: r2, r_from_i, rx, ry, rz, x, y, z, rcut2
 
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=lat_vec(1,1)/blocks%ngcellx
+    dcelly_block=lat_vec(2,2)/blocks%ngcelly
+    dcellz_block=lat_vec(3,3)/blocks%ngcellz
 
     dcellx_grid=dcellx_block/nx_in_block
     dcelly_grid=dcelly_block/ny_in_block
@@ -2429,6 +2459,8 @@ contains
   !! CREATION DATE
   !!   2012/05/29
   !! MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine electron_number(electrons)

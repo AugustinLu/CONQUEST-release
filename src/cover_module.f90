@@ -61,6 +61,8 @@
 !!    Changed ewald_CS to ion_ion_CS
 !!   2019/11/04 15:12 dave
 !!    Replace indexx from Numerical Recipes with generic heapsort
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module cover_module
@@ -128,6 +130,8 @@ contains
 !!    Added allocation of ig_cover
 !!   2013/08/21 M.Arita
 !!    Initialised and calculated ig_cover for loading matrices
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine make_cs(myid, gr_rcut, set, groups, prim, mx_mcell, &
@@ -206,9 +210,9 @@ contains
     !        set%ng_cover,set%mx_gcover)
     !endif
     ! Conversion factors from unit cell lengths->groups
-    dcellx=rcellx/real(groups%ngcellx,double)
-    dcelly=rcelly/real(groups%ngcelly,double)
-    dcellz=rcellz/real(groups%ngcellz,double)
+    dcellx=lat_vec(1,1)/real(groups%ngcellx,double)
+    dcelly=lat_vec(2,2)/real(groups%ngcelly,double)
+    dcellz=lat_vec(3,3)/real(groups%ngcellz,double)
     ! Fully explained in notes mentioned above
     nmodx=((groups%ngcellx+set%nspanlx-1)/groups%ngcellx)*groups%ngcellx
     nmody=((groups%ngcelly+set%nspanly-1)/groups%ngcelly)*groups%ngcelly
@@ -455,6 +459,8 @@ contains
 !!    Added ROBODoc header and cq_abort
 !!   2008/05/16 ast
 !!    Added timer
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine make_iprim(set,prim)
@@ -523,6 +529,8 @@ contains
 !!    ROBODoc header and changed to gsum
 !!   2008/08/12 10:49 dave
 !!    Tidying: removed unnecessary variable ncovers and allocate/deallocate calls
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 ! =====================================================================
@@ -572,6 +580,8 @@ contains
 !!  MODIFICATION HISTORY
 !!   21/06/2001 dave
 !!    Added ROBODoc header and used cq_abort
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine convert_primary(groups,prim,set,ncx_o,ncy_o,ncz_o)
@@ -602,12 +612,12 @@ contains
        call cq_abort('convert_primary: primary set groups pointer not assoc')
     endif
     ! First, find sizes of groups in terms of unit cell
-    dx =  rcellx/real(prim%groups%ngcellx,double)   ! Check for a more portable way !
-    dy =  rcelly/real(prim%groups%ngcelly,double)
-    dz =  rcellz/real(prim%groups%ngcellz,double)
-    dcx = rcellx/real(groups%ngcellx,double)
-    dcy = rcelly/real(groups%ngcelly,double)
-    dcz = rcellz/real(groups%ngcellz,double)
+    dx =  lat_vec(1,1)/real(prim%groups%ngcellx,double)   ! Check for a more portable way !
+    dy =  lat_vec(2,2)/real(prim%groups%ngcelly,double)
+    dz =  lat_vec(3,3)/real(prim%groups%ngcellz,double)
+    dcx = lat_vec(1,1)/real(groups%ngcellx,double)
+    dcy = lat_vec(2,2)/real(groups%ngcelly,double)
+    dcz = lat_vec(3,3)/real(groups%ngcellz,double)
     ! Convert origin of prim to reals (add very_small to prevent ambiguity)
     ro_x = (real(prim%nx_origin-1,double))*dx + very_small 
     ro_y = (real(prim%ny_origin-1,double))*dy + very_small
@@ -735,6 +745,8 @@ contains
 !!    Added ROBODoc header and used cq_abort
 !!   2008/05/16 ast
 !!    Added timer
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine allocate_cs(set,mx_node,members)
@@ -836,6 +848,8 @@ contains
 !!   2018/09/06 10:35 dave
 !!    Tidying and bug fix: members was bracketing ALL variables and
 !!    stat wasn't initialised  
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine deallocate_cs(set,members)

@@ -23,6 +23,8 @@
 !!    Added some timers
 !!   2014/09/15 18:30 lat
 !!    fixed call start/stop_timer to timer_module (not timer_stdlocks_module !)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module initialisation
@@ -113,6 +115,8 @@ contains
   !!    Added EXX initialise and finalise
   !!   2022/06/09 08:35 dave
   !!    Changed name of D2 set-up routine, added only to module usep
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine initialise(vary_mu, fixed_potential, mu, total_energy)
@@ -319,6 +323,8 @@ contains
   !!    Adding check for maximum angular momentum for Bessel functions
   !!   2022/06/09 08:36 dave
   !!    Change name of D2 set-up routine
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine set_up(find_chdens,level)
@@ -742,6 +748,8 @@ contains
  !!    Removed unused get_support_pao_rep
  !!   2019/12/26 tsuyoshi
  !!    Removed unused find_chdens
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
  !!  SOURCE
  !!
  subroutine initial_phis(start, level)
@@ -1088,6 +1096,8 @@ contains
   !!    (Matrix files dumped during the DMM, SCF, or the optimisation of multisite support functions.)
   !!   2020/01/07 10:29 dave
   !!    Moved index_MatrixFile to initial_read
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine initial_H(start, start_L, find_chdens, fixed_potential, &
@@ -1525,6 +1535,8 @@ contains
   !!    Removed Extent from set_blipgrid call
   !!   2016/09/16 17:00 nakata
   !!    Added atomf and RadiusAtomf
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine setgrid(myid, r_core_squared, r_h)
@@ -1613,7 +1625,7 @@ contains
 
   subroutine check_setgrid
 
-    use global_module,  only: numprocs,rcellx,rcelly,rcellz,  &
+    use global_module,  only: numprocs,lat_vec,  &
                               iprint_index
     use GenComms,       only: myid, my_barrier
     use group_module,   only: blocks, parts
@@ -1632,9 +1644,9 @@ contains
     if(iprint_index > 6) then
        call my_barrier()
        !-- CHECK -- bundle
-       dcellx=rcellx/parts%ngcellx
-       dcelly=rcelly/parts%ngcelly
-       dcellz=rcellz/parts%ngcellz
+       dcellx=lat_vec(1,1)/parts%ngcellx
+       dcelly=lat_vec(2,2)/parts%ngcelly
+       dcellz=lat_vec(3,3)/parts%ngcellz
        do nnd=1,numprocs
           if(myid == nnd-1) then
              write(io_lun,*)
@@ -1668,9 +1680,9 @@ contains
        end do
 
        !-- CHECK -- domain
-       dcellx = rcellx / blocks%ngcellx
-       dcelly = rcelly / blocks%ngcelly
-       dcellz = rcellz / blocks%ngcellz
+       dcellx = lat_vec(1,1) / blocks%ngcellx
+       dcelly = lat_vec(2,2) / blocks%ngcelly
+       dcellz = lat_vec(3,3) / blocks%ngcellz
        do nnd = 1, numprocs
           if(myid == nnd-1) then
              write(io_lun,*)
@@ -1706,9 +1718,9 @@ contains
        end do
 
        !-- CHECK -- BCS_parts
-       dcellx = rcellx / parts%ngcellx
-       dcelly = rcelly / parts%ngcelly
-       dcellz = rcellz / parts%ngcellz
+       dcellx = lat_vec(1,1) / parts%ngcellx
+       dcelly = lat_vec(2,2) / parts%ngcelly
+       dcellz = lat_vec(3,3) / parts%ngcellz
        do nnd2 = 1, numprocs
           if(myid == nnd2-1 ) then
              write(io_lun,*)
@@ -1787,9 +1799,9 @@ contains
           call my_barrier()
        end do
        !-- CHECK -- BCS_blocks
-       dcellx=rcellx/blocks%ngcellx
-       dcelly=rcelly/blocks%ngcelly
-       dcellz=rcellz/blocks%ngcellz
+       dcellx=lat_vec(1,1)/blocks%ngcellx
+       dcelly=lat_vec(2,2)/blocks%ngcelly
+       dcellz=lat_vec(3,3)/blocks%ngcellz
        do nnd2=1,numprocs
           if(myid ==nnd2-1 ) then
              write(io_lun,*)

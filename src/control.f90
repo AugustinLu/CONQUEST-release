@@ -56,6 +56,8 @@
 !!    Added XSF and XSF output frequency as user-adjustable parameter
 !!   2024/01/18 lin
 !!    Added extended XYZ file output for run types of static, cg, lbfgs, sqnm, and optcell
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module control
@@ -141,6 +143,8 @@ contains
 !!    Added SQNM options for ion/cell optimisation (only partly complete)
 !!   2024/11/04 Augustin Lu
 !!    Added stress to write_extxyz call
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine control_run(fixed_potential, vary_mu, total_energy)
@@ -305,6 +309,8 @@ contains
   !!    Added test for forces below threshold at the start of the run
   !!   2022/09/22 16:49 dave
   !!    Output tidying and implementation of FR for backtrack (PR gives gamma < 0)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine cg_run(fixed_potential, vary_mu, total_energy)
@@ -649,6 +655,8 @@ contains
 !!    Add parameters for xsf and xyz output frequency
 !!   2023/10/09 lu
 !!    Added variables to enable simulations with a variable temperature
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine md_run (fixed_potential, vary_mu, total_energy)
@@ -664,7 +672,7 @@ contains
                               flag_dissipation,flag_FixCOM,           &
                               flag_fire_qMD, flag_diagonalisation,    &
                               nspin, flag_thermoDebug, flag_baroDebug,&
-                              flag_move_atom,rcellx, rcelly, rcellz,  &
+                              flag_move_atom,lat_vec,  &
                               flag_Multisite,flag_SFcoeffReuse, &
                               atom_coord, flag_quench_MD, atomic_stress, &
                               non_atomic_stress, flag_heat_flux, min_layer
@@ -1110,6 +1118,8 @@ contains
   !!   - Removed redundant input parameter real(double) mu
   !!   2012/06/18 L.Tong
   !!   - Removed unused variable velocity
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine dummy_run(fixed_potential, vary_mu, total_energy)
@@ -1224,6 +1234,8 @@ contains
   !!    Removed calls to dump K matrix (now done in DMMinModule)
   !!   2018/01/22 tsuyoshi (with dave)
   !!    Changes to use new atom update routines
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine pulay_relax(fixed_potential, vary_mu, total_energy)
@@ -1541,6 +1553,8 @@ contains
   !!    Bug fix: define g0 on all processes, not just ionode
   !!   2022/09/16 17:10 dave
   !!    Added test for forces below threshold at the start of the run
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine lbfgs(fixed_potential, vary_mu, total_energy)
@@ -1834,6 +1848,8 @@ contains
   !!    Added test for forces below threshold at the start of the run
   !!   2022/12/12 11:42 dave
   !!    Added check for maximum distance moved by atoms in increase of alpha
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine sqnm(fixed_potential, vary_mu, total_energy)
@@ -2245,6 +2261,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2022/08/17 15:18 dave
   !!    Introduced scaling to improve conditioning in arxiv/2206.07339
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine cell_sqnm(fixed_potential, vary_mu, total_energy)
@@ -2254,7 +2272,7 @@ contains
     use units
     use global_module, only: iprint_gen, ni_in_cell, x_atom_cell,  &
                              y_atom_cell, z_atom_cell, id_glob,    &
-                             atom_coord, rcellx, rcelly, rcellz,   &
+                             atom_coord, lat_vec,   &
                              area_general, iprint_MD,              &
                              IPRINT_TIME_THRES1, cell_en_tol,      &
                              cell_constraint_flag, cell_stress_tol, min_layer
@@ -2298,12 +2316,12 @@ contains
          stress_diff, volume, stress_target, orcellx, orcelly, orcellz, wscal
 
     ! Store original cell size
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
-    orcell(1) = rcellx
-    orcell(2) = rcelly
-    orcell(3) = rcellz
+    orcellx = lat_vec(1,1)
+    orcelly = lat_vec(2,2)
+    orcellz = lat_vec(3,3)
+    orcell(1) = lat_vec(1,1)
+    orcell(2) = lat_vec(2,2)
+    orcell(3) = lat_vec(3,3)
     ! Scaling: w = 2 Bohr x sqrt(Natoms)
     wscal = two*sqrt(real(ni_in_cell,double))
     step = MDtimestep
@@ -2344,7 +2362,7 @@ contains
     enthalpy1 = enthalpy0
     dH = zero
     max_stress = zero
-    volume = rcellx*rcelly*rcellz
+    volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
     do i=1,3
        stress_diff = abs(press*volume + stress(i,i))/volume
        if (stress_diff > max_stress) max_stress = stress_diff
@@ -2360,9 +2378,9 @@ contains
        cg_new(1) = third*(stress(1,1)+stress(2,2)+stress(3,3)) - press*volume
     else
        !do i = 1,3
-       cg_new(1) = (stress(1,1) - press*volume)*orcellx/(rcellx*wscal)
-       cg_new(2) = (stress(2,2) - press*volume)*orcelly/(rcelly*wscal)
-       cg_new(3) = (stress(3,3) - press*volume)*orcellz/(rcellz*wscal)
+       cg_new(1) = (stress(1,1) - press*volume)*orcellx/(lat_vec(1,1)*wscal)
+       cg_new(2) = (stress(2,2) - press*volume)*orcelly/(lat_vec(2,2)*wscal)
+       cg_new(3) = (stress(3,3) - press*volume)*orcellz/(lat_vec(3,3)*wscal)
        !end do
     end if
     if (inode==ionode .and. iprint_MD > 1) then
@@ -2375,17 +2393,17 @@ contains
        iter_loc = iter_loc + 1
        npmod = mod(iter_loc, LBFGS_history)
        if(npmod==0) npmod = LBFGS_history
-       volume = rcellx*rcelly*rcellz
-       posnStore (1,npmod) = wscal*rcellx/orcellx
-       posnStore (2,npmod) = wscal*rcelly/orcelly
-       posnStore (3,npmod) = wscal*rcellz/orcellz
+       volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
+       posnStore (1,npmod) = wscal*lat_vec(1,1)/orcellx
+       posnStore (2,npmod) = wscal*lat_vec(2,2)/orcelly
+       posnStore (3,npmod) = wscal*lat_vec(3,3)/orcellz
        if (leqi(cell_constraint_flag, 'volume')) then
           forceStore(1,npmod) = -third*(stress(1,1)+stress(2,2)+stress(3,3)) + press*volume
           cg(1) = -cg_new(1)
        else
-          forceStore(1,npmod) = (-stress(1,1) + press*volume)*orcellx/(wscal*rcellx)
-          forceStore(2,npmod) = (-stress(2,2) + press*volume)*orcelly/(wscal*rcelly)
-          forceStore(3,npmod) = (-stress(3,3) + press*volume)*orcellz/(wscal*rcellz)
+          forceStore(1,npmod) = (-stress(1,1) + press*volume)*orcellx/(wscal*lat_vec(1,1))
+          forceStore(2,npmod) = (-stress(2,2) + press*volume)*orcelly/(wscal*lat_vec(2,2))
+          forceStore(3,npmod) = (-stress(3,3) + press*volume)*orcellz/(wscal*lat_vec(3,3))
           cg(1) = -cg_new(1)*wscal/orcellx
           cg(2) = -cg_new(2)*wscal/orcelly
           cg(3) = -cg_new(3)*wscal/orcellz
@@ -2402,9 +2420,9 @@ contains
        end if
        if(enthalpy1>enthalpy0) then
           if(inode==ionode.AND.iprint_MD>1) write(io_lun,fmt='(4x,"Energy rise: resetting history")')
-          cg_new(1) = (stress(1,1) - press*volume)*orcellx/(wscal*rcellx)
-          cg_new(2) = (stress(2,2) - press*volume)*orcelly/(wscal*rcelly)
-          cg_new(3) = (stress(3,3) - press*volume)*orcellz/(wscal*rcellz)
+          cg_new(1) = (stress(1,1) - press*volume)*orcellx/(wscal*lat_vec(1,1))
+          cg_new(2) = (stress(2,2) - press*volume)*orcelly/(wscal*lat_vec(2,2))
+          cg_new(3) = (stress(3,3) - press*volume)*orcellz/(wscal*lat_vec(3,3))
           cg(1) = -cg_new(1)*wscal/orcellx
           cg(2) = -cg_new(2)*wscal/orcelly
           cg(3) = -cg_new(3)*wscal/orcellz
@@ -2421,12 +2439,12 @@ contains
           alpha = one
        endif
        ! Update stored position difference and force difference
-       posnStore (1,npmod) = rcellx*wscal/orcellx - posnStore (1,npmod)
-       posnStore (2,npmod) = rcelly*wscal/orcelly - posnStore (2,npmod)
-       posnStore (3,npmod) = rcellz*wscal/orcellz - posnStore (3,npmod)
-       forceStore(1,npmod) = (-stress(1,1) + press*volume)*orcellx/(wscal*rcellx) - forceStore(1,npmod)
-       forceStore(2,npmod) = (-stress(2,2) + press*volume)*orcelly/(wscal*rcelly) - forceStore(2,npmod)
-       forceStore(3,npmod) = (-stress(3,3) + press*volume)*orcellz/(wscal*rcellz) - forceStore(3,npmod)
+       posnStore (1,npmod) = lat_vec(1,1)*wscal/orcellx - posnStore (1,npmod)
+       posnStore (2,npmod) = lat_vec(2,2)*wscal/orcelly - posnStore (2,npmod)
+       posnStore (3,npmod) = lat_vec(3,3)*wscal/orcellz - posnStore (3,npmod)
+       forceStore(1,npmod) = (-stress(1,1) + press*volume)*orcellx/(wscal*lat_vec(1,1)) - forceStore(1,npmod)
+       forceStore(2,npmod) = (-stress(2,2) + press*volume)*orcelly/(wscal*lat_vec(2,2)) - forceStore(2,npmod)
+       forceStore(3,npmod) = (-stress(3,3) + press*volume)*orcellz/(wscal*lat_vec(3,3)) - forceStore(3,npmod)
        n_store = min(iter_loc,LBFGS_history) ! Number of stored states
        if(inode==ionode.AND.iprint_MD>2) write(io_lun,fmt='(4x,"Number of stored histories ",i3)') n_store
        allocate(mod_dr(n_store),Sij(n_store,n_store),lambda(n_store),&
@@ -2526,9 +2544,9 @@ contains
        if (leqi(cell_constraint_flag, 'volume')) then
           cg_new(1) = third*(stress(1,1)+stress(2,2)+stress(3,3)) - press*volume
        else
-          cg_new(1) = (stress(1,1) - press*volume)*orcellx/(wscal*rcellx)
-          cg_new(2) = (stress(2,2) - press*volume)*orcelly/(wscal*rcelly)
-          cg_new(3) = (stress(3,3) - press*volume)*orcellz/(wscal*rcellz)
+          cg_new(1) = (stress(1,1) - press*volume)*orcellx/(wscal*lat_vec(1,1))
+          cg_new(2) = (stress(2,2) - press*volume)*orcelly/(wscal*lat_vec(2,2))
+          cg_new(3) = (stress(3,3) - press*volume)*orcellz/(wscal*lat_vec(3,3))
           !do i = 1,3
           !   cg_new(i) = (stress(i,i) - press*volume)*orcell(i)/wscal
           !end do
@@ -2537,9 +2555,9 @@ contains
        do i=1,n_dim
           temp = zero
           !do j=1,3
-          temp = temp + (stress(1,1)-press*volume)*orcell(1)*vi_tilde(1,i)/(wscal*rcellx)
-          temp = temp + (stress(2,2)-press*volume)*orcell(2)*vi_tilde(2,i)/(wscal*rcelly)
-          temp = temp + (stress(3,3)-press*volume)*orcell(3)*vi_tilde(3,i)/(wscal*rcellz)
+          temp = temp + (stress(1,1)-press*volume)*orcell(1)*vi_tilde(1,i)/(wscal*lat_vec(1,1))
+          temp = temp + (stress(2,2)-press*volume)*orcell(2)*vi_tilde(2,i)/(wscal*lat_vec(2,2))
+          temp = temp + (stress(3,3)-press*volume)*orcell(3)*vi_tilde(3,i)/(wscal*lat_vec(3,3))
           !end do
           do j=1,3
              cg_new(j) = cg_new(j) - (one/kappa_prime(i) - alpha)*temp*vi_tilde(j,i)
@@ -2561,7 +2579,7 @@ contains
        end if
        if(inode==ionode.AND.iprint_MD>2) write(io_lun,fmt='(4x,"Alpha set to: ",f9.5)') alpha
        max_stress = zero
-       volume = rcellx*rcelly*rcellz
+       volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
        do i=1,3
           stress_diff = abs(press*volume + stress(i,i))/volume
           if (stress_diff > max_stress) max_stress = stress_diff
@@ -2573,7 +2591,7 @@ contains
        dRMSstress = (RMSstress - newRMSstress)/volume
        enthalpy0 = enthalpy1
        ! Check exit criteria
-       volume = rcellx*rcelly*rcellz
+       volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
        max_stress = zero
        do i=1,3
           stress_diff = abs(press*volume + stress(i,i))/volume
@@ -2650,6 +2668,8 @@ contains
   !!  CREATION DATE
   !!   2022/08/19
   !!  MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine full_sqnm(fixed_potential, vary_mu, total_energy)
@@ -2661,7 +2681,7 @@ contains
          y_atom_cell, z_atom_cell, id_glob,    &
          atom_coord, area_general, flag_pulay_simpleStep, &
          flag_diagonalisation, nspin, flag_LmatrixReuse, &
-         flag_SFcoeffReuse, flag_move_atom, rcellx, rcelly, rcellz, &
+         flag_SFcoeffReuse, flag_move_atom, lat_vec, &
          cell_constraint_flag, cell_stress_tol, min_layer
     use group_module,   only: parts
     use minimise,       only: get_E_and_F
@@ -2706,12 +2726,12 @@ contains
     logical      :: done
 
     ! Store original cell size
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
-    orcell(1) = rcellx
-    orcell(2) = rcelly
-    orcell(3) = rcellz
+    orcellx = lat_vec(1,1)
+    orcelly = lat_vec(2,2)
+    orcellz = lat_vec(3,3)
+    orcell(1) = lat_vec(1,1)
+    orcell(2) = lat_vec(2,2)
+    orcell(3) = lat_vec(3,3)
     ! Scaling: w = 2 Bohr x sqrt(Natoms)
     wscal = two*sqrt(real(ni_in_cell,double))
     step = MDtimestep
@@ -2762,7 +2782,7 @@ contains
     enthalpy1 = enthalpy0
     dH = zero
     max_stress = zero
-    volume = rcellx*rcelly*rcellz
+    volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
     do i=1,3
        stress_diff = abs(press*volume + stress(i,i))/volume
        if (stress_diff > max_stress) max_stress = stress_diff
@@ -2776,9 +2796,9 @@ contains
     iter_loc = 0
     ggold = zero
     energy1 = energy0
-    cg_new(1,1:ni_in_cell) = -tot_force(1,:)*rcellx/orcellx
-    cg_new(2,1:ni_in_cell) = -tot_force(2,:)*rcellx/orcellx
-    cg_new(3,1:ni_in_cell) = -tot_force(3,:)*rcellx/orcellx
+    cg_new(1,1:ni_in_cell) = -tot_force(1,:)*lat_vec(1,1)/orcellx
+    cg_new(2,1:ni_in_cell) = -tot_force(2,:)*lat_vec(1,1)/orcellx
+    cg_new(3,1:ni_in_cell) = -tot_force(3,:)*lat_vec(1,1)/orcellx
     cg_new(1,ni_in_cell+1) = (stress(1,1) - press*volume)*orcell(1)/wscal
     cg_new(2,ni_in_cell+1) = (stress(2,2) - press*volume)*orcell(2)/wscal
     cg_new(3,ni_in_cell+1) = (stress(3,3) - press*volume)*orcell(3)/wscal
@@ -2796,23 +2816,23 @@ contains
        ! Ions
        do i=1,ni_in_cell
           jj = id_glob(i)
-          posnStore (1,jj,npmod) = x_atom_cell(i)*orcellx/rcellx
-          posnStore (2,jj,npmod) = y_atom_cell(i)*orcelly/rcelly
-          posnStore (3,jj,npmod) = z_atom_cell(i)*orcellz/rcellz
-          forceStore(1,jj,npmod) = -tot_force(1,jj)*rcellx/orcellx
-          forceStore(2,jj,npmod) = -tot_force(2,jj)*rcelly/orcelly
-          forceStore(3,jj,npmod) = -tot_force(3,jj)*rcellz/orcellz
+          posnStore (1,jj,npmod) = x_atom_cell(i)*orcellx/lat_vec(1,1)
+          posnStore (2,jj,npmod) = y_atom_cell(i)*orcelly/lat_vec(2,2)
+          posnStore (3,jj,npmod) = z_atom_cell(i)*orcellz/lat_vec(3,3)
+          forceStore(1,jj,npmod) = -tot_force(1,jj)*lat_vec(1,1)/orcellx
+          forceStore(2,jj,npmod) = -tot_force(2,jj)*lat_vec(2,2)/orcelly
+          forceStore(3,jj,npmod) = -tot_force(3,jj)*lat_vec(3,3)/orcellz
           x_new_pos(i) = x_atom_cell(i)
           y_new_pos(i) = y_atom_cell(i)
           z_new_pos(i) = z_atom_cell(i)
-          cg(1,i) = -cg_new(1,jj)*orcellx/rcellx ! Search downhill
-          cg(2,i) = -cg_new(2,jj)*orcelly/rcelly ! Search downhill
-          cg(3,i) = -cg_new(3,jj)*orcellz/rcellz ! Search downhill
+          cg(1,i) = -cg_new(1,jj)*orcellx/lat_vec(1,1) ! Search downhill
+          cg(2,i) = -cg_new(2,jj)*orcelly/lat_vec(2,2) ! Search downhill
+          cg(3,i) = -cg_new(3,jj)*orcellz/lat_vec(3,3) ! Search downhill
        end do
        ! Cell
-       posnStore(1,ni_in_cell+1,npmod) = wscal*rcellx/orcellx
-       posnStore(2,ni_in_cell+1,npmod) = wscal*rcelly/orcelly
-       posnStore(3,ni_in_cell+1,npmod) = wscal*rcellz/orcellz
+       posnStore(1,ni_in_cell+1,npmod) = wscal*lat_vec(1,1)/orcellx
+       posnStore(2,ni_in_cell+1,npmod) = wscal*lat_vec(2,2)/orcelly
+       posnStore(3,ni_in_cell+1,npmod) = wscal*lat_vec(3,3)/orcellz
        forceStore(1,ni_in_cell+1,npmod) = (-stress(1,1) + press*volume)*orcellx/wscal
        forceStore(2,ni_in_cell+1,npmod) = (-stress(2,2) + press*volume)*orcelly/wscal
        forceStore(3,ni_in_cell+1,npmod) = (-stress(3,3) + press*volume)*orcellz/wscal
@@ -2833,9 +2853,9 @@ contains
           cg_new(:,1:ni_in_cell) = -tot_force
           do i=1,ni_in_cell
              jj = id_glob(i)
-             cg(1,i) = -cg_new(1,jj)*orcellx/rcellx ! Search downhill
-             cg(2,i) = -cg_new(2,jj)*orcelly/rcelly ! Search downhill
-             cg(3,i) = -cg_new(3,jj)*orcellz/rcellz ! Search downhill
+             cg(1,i) = -cg_new(1,jj)*orcellx/lat_vec(1,1) ! Search downhill
+             cg(2,i) = -cg_new(2,jj)*orcelly/lat_vec(2,2) ! Search downhill
+             cg(3,i) = -cg_new(3,jj)*orcellz/lat_vec(3,3) ! Search downhill
           end do
           do i=1,3
              cg_new(i,ni_in_cell+1) = (stress(i,i) - press*volume)*orcell(i)/wscal
@@ -2853,26 +2873,26 @@ contains
        ! Update stored position difference and force difference
        do i=1,ni_in_cell
           jj = id_glob(i)
-          posnStore (1,jj,npmod) = x_atom_cell(i)*orcellx/rcellx - posnStore (1,jj,npmod)
+          posnStore (1,jj,npmod) = x_atom_cell(i)*orcellx/lat_vec(1,1) - posnStore (1,jj,npmod)
           if(abs(posnStore(1,jj,npmod)/r_super_x)>0.7_double) posnStore(1,jj,npmod) &
                = posnStore(1,jj,npmod) &
                - nint(posnStore(1,jj,npmod)/r_super_x)*r_super_x
-          posnStore (2,jj,npmod) = y_atom_cell(i)*orcelly/rcelly - posnStore (2,jj,npmod)
+          posnStore (2,jj,npmod) = y_atom_cell(i)*orcelly/lat_vec(2,2) - posnStore (2,jj,npmod)
           if(abs(posnStore(2,jj,npmod)/r_super_y)>0.7_double) posnStore(2,jj,npmod) &
                = posnStore(2,jj,npmod) &
                - nint(posnStore(2,jj,npmod)/r_super_y)*r_super_y
-          posnStore (3,jj,npmod) = z_atom_cell(i)*orcellz/rcellz - posnStore (3,jj,npmod)
+          posnStore (3,jj,npmod) = z_atom_cell(i)*orcellz/lat_vec(3,3) - posnStore (3,jj,npmod)
           if(abs(posnStore(3,jj,npmod)/r_super_z)>0.7_double) posnStore(3,jj,npmod) &
                = posnStore(3,jj,npmod) &
                - nint(posnStore(3,jj,npmod)/r_super_z)*r_super_z
-          forceStore(1,jj,npmod) = -tot_force(1,jj)*rcellx/orcellx - forceStore(1,jj,npmod)
-          forceStore(2,jj,npmod) = -tot_force(2,jj)*rcelly/orcelly - forceStore(2,jj,npmod)
-          forceStore(3,jj,npmod) = -tot_force(3,jj)*rcellz/orcellz - forceStore(3,jj,npmod)
+          forceStore(1,jj,npmod) = -tot_force(1,jj)*lat_vec(1,1)/orcellx - forceStore(1,jj,npmod)
+          forceStore(2,jj,npmod) = -tot_force(2,jj)*lat_vec(2,2)/orcelly - forceStore(2,jj,npmod)
+          forceStore(3,jj,npmod) = -tot_force(3,jj)*lat_vec(3,3)/orcellz - forceStore(3,jj,npmod)
           ! New search direction
        end do
-       posnStore (1,ni_in_cell+1,npmod) = rcellx*wscal/orcellx - posnStore (1,ni_in_cell+1,npmod)
-       posnStore (2,ni_in_cell+1,npmod) = rcelly*wscal/orcelly - posnStore (2,ni_in_cell+1,npmod)
-       posnStore (3,ni_in_cell+1,npmod) = rcellz*wscal/orcellz - posnStore (3,ni_in_cell+1,npmod)
+       posnStore (1,ni_in_cell+1,npmod) = lat_vec(1,1)*wscal/orcellx - posnStore (1,ni_in_cell+1,npmod)
+       posnStore (2,ni_in_cell+1,npmod) = lat_vec(2,2)*wscal/orcelly - posnStore (2,ni_in_cell+1,npmod)
+       posnStore (3,ni_in_cell+1,npmod) = lat_vec(3,3)*wscal/orcellz - posnStore (3,ni_in_cell+1,npmod)
        forceStore(1,ni_in_cell+1,npmod) = (-stress(1,1) + press*volume)*orcellx/wscal - forceStore(1,ni_in_cell+1,npmod)
        forceStore(2,ni_in_cell+1,npmod) = (-stress(2,2) + press*volume)*orcelly/wscal - forceStore(2,ni_in_cell+1,npmod)
        forceStore(3,ni_in_cell+1,npmod) = (-stress(3,3) + press*volume)*orcellz/wscal - forceStore(3,ni_in_cell+1,npmod)
@@ -2973,15 +2993,15 @@ contains
        end do
        if(inode==ionode.AND.iprint_MD>3) write(io_lun,fmt='(4x,"Kappa prime: ",(f7.4))') kappa_prime
        ! Build preconditioned search
-       cg_new(1,1:ni_in_cell) = -alpha*tot_force(1,:)*rcellx/orcellx
-       cg_new(2,1:ni_in_cell) = -alpha*tot_force(2,:)*rcellx/orcellx
-       cg_new(3,1:ni_in_cell) = -alpha*tot_force(3,:)*rcellx/orcellx
+       cg_new(1,1:ni_in_cell) = -alpha*tot_force(1,:)*lat_vec(1,1)/orcellx
+       cg_new(2,1:ni_in_cell) = -alpha*tot_force(2,:)*lat_vec(1,1)/orcellx
+       cg_new(3,1:ni_in_cell) = -alpha*tot_force(3,:)*lat_vec(1,1)/orcellx
        cg_new(1,ni_in_cell+1) =  alpha*(stress(1,1) - press*volume)*orcell(1)/wscal
        cg_new(2,ni_in_cell+1) =  alpha*(stress(2,2) - press*volume)*orcell(2)/wscal
        cg_new(3,ni_in_cell+1) =  alpha*(stress(3,3) - press*volume)*orcell(3)/wscal
-       rcell(1) = rcellx
-       rcell(2) = rcelly
-       rcell(3) = rcellz
+       rcell(1) = lat_vec(1,1)
+       rcell(2) = lat_vec(2,2)
+       rcell(3) = lat_vec(3,3)
        do i=1,n_dim
           temp = zero
           do j=1,3
@@ -3008,16 +3028,16 @@ contains
        gg = dot(length, cg_new, 1, cg_new, 1)
        ! Analyse forces
        g0 = zero
-       g0 = g0 + dot(ni_in_cell,tot_force(1,:),1,tot_force(1,:),1)*rcellx*rcellx/(orcellx*orcellx)
-       g0 = g0 + dot(ni_in_cell,tot_force(2,:),1,tot_force(2,:),1)*rcelly*rcelly/(orcelly*orcelly)
-       g0 = g0 + dot(ni_in_cell,tot_force(3,:),1,tot_force(3,:),1)*rcellz*rcellz/(orcellz*orcellz)
+       g0 = g0 + dot(ni_in_cell,tot_force(1,:),1,tot_force(1,:),1)*lat_vec(1,1)*lat_vec(1,1)/(orcellx*orcellx)
+       g0 = g0 + dot(ni_in_cell,tot_force(2,:),1,tot_force(2,:),1)*lat_vec(2,2)*lat_vec(2,2)/(orcelly*orcelly)
+       g0 = g0 + dot(ni_in_cell,tot_force(3,:),1,tot_force(3,:),1)*lat_vec(3,3)*lat_vec(3,3)/(orcellz*orcellz)
        g0 = g0 + (stress(1,1)-press*volume)*(stress(1,1)-press*volume)*orcellx*orcellx/(wscal*wscal)
        g0 = g0 + (stress(2,2)-press*volume)*(stress(2,2)-press*volume)*orcelly*orcelly/(wscal*wscal)
        g0 = g0 + (stress(3,3)-press*volume)*(stress(3,3)-press*volume)*orcellz*orcellz/(wscal*wscal)
        f_dot_sd = zero
-       f_dot_sd = f_dot_sd - dot(ni_in_cell,cg_new(1,1:ni_in_cell),1,tot_force(1,:),1)*rcellx/orcellx
-       f_dot_sd = f_dot_sd - dot(ni_in_cell,cg_new(2,1:ni_in_cell),1,tot_force(2,:),1)*rcelly/orcelly
-       f_dot_sd = f_dot_sd - dot(ni_in_cell,cg_new(3,1:ni_in_cell),1,tot_force(3,:),1)*rcellz/orcellz
+       f_dot_sd = f_dot_sd - dot(ni_in_cell,cg_new(1,1:ni_in_cell),1,tot_force(1,:),1)*lat_vec(1,1)/orcellx
+       f_dot_sd = f_dot_sd - dot(ni_in_cell,cg_new(2,1:ni_in_cell),1,tot_force(2,:),1)*lat_vec(2,2)/orcelly
+       f_dot_sd = f_dot_sd - dot(ni_in_cell,cg_new(3,1:ni_in_cell),1,tot_force(3,:),1)*lat_vec(3,3)/orcellz
        f_dot_sd = f_dot_sd + cg_new(1,ni_in_cell+1)*(stress(1,1)-press*volume)*orcellx/wscal
        f_dot_sd = f_dot_sd + cg_new(2,ni_in_cell+1)*(stress(2,2)-press*volume)*orcelly/wscal
        f_dot_sd = f_dot_sd + cg_new(3,ni_in_cell+1)*(stress(3,3)-press*volume)*orcellz/wscal
@@ -3110,6 +3130,8 @@ contains
   !!    Added backtrack line minimiser
   !!   2022/10/05 08:50 dave
   !!    Improving output
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine cell_cg_run(fixed_potential, vary_mu, total_energy)
@@ -3119,7 +3141,7 @@ contains
     use units
     use global_module, only: iprint_gen, ni_in_cell, x_atom_cell,  &
          y_atom_cell, z_atom_cell, id_glob,    &
-         atom_coord, rcellx, rcelly, rcellz,   &
+         atom_coord, lat_vec,   &
          area_general, iprint_MD,              &
          IPRINT_TIME_THRES1, cell_en_tol,      &
          cell_constraint_flag, cell_stress_tol, min_layer
@@ -3205,7 +3227,7 @@ contains
     enthalpy1 = enthalpy0
     dH = zero
     max_stress = zero
-    volume = rcellx*rcelly*rcellz
+    volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
     do i=1,3
        stress_diff = abs(press*volume + stress(i,i))/volume
        if (stress_diff > max_stress) max_stress = stress_diff
@@ -3229,7 +3251,7 @@ contains
     call dump_pos_and_matrices(index=0,MDstep=iter)
     do while (.not. done)
        call start_timer(tmr_l_iter, WITH_LEVEL)
-       volume = rcellx*rcelly*rcellz
+       volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
        ! Keep these as stresses
        stressx = -stress(1,1)!/volume
        stressy = -stress(2,2)!/volume
@@ -3266,9 +3288,9 @@ contains
           search_dir_z = gamma*search_dir_z + stressz - press*volume
        end if
 
-       new_rcellx = rcellx
-       new_rcelly = rcelly
-       new_rcellz = rcellz
+       new_rcellx = lat_vec(1,1)
+       new_rcelly = lat_vec(2,2)
+       new_rcellz = lat_vec(3,3)
 
        ! Minimise in this direction. Constraint information is also used within
        ! safemin_cell. Look in move_atoms.module.f90 for further information.
@@ -3288,13 +3310,13 @@ contains
        if (myid == 0 .and. iprint_gen + min_layer > 1) then
           write(io_lun, fmt='(/4x,a)') trim(prefix)//" simulation cell dimensions: "
           write(io_lun, fmt='(6x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            lat_vec(1,1), d_units(dist_units), lat_vec(2,2), d_units(dist_units), lat_vec(3,3), d_units(dist_units)
        end if
        call write_atomic_positions("UpdatedAtoms.dat", trim(pdb_template))
        if (flag_write_extxyz .and. mod(iter,XYZfreq) == 0) call write_extxyz('trajectory.xyz', energy1, tot_force, stress)
        ! Analyse Stresses and energies
        dH = enthalpy1 - enthalpy0
-       volume = rcellx*rcelly*rcellz
+       volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
        newRMSstress = sqrt(((stress(1,1)*stress(1,1)) + &
             (stress(2,2)*stress(2,2)) + &
             (stress(3,3)*stress(3,3)))/3)
@@ -3364,7 +3386,7 @@ contains
     if (myid == 0 .and. iprint_gen + min_layer > 0) then
        write(io_lun, fmt='(/4x,a)') trim(prefix)//" final simulation box dimensions are: "
        write(io_lun, fmt='(8x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            lat_vec(1,1), d_units(dist_units), lat_vec(2,2), d_units(dist_units), lat_vec(3,3), d_units(dist_units)
     end if
 
     call reg_dealloc_mem(area_general, 6*ni_in_cell, type_dbl)
@@ -3394,6 +3416,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2017/08/29 dave
   !!    Indentation fixed (emacs standard) and added check for inode to write statement
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_gamma_cell_cg(ggold, gg, gamma, stressx, stressy, stressz)
@@ -3478,6 +3502,8 @@ contains
   !!    Rewrite to call cg_run for ions and cell_cg_run for cell sequentially
   !!   2022/08/15 10:31 dave
   !!    Add possibility of SQNM instead of CG
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine full_double_loop(fixed_potential, vary_mu, total_energy)
@@ -3490,7 +3516,7 @@ contains
          atom_coord, area_general, iprint_MD,  &
          IPRINT_TIME_THRES1,                   &
          cell_en_tol, cell_stress_tol,         &
-         rcellx, rcelly, rcellz, runtype, min_layer
+         lat_vec, runtype, min_layer
     use input_module,         only: leqi
     use group_module,  only: parts
     use minimise,      only: get_E_and_F
@@ -3587,7 +3613,7 @@ contains
     stress_target = cell_stress_tol/HaBohr3ToGPa
     enthalpy0 = enthalpy(energy0, press)
     dH = zero
-    volume = rcellx*rcelly*rcellz
+    volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
     max_stress = zero
     do i=1,3
        stress_diff = abs(press*volume + stress(i,i))/volume
@@ -3635,7 +3661,7 @@ contains
        end if
        enthalpy1 = enthalpy(energy1, press)
        dH = enthalpy1 - enthalpy0
-       volume = rcellx*rcelly*rcellz
+       volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
        newRMSstress = sqrt(((stress(1,1)*stress(1,1)) + &
             (stress(2,2)*stress(2,2)) + &
             (stress(3,3)*stress(3,3)))/three)
@@ -3681,7 +3707,7 @@ contains
             (stress(3,3)*stress(3,3)))/three)
        dRMSstress = (RMSstress - newRMSstress)/volume
 
-       volume = rcellx*rcelly*rcellz
+       volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
        max_stress = zero
        do i=1,3
           stress_diff = abs(press*volume + stress(i,i))/volume
@@ -3745,8 +3771,8 @@ contains
     if (inode == ionode .and. iprint_gen + min_layer > 0) then
        write(io_lun, fmt='(/4x,a)') trim(prefix)//" final simulation box dimensions are: "
        write(io_lun, fmt='(4x,a,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            prefixF(1:-2*min_layer), rcellx, d_units(dist_units), rcelly, d_units(dist_units), &
-            rcellz, d_units(dist_units)
+            prefixF(1:-2*min_layer), lat_vec(1,1), d_units(dist_units), lat_vec(2,2), d_units(dist_units), &
+            lat_vec(3,3), d_units(dist_units)
     end if
 
     deallocate(z_new_pos, y_new_pos, x_new_pos, STAT=stat)
@@ -3776,7 +3802,7 @@ contains
                              atom_coord, area_general, iprint_MD,  &
                              IPRINT_TIME_THRES1,                   &
                              cell_en_tol, cell_stress_tol,         &
-                             rcellx, rcelly, rcellz, min_layer
+                             lat_vec, min_layer
     use group_module,  only: parts
     use minimise,      only: get_E_and_F
     use move_atoms,    only: safemin_cell, enthalpy, enthalpy_tolerance, safemin2
@@ -3864,7 +3890,7 @@ contains
 
     if (inode == ionode .and. iprint_gen > 0) then
        write(io_lun, fmt='(/4x,"Starting full cell optimisation"/)')
-       write(io_lun,*)  "Initial cell dims", rcellx, rcelly, rcellz
+       write(io_lun,*)  "Initial cell dims", lat_vec(1,1), lat_vec(2,2), lat_vec(3,3)
     end if
 
     iter = 1
@@ -3992,7 +4018,7 @@ contains
       end do ! ionic loop
 
       enthalpy0 = enthalpy(energy0, press)
-      volume = rcellx*rcelly*rcellz
+      volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
       stressx = -stress(1,1)!/volume
       stressy = -stress(2,2)!/volume
       stressz = -stress(3,3)!/volume
@@ -4015,9 +4041,9 @@ contains
       search_dir_z = gamma*search_dir_z + stressz - press*volume
       ! end if
 
-      new_rcellx = rcellx
-      new_rcelly = rcelly
-      new_rcellz = rcellz
+      new_rcellx = lat_vec(1,1)
+      new_rcelly = lat_vec(2,2)
+      new_rcellz = lat_vec(3,3)
 
       ! Minimise in this direction. Constraint information is also used within
       ! safemin_cell. Look in move_atoms.module.f90 for further information.
@@ -4043,7 +4069,7 @@ contains
                            (stress(3,3)*stress(3,3)))/three)
       dRMSstress = RMSstress - newRMSstress
 
-      volume = rcellx*rcelly*rcellz
+      volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
       max_stress = zero
       do i=1,3
         stress_diff = abs(press*volume + stress(i,i))/volume
@@ -4115,7 +4141,7 @@ contains
 
    if (inode == ionode .and. iprint_gen > 0) then
      write(io_lun, fmt='(/4x,"Finished full cell optimisation"/)')
-     write(io_lun,*)  "Final cell dims", rcellx, rcelly, rcellz
+     write(io_lun,*)  "Final cell dims", lat_vec(1,1), lat_vec(2,2), lat_vec(3,3)
    end if
 
     deallocate(z_new_pos, y_new_pos, x_new_pos, STAT=stat)
@@ -4161,6 +4187,8 @@ contains
   !!   2018/02/06
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   subroutine full_cg_run_single_vector(fixed_potential, vary_mu, total_energy)
 
@@ -4169,7 +4197,7 @@ contains
     use units
     use global_module, only: iprint_gen, ni_in_cell, x_atom_cell,  &
                              y_atom_cell, z_atom_cell, id_glob,    &
-                             atom_coord, rcellx, rcelly, rcellz,   &
+                             atom_coord, lat_vec,   &
                              area_general, iprint_MD,              &
                              IPRINT_TIME_THRES1,                   &
                              cell_stress_tol, min_layer
@@ -4244,9 +4272,9 @@ contains
     dH = zero
 
     ! reference cell to compute strain
-    cell_ref(1) = rcellx
-    cell_ref(2) = rcelly
-    cell_ref(3) = rcellz
+    cell_ref(1) = lat_vec(1,1)
+    cell_ref(2) = lat_vec(2,2)
+    cell_ref(3) = lat_vec(3,3)
 
     ! Find energy and forces
     min_layer = min_layer - 1
@@ -4258,7 +4286,7 @@ contains
     call dump_pos_and_matrices
     call get_maxf(max)
     min_layer = min_layer + 1
-    volume = rcellx*rcelly*rcellz
+    volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
     max_stress = zero
     do i=1,3
        stress_diff = abs(press*volume + stress(i,i))/volume
@@ -4364,7 +4392,7 @@ contains
       ! Analyse forces and stress
       g0 = dot(length-3, tot_force, 1, tot_force, 1)
       call get_maxf(max)
-      volume = rcellx*rcelly*rcellz
+      volume = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
       max_stress = zero
       do i=1,3
         stress_diff = abs(press*volume + stress(i,i))/volume
@@ -4455,6 +4483,8 @@ contains
   !!   2019/06/07
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   subroutine get_maxf(maxf)
 

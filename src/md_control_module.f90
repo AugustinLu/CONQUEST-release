@@ -53,6 +53,8 @@
 !!    Moved subroutines from control and tidied output
 !!   2023/10/09 lu
 !!    Added variables to enable simulations with a variable temperature
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module md_control
@@ -105,6 +107,8 @@ module md_control
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/10/24 09:26
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   type type_thermostat
@@ -182,6 +186,8 @@ module md_control
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/08 11:45
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   type type_barostat
@@ -272,6 +278,8 @@ contains
   !!    Zamaan Raza 
   !!  CREATION DATE
   !!   2018/05/16 16:45
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine init_thermo(th, thermo_type, baro_type, dt, ndof, tau_T, ke_ions)
@@ -371,6 +379,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/10/24 10:30
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine init_nhc(th, dt)
@@ -498,6 +508,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/12/08 16:24
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine init_ys(th, dt, n_ys)
@@ -619,6 +631,8 @@ contains
   !!   2018/08/11 zamaan
   !!   Added final_call optional argument so that we only print to
   !!   Conquest_out once per step
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine get_temperature_and_ke(th, baro, v, KE, final_call)
@@ -691,6 +705,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2019/05/21 zamaan
   !!    Replaced all calls to old RNG with new
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine get_svr_thermo_sf(th, dt, baro)
@@ -756,6 +772,8 @@ contains
   !!    Zamaan Raza 
   !!  CREATION DATE
   !!   2017/10/24 14:26
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine v_rescale(th, v)
@@ -783,6 +801,8 @@ contains
   !!   Zamaan Raza 
   !!  CREATION DATE
   !!   2017/10/24 10:41
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine update_G_nhc(th, k, e_barostat)
@@ -834,6 +854,8 @@ contains
   !!   Zamaan Raza 
   !!  CREATION DATE
   !!   2017/10/24 10:55
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine propagate_eta(th, k, dt, dtfac)
@@ -866,6 +888,8 @@ contains
   !!   Zamaan Raza  
   !!  CREATION DATE
   !!   2017/10/24 11:43
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine propagate_v_eta_lin(th, k, dt, dtfac)
@@ -899,6 +923,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/10/24 11:45
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine propagate_v_eta_exp(th, k, dt, dtfac)
@@ -932,6 +958,8 @@ contains
   !!   Zamaan Raza 
   !!  CREATION DATE
   !!   2018/10/31 10:00
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine apply_nhc_drag(th, baro, k)
@@ -965,6 +993,8 @@ contains
   !!   2018/10/31 zamaan
   !!    Now does both particle and box NHC integration, since they are
   !!    orthogonal. Renamed from propagte_nvt_nhc to integrate_nhc.
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine integrate_nhc(th, baro, v, ke)
@@ -1089,6 +1119,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2018/05/29 zamaan
   !!    Corrected sign of potential energy contribution, added cell_ndof
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine get_thermostat_energy(th)
@@ -1190,6 +1222,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/10/24 13:36
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine dump_thermo_state(th, step, filename)
@@ -1249,11 +1283,13 @@ contains
   !!  MODIFICATION HISTORY
   !!   2019/04/09 zamaan
   !!    Removed unnecessary stress input argument
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine init_baro(baro, baro_type, dt, ndof, v, tau_P, ke_ions)
 
-    use global_module,    only: rcellx, rcelly, rcellz, min_layer
+    use global_module,    only: lat_vec, min_layer
     use io_module, ONLY: return_prefix
 
     ! passed variables
@@ -1306,9 +1342,9 @@ contains
 
     baro%P_ext = target_pressure/HaBohr3ToGPa
     baro%lat_ref = zero
-    baro%lat_ref(1,1) = rcellx
-    baro%lat_ref(2,2) = rcelly
-    baro%lat_ref(3,3) = rcellz
+    baro%lat_ref(1,1) = lat_vec(1,1)
+    baro%lat_ref(2,2) = lat_vec(2,2)
+    baro%lat_ref(3,3) = lat_vec(3,3)
     baro%lat = baro%lat_ref
     call baro%get_volume
     call baro%get_pressure_and_stress
@@ -1393,6 +1429,8 @@ contains
   !!   2019/04/09 zamaan
   !!    Minor change since Conquet now computes the off-diagonal stress &
   !!    tensor elements.
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine get_pressure_and_stress(baro, final_call)
@@ -1469,6 +1507,8 @@ contains
   !!    Zamaan Raza 
   !!  CREATION DATE
   !!   2017/11/09 13:15
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine get_volume(baro)
@@ -1495,6 +1535,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/17 14:09
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine get_barostat_energy(baro, final_call)
@@ -1546,6 +1588,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/17 13:59
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine update_G_box(baro, th)
@@ -1608,6 +1652,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/17 14:12
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine propagate_eps_lin(baro, dt, dtfac)
@@ -1635,6 +1681,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/17 14:14
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine propagate_eps_exp(baro, dt, dtfac, v_eta_1)
@@ -1664,6 +1712,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/17 14:17
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine propagate_v_box_lin(baro, dt, dtfac)
@@ -1709,6 +1759,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/17 14:18
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine propagate_v_box_exp(baro, dt, dtfac, v_eta_1)
@@ -1738,6 +1790,8 @@ contains
   !!   Zamaan Raza 
   !!  CREATION DATE
   !!   2018/10/31 10:00
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine apply_box_drag(baro)
@@ -1771,6 +1825,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2019/05/17
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine scale_box_velocity(baro, th)
@@ -1798,6 +1854,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/29 17:30
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine update_vscale_fac(baro, th, dt, dtfac, v_eta_1, v_sfac)
@@ -1838,6 +1896,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/17 15:25
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine propagate_r_mttk(baro, dt, v, flag_movable)
@@ -1911,6 +1971,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/17 15:29
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine propagate_box_mttk(baro, dt)
@@ -1950,6 +2012,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/17 15:16
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   function poly_sinhx_x(baro, x) result(f)
@@ -1976,6 +2040,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/17 15:55
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine propagate_npt_mttk(baro, th, ke, v)
@@ -2092,6 +2158,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2018/07/12
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine integrate_box(baro, th)
@@ -2149,6 +2217,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2018/07/12
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine couple_box_particle_velocity(baro, th, v)
@@ -2197,6 +2267,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2018/07/12
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine propagate_box_ssm(baro)
@@ -2254,6 +2326,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/09 11:49
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine dump_baro_state(baro, step, filename)
@@ -2325,12 +2399,14 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/11/24 10:43
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine update_cell(baro)
 
     use units
-    use global_module,      only: rcellx, rcelly, rcellz, &
+    use global_module,      only: lat_vec, &
                                   flag_diagonalisation, min_layer
     use GenComms,           only: inode, ionode
     use density_module,     only: density
@@ -2360,21 +2436,21 @@ contains
     if (inode==ionode .and. flag_MDdebug .and. iprint_MD + min_layer> 1) &
       write(io_lun,'(4x,a)') trim(prefix)//" starting"
 
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
+    orcellx = lat_vec(1,1)
+    orcelly = lat_vec(2,2)
+    orcellz = lat_vec(3,3)
 
-    rcellx = baro%lat(1,1)
-    rcelly = baro%lat(2,2)
-    rcellz = baro%lat(3,3)
+    lat_vec(1,1) = baro%lat(1,1)
+    lat_vec(2,2) = baro%lat(2,2)
+    lat_vec(3,3) = baro%lat(3,3)
 
-    lattice_vec(1,1) = rcellx
-    lattice_vec(2,2) = rcelly
-    lattice_vec(3,3) = rcellz
+    lattice_vec(1,1) = lat_vec(1,1)
+    lattice_vec(2,2) = lat_vec(2,2)
+    lattice_vec(3,3) = lat_vec(3,3)
 
-    r_super_x = rcellx
-    r_super_y = rcelly
-    r_super_z = rcellz
+    r_super_x = lat_vec(1,1)
+    r_super_y = lat_vec(2,2)
+    r_super_z = lat_vec(3,3)
 
     ! scale the integration grid and volume to the new cell.
     ! Constant number of grid points
@@ -2391,15 +2467,15 @@ contains
     density = density * scale
     if(flag_diagonalisation) then
        do i = 1, nkp
-          kk(1,i) = kk(1,i) * orcellx / rcellx
-          kk(2,i) = kk(2,i) * orcelly / rcelly
-          kk(3,i) = kk(3,i) * orcellz / rcellz
+          kk(1,i) = kk(1,i) * orcellx / lat_vec(1,1)
+          kk(2,i) = kk(2,i) * orcelly / lat_vec(2,2)
+          kk(3,i) = kk(3,i) * orcellz / lat_vec(3,3)
        end do
     end if
     do j = 1, maxngrid
-       recip_vector(j,1) = recip_vector(j,1) * orcellx / rcellx
-       recip_vector(j,2) = recip_vector(j,2) * orcelly / rcelly
-       recip_vector(j,3) = recip_vector(j,3) * orcellz / rcellz
+       recip_vector(j,1) = recip_vector(j,1) * orcellx / lat_vec(1,1)
+       recip_vector(j,2) = recip_vector(j,2) * orcelly / lat_vec(2,2)
+       recip_vector(j,3) = recip_vector(j,3) * orcellz / lat_vec(3,3)
        xvec = recip_vector(j,1)/(two*pi)
        yvec = recip_vector(j,2)/(two*pi)
        zvec = recip_vector(j,3)/(two*pi)
@@ -2407,10 +2483,10 @@ contains
        if(j/=i0) hartree_factor(j) = one/r2 ! i0 notates gamma point
     end do
     if (inode == ionode .and. iprint_MD + min_layer > 1) then
-      write(io_lun,'(6x,a,3f12.6)') "cell scaling factors: ", rcellx/orcellx, &
-                                 rcelly/orcelly, rcellz/orcellz
-      write(io_lun,'(6x,a,3f12.6)') "new cell dimensions:  ", rcellx, rcelly, &
-                                 rcellz
+      write(io_lun,'(6x,a,3f12.6)') "cell scaling factors: ", lat_vec(1,1)/orcellx, &
+                                 lat_vec(2,2)/orcelly, lat_vec(3,3)/orcellz
+      write(io_lun,'(6x,a,3f12.6)') "new cell dimensions:  ", lat_vec(1,1), lat_vec(2,2), &
+                                 lat_vec(3,3)
     end if
 
   end subroutine update_cell
@@ -2429,6 +2505,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2023/10/09 lu
   !!    Added routine to write the current thermostat temperature in file md.temperature
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine write_md_checkpoint(th, baro)
@@ -2537,6 +2615,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2023/12/26 Anh Khoa Augustin Lu
   !!    Read temperature of the thermostat for restart runs
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine read_md_temperature(th)
@@ -2580,6 +2660,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2023/12/26 Anh Khoa Augustin Lu
   !!    Read temperature of the thermostat for restart runs
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine read_md_checkpoint(th, baro)

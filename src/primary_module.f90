@@ -37,6 +37,8 @@
 !!    Bug fix for make_prim (from TM), added RCSid and more comments
 !!   2008/02/06 08:32 dave
 !!    Changed for output to file not stdout
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module primary_module 
@@ -92,6 +94,8 @@ contains
 !!    Added important bug fix from Tsuyoshi (zero iprim_seq only if members)
 !!   22/01/2014 lat
 !!    Added important iprim_part setup in make_prime/(de)allocate_primary_set
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine make_prim(groups,prim,myid,m_id_glob, &
@@ -183,9 +187,9 @@ contains
             groups%ngcellz)-prim%nleftz
     enddo
     ! --- analyse atoms numbers and positions in primary cell -------------
-    dcellx=rcellx/groups%ngcellx
-    dcelly=rcelly/groups%ngcelly
-    dcellz=rcellz/groups%ngcellz
+    dcellx=lat_vec(1,1)/groups%ngcellx
+    dcelly=lat_vec(2,2)/groups%ngcelly
+    dcellz=lat_vec(3,3)/groups%ngcellz
     if(members) prim%iprim_seq = 0
     prim%n_prim=0
     prim%nm_nodbeg(1)=1
@@ -263,6 +267,8 @@ contains
 !!  MODIFICATION HISTORY
 !!   22/05/2001 dave
 !!    Added ROBODoc header
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine calliper(mx_gedge,ngcell,n_origin,iproj,nw_prim,nleft)
@@ -327,6 +333,8 @@ contains
 !!    Added cq_abort
 !!   2018/07/11 12:13 dave
 !!    Added initialisation of variables to zero
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine allocate_primary_set(prim,members)
@@ -434,6 +442,8 @@ contains
 !!    ROBODoc header
 !!   20/06/2001 dave
 !!    Added cq_abort
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine deallocate_primary_set(prim)

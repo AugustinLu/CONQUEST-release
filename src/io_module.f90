@@ -175,6 +175,8 @@ contains
   !!    Removed allocation of atom_vels (moved to "control")
   !!   2022/12/09 16:52 dave
   !!    Added simple check for Cartesian coordinates when fractional flag set and vice versa
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine read_atomic_positions(filename)
@@ -183,8 +185,8 @@ contains
     use dimens,         only: r_super_x, r_super_y, r_super_z, volume
     use global_module,  only: x_atom_cell, y_atom_cell, z_atom_cell, &
                               ni_in_cell, numprocs,                  &
-                              flag_fractional_atomic_coords, rcellx, &
-                              rcelly, rcellz, id_glob, iprint_init,  &
+                              flag_fractional_atomic_coords, lat_vec, &
+                                id_glob, iprint_init,  &
                               id_glob_inv, atom_coord, species_glob, &
                               flag_move_atom, area_init, shift_in_bohr, &
                               runtype,atom_coord_diff,id_glob_old,id_glob_inv_old
@@ -430,14 +432,11 @@ second:   do
           ! Read supercell vector - for now it must be orthorhombic so
           ! we use x and y as dummy variables
           read(lun,*) r_super_x, x, y
-          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_warn('read_atomic_positions', &
-               'Non-orthorhombic simulation cells are not supported by CONQUEST')
+          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_abort('Non-orthorhombic cell support is under development. Please wait.')
           read(lun,*) x,r_super_y, y
-          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_warn('read_atomic_positions', &
-               'Non-orthorhombic simulation cells are not supported by CONQUEST')
+          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_abort('Non-orthorhombic cell support is under development. Please wait.')
           read(lun,*) x,y,r_super_z
-          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_warn('read_atomic_positions', &
-               'Non-orthorhombic simulation cells are not supported by CONQUEST')
+          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_abort('Non-orthorhombic cell support is under development. Please wait.')
           read(lun,*) ni_in_cell
          !2010.06.25 TM (Angstrom Units in coords file, but not pdb)
           if(dist_units == ang) then
@@ -534,9 +533,11 @@ second:   do
     call gcopy(species_glob,ni_in_cell)
     call gcopy(atom_coord, 3, ni_in_cell)
     call gcopy(flag_move_atom, 3, ni_in_cell)
-    rcellx = r_super_x
-    rcelly = r_super_y
-    rcellz = r_super_z
+    lat_vec = 0.0_double
+    lat_vec = 0.0_double
+    lat_vec(1,1) = r_super_x
+    lat_vec(2,2) = r_super_y
+    lat_vec(3,3) = r_super_z
     volume = r_super_x*r_super_y*r_super_z
     allocate(atom_coord_diff(3,ni_in_cell), STAT=stat)
     if (stat.NE.0) call cq_abort('Error allocating atom_coord_diff: ', 3, ni_in_cell)
@@ -585,6 +586,8 @@ second:   do
   !!     Added timers
   !!   2013/07/01 M.Arita & T.Miyazaki
   !!   Changed formats from f18.10 to f25.17
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_atomic_positions(filename, pdb_temp)
@@ -594,8 +597,8 @@ second:   do
     use dimens,         only: r_super_x, r_super_y, r_super_z
     use global_module,  only: x_atom_cell, y_atom_cell, z_atom_cell,   &
                               ni_in_cell,                              &
-                              flag_fractional_atomic_coords, rcellx,   &
-                              rcelly, rcellz, iprint_init, atom_coord, &
+                              flag_fractional_atomic_coords, lat_vec,   &
+                                iprint_init, atom_coord, &
                               species_glob, flag_move_atom, area_init, &
                               IPRINT_TIME_THRES3, min_layer
     use species_module, only: species, species_label
@@ -739,6 +742,8 @@ second:   do
   !!    Correct the if-statement 
   !!   2017/08/29 jack baker & dave
   !!    Removed r_super_x references (redundant)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine read_mult(myid,parts,part_file)
@@ -886,6 +891,8 @@ second:   do
   !!    Bug fix to format for 1141
   !!   2013/08/2013
   !!    Added storage of id_glob_old & id_glob_inv_old
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine read_partitions(parts, part_file)
@@ -1120,6 +1127,8 @@ second:   do
   !!  MODIFICATION HISTORY
   !!   2008/09/11 08:09 dave
   !!    Rewritten to do I/O on one processor only
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine read_blocks(blocks)
@@ -1340,6 +1349,8 @@ second:   do
   !!   2011/12/19 L.Tong
   !!     Changed filename length from 10 to 20, to accommodate the added
   !!     length of spin dependent file names
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine dump_charge(density,size,inode,spin)
@@ -1408,6 +1419,8 @@ second:   do
   !! MODIFICATION HISTORY
   !!   2015/07/02 08:23 dave
   !!    This was dump_charge2 (which served no purpose that I could see)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine dump_band_charge(stub, density, size, inode, spin,kp,energy,num_kpts)
@@ -1473,6 +1486,8 @@ second:   do
   !! CREATION DATE 
   !!   2015/07/09 08:16
   !! MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine write_eigenvalues(eval,n_evals,nkp,nspin,kk,wtk,Ef)
@@ -1528,6 +1543,8 @@ second:   do
   !! CREATION DATE 
   !!   2022/10/29 16:00
   !! MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine write_eigenvalues_format_ase(eval,occ,n_evals,nkp,nspin,kk,Ef,io,file,skip_lines)
@@ -1664,6 +1681,8 @@ second:   do
   !! CREATION DATE 
   !!   2015/07/02 10:46
   !! MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine dump_DOS(DOS,Ef)
@@ -1730,6 +1749,8 @@ second:   do
   !!    Added orbital angular momentum resolved DOS (pDOS_angmom)
   !!   2018/10/22 14:22 dave & jsb
   !!    Adding (l,m)-projected DOS
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine dump_projected_DOS(pDOS,Ef,pDOS_angmom,Nangmom)
@@ -1879,6 +1900,8 @@ second:   do
   !!   - Added spin polarisation
   !!   2013/03/06 17:10 dave
   !!   - file name length increased
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine grab_charge(density, size, inode, spin)
@@ -1957,6 +1980,8 @@ second:   do
   !!   16:12, 15/10/2002 drb 
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine dump_matrix(stub,matA,inode)
@@ -2041,6 +2066,8 @@ second:   do
   !!    Fixed formatting mismatch between dump_matrix and grab_matrix
   !!   2013/03/06 17:10 dave
   !!   - file name length increased
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine grab_matrix(stub,matA,inode)
@@ -2103,6 +2130,8 @@ second:   do
   !!   2013/03/06 17:10 dave
   !!   - file name length increased
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine dump_blips(stub,support,inode)
@@ -2161,6 +2190,8 @@ second:   do
   !!   2013/03/06 17:10 dave
   !!   - file name length increased
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine grab_blips(stub,support,inode)
@@ -2222,6 +2253,8 @@ second:   do
   !!   2013/03/06 17:10 dave
   !!   - file name length increased
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine dump_locps(stub,locps,size,inode)
@@ -2280,6 +2313,8 @@ second:   do
   !!   2013/03/06 17:10 dave
   !!   - file name length increased
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine grab_locps(stub,locps,size,inode)
@@ -2337,6 +2372,8 @@ second:   do
   !!   2013/03/06 17:10 dave
   !!   - file name length increased
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine dump_projs(projs,size,inode)
@@ -2391,6 +2428,8 @@ second:   do
   !!  MODIFICATION HISTORY
   !!   2013/03/06 17:10 dave
   !!   - file name length increased
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine grab_projs(projs,size,inode)
@@ -2446,6 +2485,8 @@ second:   do
   !!  MODIFICATION HISTORY
   !!   2006/07/18 08:19 dave
   !!    Changed to use new data storage
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine dump_blip_coeffs(data_blip,size,inode)
@@ -2500,6 +2541,8 @@ second:   do
   !!  MODIFICATION HISTORY
   !!   2006/07/18 08:19 dave
   !!    Changed to use new data storage
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine grab_blip_coeffs(data_blip,size,inode)
@@ -2562,6 +2605,8 @@ second:   do
   !!  MODIFICATION HISTORY
   !!   2006/02/22 11:49 dave
   !!    Completely updated to new matrix style
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_matrix(myid,matA,range,parts,prim,set,plus)
@@ -2669,6 +2714,8 @@ second:   do
   !!    Added ROBODoc header
   !!   2013/01/30 10:32 dave
   !!   - Added new authors to list
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine banner
@@ -2726,12 +2773,14 @@ second:   do
   !!    Took from ParaDens into Conquest
   !!   13:20, 18/03/2003 drb 
   !!    Added integer argument to allow multiple outputs
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_positions(num,parts)
 
     use basic_types, only: group_set
-    use global_module, only: rcellx, rcelly, rcellz, ni_in_cell, &
+    use global_module, only: lat_vec, ni_in_cell, &
          x_atom_cell, y_atom_cell, z_atom_cell, numprocs, id_glob
     use species_module, only: species
 
@@ -2754,7 +2803,7 @@ second:   do
     end if
     call io_assign(lun)
     open(unit=lun,file=filename)
-    write(lun,1) rcellx,rcelly,rcellz
+    write(lun,1) lat_vec(1,1),lat_vec(2,2),lat_vec(3,3)
     write(lun,2) ni_in_cell
     write(lun,3) parts%ngcellx,parts%ngcelly,parts%ngcellz
     write(lun,2) numprocs
@@ -2804,6 +2853,8 @@ second:   do
   !!   2017/10/26
   !!  MODIFICATION HISTORY
   !!   
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_xsf(filename, step)
@@ -2874,6 +2925,8 @@ second:   do
   !!  MODIFICATION HISTORY
   !!   2024/11/04 Augustin Lu
   !!   Add stress tensor
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_extxyz(filename, energy0, atom_force, stress_tensor)
@@ -2980,6 +3033,8 @@ second:   do
   !!   2019/02/13
   !!  MODIFICATION HISTORY
   !!   
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_xyz(filename, comment)
@@ -3068,6 +3123,8 @@ second:   do
   !!   23/07/2009
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_file_name(fileroot, numprocs, inode, filename)
@@ -3131,6 +3188,8 @@ second:   do
   !!   02/06/2017
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine get_file_name_2rank(fileroot, filename, index, inode)
@@ -3189,6 +3248,8 @@ second:   do
   !!   05/08/2009
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine print_process_info()
@@ -3272,6 +3333,8 @@ second:   do
   !!   2020/03/11
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine print_atomic_positions
@@ -3342,6 +3405,8 @@ second:   do
   !!  MODIFICATION HISTORY
   !!   2011/10/20 09:59 dave
   !!    Syntax correction for rewind
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_velocity(velocity, filename)
@@ -3404,6 +3469,8 @@ second:   do
   !!   2024/05/21 TM
   !!    Ordering has been changed from partition labeling to the globa one (in coordinate file)
   !!    I assume the passed array will be changed from ion_velocity -> atom_vel
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine read_velocity(velocity, filename)
@@ -3455,6 +3522,8 @@ second:   do
   !!   2015/06/19
   !!  MODIFICATION HISTORY
   !!    
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine read_fire(fire_N, fire_N2, fire_P0, MDtimestep, fire_alpha)
@@ -3521,6 +3590,8 @@ second:   do
   !!   2015/06/19
   !!  MODIFICATION HISTORY
   !!    
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_fire(fire_N, fire_N2, fire_P0, MDtimestep, fire_alpha)
@@ -3568,6 +3639,8 @@ second:   do
   !!    Bug fix to call io_close
   !!   2018/01/17 TM
   !!    Introduced the control by Elapsed time & Iteration number in CQ.stop
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine check_stop(flag_userstop,iter)
@@ -3693,6 +3766,8 @@ second:   do
   !!    Added atom_vels  
   !!   2020/10/07 tsuyoshi
   !!    Removed allocation of atom_vels (moved to "control")
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
 end module io_module

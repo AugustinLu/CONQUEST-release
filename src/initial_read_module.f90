@@ -56,6 +56,8 @@
 !!    Try to make blocks of variables clearer 
 !!    Added experimental backtrace
 !!   
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module initial_read
@@ -159,6 +161,8 @@ contains
   !!    Added EXX poisson solver and scheme for G=0`
   !!   2021/01/14 16:50 Lionel
   !!    EXX: added gto_file setup and read GTO info
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine read_and_write(start, start_L, inode, ionode,          &
@@ -812,6 +816,8 @@ contains
   !!   2025/02/03 nakata
   !!     Set flag_out_wf = .true. expricitly when flag_write_projected_DOS is .true.
   !!  TODO
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine read_input(start, start_L, titles, vary_mu,&
@@ -2483,6 +2489,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2020/07/30 tsuyoshi
   !!    - Moved from read_input
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
 
@@ -2591,6 +2599,8 @@ contains
   !!    - Added charge_up and charge_dn
   !!   2019/06/06 18:00 nakata
   !!    - Added MSSF_nonminimal_species
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine allocate_species_vars
@@ -2740,6 +2750,8 @@ contains
   !!    Add printing of species table in ASE output
   !!   2022/12/14 11:31 dave
   !!    Removed output of support grid spacing with blips (shouldn't be here: species dependent)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_info(titles, mu, vary_mu, HNL_fac, NODES)
@@ -3080,13 +3092,15 @@ contains
   !!    Implementing 1st version of Padding H and S matrices
   !!   2026/02/04 12:10 dave
   !!    Tweak k-point output
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine readDiagInfo
 
     use datatypes
     use functions,       only: is_prime
-    use global_module,   only: iprint_init, rcellx, rcelly, rcellz,  &
+    use global_module,   only: iprint_init, lat_vec,  &
          area_general, ni_in_cell, numprocs,   &
          species_glob, io_lun, io_ase, ase_file, write_ase, flag_calc_pol
     use numbers,         only: zero, one, two, pi, RD_ERR, half
@@ -3366,9 +3380,9 @@ contains
           end if
           ! Scale from fractional to reciprocal
           do i = 1, nkp
-             kk(1,i) = two * pi * kk(1,i) / rcellx
-             kk(2,i) = two * pi * kk(2,i) / rcelly
-             kk(3,i) = two * pi * kk(3,i) / rcellz
+             kk(1,i) = two * pi * kk(1,i) / lat_vec(1,1)
+             kk(2,i) = two * pi * kk(2,i) / lat_vec(2,2)
+             kk(3,i) = two * pi * kk(3,i) / lat_vec(3,3)
           end do
        else
           ! Read k-point number and allocate
@@ -3396,9 +3410,9 @@ contains
                 read (unit=input_array(block_start+i-1),fmt=*) &
                      kk(1,i),kk(2,i),kk(3,i),wtk(i)
                 ! Assume fractional kpoints and orthorhombic cell for now
-                kk(1,i) = two*pi*kk(1,i)/rcellx
-                kk(2,i) = two*pi*kk(2,i)/rcelly
-                kk(3,i) = two*pi*kk(3,i)/rcellz
+                kk(1,i) = two*pi*kk(1,i)/lat_vec(1,1)
+                kk(2,i) = two*pi*kk(2,i)/lat_vec(2,2)
+                kk(3,i) = two*pi*kk(3,i)/lat_vec(3,3)
                 sum = sum + wtk(i)
              end do
              call fdf_endblock
@@ -3416,7 +3430,7 @@ contains
              write(io_lun,7) nkp
              do i=1,nkp
                 write(io_lun,fmt='(8x,i5,3f15.6,f12.3)')&
-                     i,kk(1,i)/(two*pi)*rcellx,kk(2,i)/(two*pi)*rcellx,kk(3,i)/(two*pi)*rcellx,wtk(i)
+                     i,kk(1,i)/(two*pi)*lat_vec(1,1),kk(2,i)/(two*pi)*lat_vec(1,1),kk(3,i)/(two*pi)*lat_vec(1,1),wtk(i)
              end do
           end if
        end if
@@ -3428,9 +3442,9 @@ contains
        flag_gamma = fdf_boolean('Diag.GammaCentred',.false.)
        dk = fdf_double('Diag.dk',zero)
        if(dk>zero) then
-          mp(1) = ceiling(two*pi/(dk*rcellx))
-          mp(2) = ceiling(two*pi/(dk*rcelly))
-          mp(3) = ceiling(two*pi/(dk*rcellz))
+          mp(1) = ceiling(two*pi/(dk*lat_vec(1,1)))
+          mp(2) = ceiling(two*pi/(dk*lat_vec(2,2)))
+          mp(3) = ceiling(two*pi/(dk*lat_vec(3,3)))
        else
           mp(1) = fdf_integer('Diag.MPMeshX',1)
           mp(2) = fdf_integer('Diag.MPMeshY',1)
@@ -3577,9 +3591,9 @@ contains
        end if
        
        do i = 1, nkp
-          kk(1,i) = two * pi * kk(1,i) / rcellx
-          kk(2,i) = two * pi * kk(2,i) / rcelly
-          kk(3,i) = two * pi * kk(3,i) / rcellz
+          kk(1,i) = two * pi * kk(1,i) / lat_vec(1,1)
+          kk(2,i) = two * pi * kk(2,i) / lat_vec(2,2)
+          kk(3,i) = two * pi * kk(3,i) / lat_vec(3,3)
        end do
     end if ! MP mesh branch
     ! Check polarisation
@@ -3598,7 +3612,7 @@ contains
        write(io_ase,10) nkp
        do i=1,nkp
           write (io_ase,fmt='(8x,i5,3f15.6,f12.3)') &
-               i, kk(1,i)*rcellx/(two*pi), kk(2,i)*rcelly/(two*pi), kk(3,i)*rcellz/(two*pi), wtk(i)
+               i, kk(1,i)*lat_vec(1,1)/(two*pi), kk(2,i)*lat_vec(2,2)/(two*pi), kk(3,i)*lat_vec(3,3)/(two*pi), wtk(i)
        end do
        close(io_ase)
        !
@@ -3659,6 +3673,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2020/10/30 lionel
   !!    correct for io_assign, wrong module!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine read_input_aux(aux)

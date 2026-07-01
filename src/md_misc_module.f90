@@ -19,6 +19,8 @@
 !!  CREATION DATE
 !!   2022/09/30 08:43
 !!  MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module md_misc
@@ -69,6 +71,8 @@ contains
   !!    (introduced atom_vels in July, 2020.)
   !!   2022/10/04 17:27 dave
   !!    Reworking to set initial KE of ions correctly
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine init_md(baro, thermo, mdl, md_ndof, nequil, second_call)
@@ -81,7 +85,7 @@ contains
          read_md_checkpoint, read_md_temperature, flag_variable_temperature
     use GenComms,       only: inode, ionode, gcopy, cq_warn
     use memory_module,  only: reg_alloc_mem, type_dbl
-    use global_module,  only: rcellx, rcelly, rcellz, temp_ion, ni_in_cell, &
+    use global_module,  only: lat_vec, temp_ion, ni_in_cell, &
          flag_MDcontinue, flag_read_velocity, &
          flag_MDdebug, iprint_MD, flag_atomic_stress, &
          atomic_stress, area_moveatoms, &
@@ -225,9 +229,9 @@ contains
     if (.not. present(second_call)) then
        ! Initialise the model only once per run
        lattice_vec = zero
-       lattice_vec(1,1) = rcellx
-       lattice_vec(2,2) = rcelly
-       lattice_vec(3,3) = rcellz
+       lattice_vec(1,1) = lat_vec(1,1)
+       lattice_vec(2,2) = lat_vec(2,2)
+       lattice_vec(3,3) = lat_vec(3,3)
        call mdl%init_model(md_ensemble, MDtimestep, thermo, baro)
     end if
     mdl%ion_kinetic_energy = ion_ke
@@ -256,6 +260,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2020/10/07 tsuyoshi
   !!    added deallocation of atom_vels
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine end_md(th, baro)
@@ -312,6 +318,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2018/04/23 11:49
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine integrate_pt(baro, thermo, mdl, velocity, second_call)
@@ -446,6 +454,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2018/08/11 10:27
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine update_pos_and_box(baro, nequil, flag_movable)
@@ -508,6 +518,8 @@ contains
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2019/05/08
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!  
   subroutine get_heat_flux(atomic_stress, velocity, heat_flux)
@@ -553,6 +565,8 @@ contains
   !!    Added call for extended XYZ output (includes forces)
   !!   2024/11/04 Augustin Lu
   !!    Added stress in call for extended XYZ output
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_md_data(iter, thermo, baro, mdl, nequil, MDfreq, XSFfreq, XYZfreq)

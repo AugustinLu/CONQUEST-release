@@ -58,7 +58,7 @@ contains
    ! Module usage
    use datatypes
    use numbers, ONLY: zero
-   use global_module, ONLY: atom_coord,rcellx,rcelly,rcellz
+   use global_module, ONLY: atom_coord,lat_vec
    use auxiliary_types, ONLY: group_aux
    use GenComms, ONLY: cq_abort
 
@@ -158,25 +158,25 @@ contains
          ! X
          if (rx2 .GT. cutoff2) then
            if (rx.GT.zero) then
-             x(atom+1) = x(atom+1) - rcellx
+             x(atom+1) = x(atom+1) - lat_vec(1,1)
            elseif (rx.LT.zero) then
-             x(atom+1) = x(atom+1) + rcellx
+             x(atom+1) = x(atom+1) + lat_vec(1,1)
            endif
          endif
          ! Y
          if (ry2 .GT. cutoff2) then
            if (ry.GT.zero) then
-             y(atom+1) = y(atom+1) - rcelly
+             y(atom+1) = y(atom+1) - lat_vec(2,2)
            elseif (ry.LT.zero) then
-             y(atom+1) = y(atom+1) + rcelly
+             y(atom+1) = y(atom+1) + lat_vec(2,2)
            endif
          endif
          ! Z
          if (rz2 .GT. cutoff2) then
            if (rz.GT.zero) then
-             z(atom+1) = z(atom+1) - rcellz
+             z(atom+1) = z(atom+1) - lat_vec(3,3)
            elseif (rz.LT.zero) then
-             z(atom+1) = z(atom+1) + rcellz
+             z(atom+1) = z(atom+1) + lat_vec(3,3)
            endif
          endif
          ! Calculate and store fixed lengths dij2 and interatomic distances vec_rji
@@ -291,7 +291,7 @@ contains
     use datatypes
     use numbers, ONLY: zero,half,one
     use global_module, ONLY: ni_in_cell,id_glob_inv,x_atom_cell,y_atom_cell,z_atom_cell, &
-                             rcellx,rcelly,rcellz,flag_LmatrixReuse,atom_coord_diff    , &
+                             lat_vec,flag_LmatrixReuse,atom_coord_diff    , &
                              id_glob,iprint_MD,io_lun
     use auxiliary_types, ONLY: group_aux
     use GenComms, ONLY: cq_abort,myid
@@ -386,27 +386,27 @@ contains
           ! X
           if (x_ji_old*x_ji_old .GT. cutoff2) then
             if (x_ji_old.GT.zero) then
-              xj_old = xac_lc_j(bond) - rcellx
+              xj_old = xac_lc_j(bond) - lat_vec(1,1)
             elseif (x_ji_old.LT.zero) then
-              xj_old = xac_lc_j(bond) + rcellx
+              xj_old = xac_lc_j(bond) + lat_vec(1,1)
             endif
             x_ji_old = xj_old - xi_old
           endif
           ! Y
           if (y_ji_old*y_ji_old .GT. cutoff2) then
             if (y_ji_old.GT.zero) then
-              yj_old = yac_lc_j(bond) - rcelly
+              yj_old = yac_lc_j(bond) - lat_vec(2,2)
             elseif (y_ji_old.LT.zero) then
-              yj_old = yac_lc_j(bond) + rcelly
+              yj_old = yac_lc_j(bond) + lat_vec(2,2)
             endif
             y_ji_old = yj_old - yi_old
           endif
           ! Z
           if (z_ji_old*z_ji_old .GT. cutoff2) then
             if (z_ji_old.GT.zero) then
-              zj_old = zac_lc_j(bond) - rcellz
+              zj_old = zac_lc_j(bond) - lat_vec(3,3)
             elseif (z_ji_old.LT.zero) then
-              zj_old = zac_lc_j(bond) + rcellz
+              zj_old = zac_lc_j(bond) + lat_vec(3,3)
             endif
             z_ji_old = zj_old - zi_old
           endif
@@ -533,7 +533,7 @@ contains
     use datatypes
     use numbers, ONLY: zero,half,one
     use global_module, ONLY: ni_in_cell,id_glob_inv,x_atom_cell,y_atom_cell,z_atom_cell   , &
-                             flag_LmatrixReuse,atom_coord_diff,io_lun,rcellx,rcelly,rcellz, &
+                             flag_LmatrixReuse,atom_coord_diff,io_lun,lat_vec, &
                              id_glob,iprint_MD
     use auxiliary_types, ONLY: group_aux
     use species_module, ONLY: species,mass
@@ -614,27 +614,27 @@ contains
           ! X
           if (x_ji_old*x_ji_old .GT. cutoff2) then
             if (x_ji_old.GT.zero) then
-              xj_old = xac_lc_j(OHbond) - rcellx
+              xj_old = xac_lc_j(OHbond) - lat_vec(1,1)
             elseif (x_ji_old.LT.zero) then
-              xj_old = xac_lc_j(OHbond) + rcellx
+              xj_old = xac_lc_j(OHbond) + lat_vec(1,1)
             endif
             x_ji_old = xj_old - xi_old
           endif
           ! Y
           if (y_ji_old*y_ji_old .GT. cutoff2) then
             if (y_ji_old.GT.zero) then
-              yj_old = yac_lc_j(OHbond) - rcelly
+              yj_old = yac_lc_j(OHbond) - lat_vec(2,2)
             elseif (y_ji_old.LT.zero) then
-              yj_old = yac_lc_j(OHbond) + rcelly
+              yj_old = yac_lc_j(OHbond) + lat_vec(2,2)
             endif
             y_ji_old = yj_old - yi_old
           endif
           ! Z
           if (z_ji_old*z_ji_old .GT. cutoff2) then
             if (z_ji_old.GT.zero) then
-              zj_old = zac_lc_j(OHbond) - rcellz
+              zj_old = zac_lc_j(OHbond) - lat_vec(3,3)
             elseif (z_ji_old.LT.zero) then
-              zj_old = zac_lc_j(OHbond) + rcellz
+              zj_old = zac_lc_j(OHbond) + lat_vec(3,3)
             endif
             z_ji_old = zj_old - zi_old
           endif
@@ -692,27 +692,27 @@ contains
         ! X
         if (x_ji_old*x_ji_old .GT. cutoff2) then
           if (x_ji_old.GT.zero) then
-            xj_old = xac_lc_j(2) - rcellx
+            xj_old = xac_lc_j(2) - lat_vec(1,1)
           elseif (x_ji_old.LT.zero) then
-            xj_old = xac_lc_j(2) + rcellx
+            xj_old = xac_lc_j(2) + lat_vec(1,1)
           endif
           x_ji_old = xj_old - xi_old
         endif
         ! Y
         if (y_ji_old*y_ji_old .GT. cutoff2) then
           if (y_ji_old.GT.zero) then
-            yj_old = yac_lc_j(2) - rcelly
+            yj_old = yac_lc_j(2) - lat_vec(2,2)
           elseif (y_ji_old.LT.zero) then
-            yj_old = yac_lc_j(2) + rcelly
+            yj_old = yac_lc_j(2) + lat_vec(2,2)
           endif
           y_ji_old = yj_old - yi_old
         endif
         ! Z
         if (z_ji_old*z_ji_old .GT. cutoff2) then
           if (z_ji_old.GT.zero) then
-            zj_old = zac_lc_j(2) - rcellz
+            zj_old = zac_lc_j(2) - lat_vec(3,3)
           elseif (y_ji_old.LT.zero) then
-            zj_old = zac_lc_j(2) + rcellz
+            zj_old = zac_lc_j(2) + lat_vec(3,3)
           endif
           z_ji_old = zj_old - zi_old
         endif

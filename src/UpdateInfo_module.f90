@@ -21,6 +21,8 @@
 !!    and removed n_matrix
 !!   2019/11/27 08:11 dave
 !!    Tidying source
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!  
 module UpdateInfo
@@ -113,6 +115,8 @@ contains
   !!    Changed Info to pointer from allocatable (gcc 4.4.7 issue)
   !!   2019/11/13 tsuyoshi
   !!    Spin polarized case is introduced
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine Matrix_CommRebuild(InfoGlob,InfoMat,range,trans,matA,nfile,symm,n_matrix)
@@ -362,6 +366,8 @@ contains
   !!   2013/08/22
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine make_glob2node
@@ -426,6 +432,8 @@ contains
   !!  MODIFICATION
   !!   2019/11/13 08:14 dave
   !!    Uses heapsort from functions now
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   ! ------------------------------------------------------------
@@ -570,6 +578,8 @@ contains
   !!   - Bug fix for changing the number of processors at the sequential job
   !!   2016/04/06 dave
   !!    Changed Info to pointer from allocatable (gcc 4.4.7 issue)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine alloc_send_array(nfile,LmatrixSend,isend_array,isend2_array,send_array,InfoMat)
@@ -974,6 +984,8 @@ contains
   !!  MODIFICATION
   !!   2018/10/03 17:10 dave
   !!    Changing MPI tag to conform to standard
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine CommMat_send_size(LmatrixSend,isend_array)
@@ -1078,6 +1090,8 @@ contains
   !!   2018/10/03 17:10 dave
   !!    Changing MPI tag to conform to standard
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine CommMat_send_neigh(LmatrixSend,isend2_array,InfoMat)
@@ -1182,6 +1196,8 @@ contains
   !!   2018/10/03 17:10 dave
   !!    Changing MPI tag to conform to standard
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine CommMat_send_data(LmatrixSend,send_array,InfoMat)
@@ -1302,6 +1318,8 @@ contains
   !!    Added InfoGlob in dummy arguments, and removed glob2node_old
   !!   2026/02/10 10:45 dave
   !!    Bug fix: changed nreq to single integer (used in block receive)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine alloc_recv_array(InfoGlob,irecv_array,irecv2_array,recv_array, &
@@ -1660,6 +1678,8 @@ contains
   !!   2018/10/03 17:10 dave
   !!    Changing MPI tags to conform to standard
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine CommMat_irecv_data(LmatrixRecv,irecv2_array,recv_array,nreq2,nreq3)
@@ -1779,6 +1799,8 @@ contains
   !!   2013/08/22
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   function WhichNode(inode_old)
@@ -1848,6 +1870,8 @@ contains
   !!    Also added the part collecting the information of missing pairs
   !!   2019/Nov/13 tsuyoshi
   !!    spin-dependent version
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine UpdateMatrix_local(InfoMat,range,n_matrix,matA,flag_remote_iprim,nfile)
@@ -1855,7 +1879,7 @@ contains
     ! Module usage
     use numbers
     use global_module, ONLY: glob2node,id_glob,atom_coord_diff, &
-         runtype, rcellx, rcelly, rcellz, sf, nlpf, atomf
+         runtype, lat_vec, sf, nlpf, atomf
     use species_module, ONLY: nsf_species, natomf_species, nlpf_species
     use Gencomms, ONLY: inode,cq_abort
     use primary_module, ONLY: bundle
@@ -2009,9 +2033,9 @@ contains
                 deltaj_x=atom_coord_diff(1,idglob_jj)
                 deltaj_y=atom_coord_diff(2,idglob_jj)
                 deltaj_z=atom_coord_diff(3,idglob_jj)
-                xx_j=xprim_i-InfoMat(ifile)%rvec_Pij(1,ibeg1+jj-1)*rcellx+deltaj_x-deltai_x
-                yy_j=yprim_i-InfoMat(ifile)%rvec_Pij(2,ibeg1+jj-1)*rcelly+deltaj_y-deltai_y
-                zz_j=zprim_i-InfoMat(ifile)%rvec_Pij(3,ibeg1+jj-1)*rcellz+deltaj_z-deltai_z
+                xx_j=xprim_i-InfoMat(ifile)%rvec_Pij(1,ibeg1+jj-1)*lat_vec(1,1)+deltaj_x-deltai_x
+                yy_j=yprim_i-InfoMat(ifile)%rvec_Pij(2,ibeg1+jj-1)*lat_vec(2,2)+deltaj_y-deltai_y
+                zz_j=zprim_i-InfoMat(ifile)%rvec_Pij(3,ibeg1+jj-1)*lat_vec(3,3)+deltaj_z-deltai_z
 
                 Rijx=xprim_i-xx_j
                 Rijy=yprim_i-yy_j
@@ -2079,9 +2103,9 @@ contains
                    endif
                 enddo !(jjj, n_ing_cover)
                 if (.NOT. find_jcover) then
-                   xx_j=xprim_i-InfoMat(ifile)%rvec_Pij(1,ibeg1+jj-1)*rcellx+deltaj_x-deltai_x
-                   yy_j=yprim_i-InfoMat(ifile)%rvec_Pij(2,ibeg1+jj-1)*rcelly+deltaj_y-deltai_y
-                   zz_j=zprim_i-InfoMat(ifile)%rvec_Pij(3,ibeg1+jj-1)*rcellz+deltaj_z-deltai_z
+                   xx_j=xprim_i-InfoMat(ifile)%rvec_Pij(1,ibeg1+jj-1)*lat_vec(1,1)+deltaj_x-deltai_x
+                   yy_j=yprim_i-InfoMat(ifile)%rvec_Pij(2,ibeg1+jj-1)*lat_vec(2,2)+deltaj_y-deltai_y
+                   zz_j=zprim_i-InfoMat(ifile)%rvec_Pij(3,ibeg1+jj-1)*lat_vec(3,3)+deltaj_z-deltai_z
                    write(io_lun,*) ' :ERROR: inode = ',inode
                    write(io_lun,*) ' :ERROR: idglob_jj, idglob_jjj, jcover,jpart_nopg,#ofjjj = ', &
                         idglob_jj, idglob_jjj,jcover,jpart_nopg,BCS_parts%n_ing_cover(jpart_nopg)
@@ -2195,13 +2219,15 @@ contains
   !!    between the present matrix and the one read from the file. 
   !!   2019/Nov/13 tsuyoshi
   !!    spin dependent version 
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine UpdateMatrix_remote(range,n_matrix,matA,LmatrixRecv,flag_remote_iprim,irecv2_array,recv_array)
 
     ! Module usage
     use numbers
-    use global_module, ONLY: nspin,atom_coord_diff,runtype,io_lun, rcellx, rcelly, rcellz
+    use global_module, ONLY: nspin,atom_coord_diff,runtype,io_lun, lat_vec
     use GenComms, ONLY: cq_abort
     use primary_module, ONLY: bundle
     use cover_module, ONLY: BCS_parts
@@ -2353,9 +2379,9 @@ contains
           deltaj_x=atom_coord_diff(1,idglob_jj)
           deltaj_y=atom_coord_diff(2,idglob_jj)
           deltaj_z=atom_coord_diff(3,idglob_jj)
-          xx_j = xprim_i - vec_Rij(1)*rcellx + deltaj_x - deltai_x
-          yy_j = yprim_i - vec_Rij(2)*rcelly + deltaj_y - deltai_y
-          zz_j = zprim_i - vec_Rij(3)*rcellz + deltaj_z - deltai_z
+          xx_j = xprim_i - vec_Rij(1)*lat_vec(1,1) + deltaj_x - deltai_x
+          yy_j = yprim_i - vec_Rij(2)*lat_vec(2,2) + deltaj_y - deltai_y
+          zz_j = zprim_i - vec_Rij(3)*lat_vec(3,3) + deltaj_z - deltai_z
 
           Rijx=xprim_i-xx_j
           Rijy=yprim_i-yy_j
@@ -2517,6 +2543,8 @@ contains
   !!   2013/08/22
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine deallocate_CommMatArrays(sarray1,sarray2,sarray3,rarray1,rarray2,rarray3, &
@@ -2580,6 +2608,8 @@ contains
   !!   2018/08/16
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   subroutine Report_UpdateMatrix(matname)
     use datatypes

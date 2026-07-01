@@ -59,6 +59,8 @@
 !!    Removed old RNG, replaced calls with new one from rng module
 !!   2019/11/18 tsuyoshi
 !!    Removed the places related to flag_MDold 
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
 module move_atoms
@@ -134,6 +136,8 @@ contains
   !!   08:04, 08/01/2003 dave
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine finish_blipgrid
@@ -214,6 +218,8 @@ contains
   !!  TODO
   !!   Proper buffer zones for matrix mults so initialisation doesn't have
   !!   to be done at every step 03/07/2001 dave
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine velocityVerlet(fixed_potential, prim, step, T, KE, &
@@ -410,6 +416,8 @@ contains
 !!   - Added call for update_H because this is no longer called at updateIndices
 !!   2016/01/13 08:31 dave
 !!    Removed call to set_density (now included in update_H)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
 !!  SOURCE
 !!
   subroutine safemin(start_x, start_y, start_z, direction, energy_in, &
@@ -421,8 +429,8 @@ contains
     use units
     use global_module,      only: iprint_MD, x_atom_cell, y_atom_cell,    &
                                   z_atom_cell,           &
-                                  atom_coord, ni_in_cell, rcellx, rcelly, &
-                                  rcellz, flag_self_consistent,           &
+                                  atom_coord, ni_in_cell, lat_vec, &
+                                   flag_self_consistent,           &
                                   flag_reset_dens_on_atom_move,           &
                                   IPRINT_TIME_THRES1, flag_pcc_global
     use minimise,           only: get_E_and_F, sc_tolerance, L_tolerance, &
@@ -725,6 +733,8 @@ contains
   !!    Updates to fix second interpolation
   !!   2022/07/29 11:52 dave
   !!    Removed redundant (and erroneous) total_energy passed variable
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine safemin2(start_x, start_y, start_z, direction, energy_in, &
@@ -736,8 +746,8 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell,           &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, lat_vec, &
+          flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global,    &
          id_glob,                                &
@@ -1092,6 +1102,8 @@ contains
   !!   Bug fix: reset alpha to one on entry
   !!  2022/08/09 09:00 dave
   !!   Added maximum number of iterations in loop
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine backtrack_linemin(direction, energy_in, &
@@ -1103,8 +1115,8 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell,           &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, lat_vec, &
+          flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global,    &
          id_glob,                                &
@@ -1279,6 +1291,8 @@ contains
   !! MODIFICATION HISTORY
   !!   2021/09/15 14:41 dave
   !!    Tweak to output
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine single_step(direction, energy_in, &
@@ -1407,6 +1421,8 @@ contains
   !! CREATION DATE
   !!   2022/08/12
   !! MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine backtrack_linemin_cell(direction, target_press, enthalpy_in, &
@@ -1418,8 +1434,8 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell,           &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, lat_vec, &
+          flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global,    &
          id_glob,                                &
@@ -1474,9 +1490,9 @@ contains
     iter = 0
     old_alpha = zero
     alpha = one
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
+    orcellx = lat_vec(1,1)
+    orcelly = lat_vec(2,2)
+    orcellz = lat_vec(3,3)
     h0 = enthalpy_in
     h3 = h0
     if (inode == ionode .and. iprint_MD + min_layer > 0) &
@@ -1512,7 +1528,7 @@ contains
        if (myid == 0 .and. iprint_MD + min_layer > 3) then
           write(io_lun, fmt='(/4x,a)') trim(prefix)//" Simulation cell dimensions: "
           write(io_lun, fmt='(6x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            lat_vec(1,1), d_units(dist_units), lat_vec(2,2), d_units(dist_units), lat_vec(3,3), d_units(dist_units)
        end if
        call update_H(fixed_potential)
        ! Write out atomic positions
@@ -1571,7 +1587,7 @@ contains
     if (myid == 0 .and. iprint_MD + min_layer > 2) then
        write(io_lun, fmt='(/4x,a)') trim(prefix)//" Simulation cell dimensions: "
        write(io_lun, fmt='(6x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            lat_vec(1,1), d_units(dist_units), lat_vec(2,2), d_units(dist_units), lat_vec(3,3), d_units(dist_units)
     end if
     dE = enthalpy_in - enthalpy_out
     if (inode == ionode .and. iprint_MD + min_layer >= 0) then
@@ -1594,6 +1610,8 @@ contains
   !! CREATION DATE
   !!   2022/08/12
   !! MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine single_step_cell(direction, press, energy_in, &
@@ -1605,8 +1623,8 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell,           &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, lat_vec, &
+          flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global,    &
          id_glob,                                &
@@ -1660,9 +1678,9 @@ contains
     prefix = return_prefix(subname, min_layer)
     call start_timer(tmr_std_moveatoms)
     alpha = one
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
+    orcellx = lat_vec(1,1)
+    orcelly = lat_vec(2,2)
+    orcellz = lat_vec(3,3)
     e0 = energy_in
     e3 = e0
     if (inode == ionode .and. iprint_MD + min_layer > 0) &
@@ -1670,7 +1688,7 @@ contains
          fmt='(4x,a,f16.6," ",a2)') trim(prefix)//" initial energy is ", &
          en_conv * energy_in, en_units(energy_units)
     ! Take a step along search direction
-    call update_cell_dims(rcellx, rcelly, rcellz, &
+    call update_cell_dims(lat_vec(1,1), lat_vec(2,2), lat_vec(3,3), &
          direction(1), direction(2), direction(3), direction(1), alpha)
 
     ! Update and find new energy
@@ -1695,7 +1713,7 @@ contains
     if(energy_out>energy_in) then
        if (inode == ionode .and. iprint_MD + min_layer > 1) &
             write (io_lun, fmt='(4x,a)') trim(prefix)//" energy rise: undoing step"
-       call update_cell_dims(rcellx, rcelly, rcellz, &
+       call update_cell_dims(lat_vec(1,1), lat_vec(2,2), lat_vec(3,3), &
             direction(1), direction(2), direction(3), direction(1), -alpha)
        if(flag_SFcoeffReuse) then
           call update_pos_and_matrices(updateSFcoeff)
@@ -1734,6 +1752,8 @@ contains
   !! CREATION DATE
   !!   2022/08/23
   !! MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine backtrack_linemin_full(config, direction, cell_ref, enthalpy_in, enthalpy_out, &
@@ -1745,8 +1765,8 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell,           &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, lat_vec, &
+          flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global,    &
          id_glob,                                &
@@ -1926,6 +1946,8 @@ contains
   !! CREATION DATE
   !!   2022/08/23
   !! MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine single_step_full(direction, energy_in, &
@@ -1937,7 +1959,7 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell, ni_in_cell, flag_SFcoeffReuse, min_layer, &
-         rcellx, rcelly, rcellz
+         lat_vec
     use minimise,       only: get_E_and_F, sc_tolerance, L_tolerance, &
          n_L_iterations, dE_elec_opt
     use GenComms,       only: my_barrier, myid, inode, ionode,        &
@@ -1976,9 +1998,9 @@ contains
     call start_timer(tmr_std_moveatoms)
     dummy = zero
     alpha = one
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
+    orcellx = lat_vec(1,1)
+    orcelly = lat_vec(2,2)
+    orcellz = lat_vec(3,3)
     e0 = energy_in
     e3 = e0
     if (inode == ionode .and. iprint_MD > 0) &
@@ -1992,7 +2014,7 @@ contains
        y_atom_cell(i) = y_atom_cell(i) + alpha * direction(2,i)
        z_atom_cell(i) = z_atom_cell(i) + alpha * direction(3,i)
     end do
-    call update_cell_dims(rcellx, rcelly, rcellz, &
+    call update_cell_dims(lat_vec(1,1), lat_vec(2,2), lat_vec(3,3), &
          direction(1,ni_in_cell+1), direction(2,ni_in_cell+1), direction(3,ni_in_cell+1), &
          direction(1,ni_in_cell+1), alpha)
 
@@ -2026,7 +2048,7 @@ contains
           y_atom_cell(i) = y_atom_cell(i) - alpha * direction(2,i)
           z_atom_cell(i) = z_atom_cell(i) - alpha * direction(3,i)
        end do
-       call update_cell_dims(rcellx, rcelly, rcellz, &
+       call update_cell_dims(lat_vec(1,1), lat_vec(2,2), lat_vec(3,3), &
             direction(1,ni_in_cell+1), direction(2,ni_in_cell+1), direction(3,ni_in_cell+1), &
             direction(1,ni_in_cell+1), -alpha)
        if(flag_SFcoeffReuse) then
@@ -2070,6 +2092,8 @@ contains
   !! MODIFICATION HISTORY
   !!   2022/08/09 09:00 dave
   !!    Added maximum number of iterations in loop
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine adapt_backtrack_linemin(direction, energy_in, &
@@ -2081,8 +2105,8 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell,           &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, lat_vec, &
+          flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global,    &
          id_glob,                                &
@@ -2281,6 +2305,8 @@ contains
   !!    pressure
   !!   2021/10/15 17:48 dave
   !!    Added second interpolation
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
 
   subroutine safemin_cell(start_rcellx, start_rcelly, start_rcellz, &
@@ -2294,8 +2320,8 @@ contains
     use units
     use global_module,      only: iprint_MD, x_atom_cell, y_atom_cell,    &
                                   z_atom_cell,           &
-                                  atom_coord, ni_in_cell, rcellx, rcelly, &
-                                  rcellz, flag_self_consistent,           &
+                                  atom_coord, ni_in_cell, lat_vec, &
+                                   flag_self_consistent,           &
                                   flag_reset_dens_on_atom_move,           &
                                   IPRINT_TIME_THRES1, flag_pcc_global, &
                                   flag_diagonalisation, cell_constraint_flag, &
@@ -2401,7 +2427,7 @@ contains
        if (myid == 0 .and. iprint_MD + min_layer > 3) then
           write(io_lun, fmt='(/4x,a)') trim(prefix)//" Simulation cell dimensions: "
           write(io_lun, fmt='(6x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            lat_vec(1,1), d_units(dist_units), lat_vec(2,2), d_units(dist_units), lat_vec(3,3), d_units(dist_units)
        end if
        call update_pos_and_matrices(update_var,direction)
        call update_H(fixed_potential)
@@ -2476,7 +2502,7 @@ contains
     if (myid == 0 .and. iprint_MD + min_layer > 3) then
        write(io_lun, fmt='(/4x,a)') trim(prefix)//" Simulation cell dimensions: "
        write(io_lun, fmt='(6x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            lat_vec(1,1), d_units(dist_units), lat_vec(2,2), d_units(dist_units), lat_vec(3,3), d_units(dist_units)
     end if
     call update_pos_and_matrices(update_var,direction)
     call update_H(fixed_potential)
@@ -2591,7 +2617,7 @@ contains
     if (myid == 0 .and. iprint_MD + min_layer > 2) then
        write(io_lun, fmt='(/4x,a)') trim(prefix)//" Simulation cell dimensions: "
        write(io_lun, fmt='(6x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            lat_vec(1,1), d_units(dist_units), lat_vec(2,2), d_units(dist_units), lat_vec(3,3), d_units(dist_units)
     end if
     dH = h0 - enthalpy_out
     if (inode == ionode .and. iprint_MD + min_layer >= 0) then
@@ -2627,6 +2653,8 @@ contains
   !!  2021/10/15 17:51 dave
   !!   Use dummy array to update force after atoms moved in update_pos_and_matrices
   !!   Also update second interpolation
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine safemin_full(config, force, cell_ref, enthalpy_in, enthalpy_out, &
@@ -2638,7 +2666,7 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
                               z_atom_cell,           &
-                              ni_in_cell, rcellx, rcelly, rcellz,     &
+                              ni_in_cell, lat_vec,     &
                               flag_self_consistent,                   &
                               IPRINT_TIME_THRES1, flag_pcc_global,    &
                               flag_LmatrixReuse, flag_SFcoeffReuse,   &
@@ -2971,6 +2999,8 @@ contains
   !! 2013/08/21
   !!MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!SOURCE
   !!
   subroutine update_start_xyz(x,y,z)
@@ -3067,6 +3097,8 @@ contains
   !! - Added input npmod, this is used by the new version of DoPulay
   !!   2019/10/24 11:52 dave
   !!    Changed function calls to DoPulay
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!SOURCE
   !!
   subroutine pulayStep(npmod, posnStore, forceStore, x_atom_cell, &
@@ -3186,6 +3218,8 @@ contains
   !!  TODO
   !!   Think about updating radius component of matrix derived type,
   !!   or eliminating it !
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine updateIndices(matrix_update, fixed_potential)
@@ -3288,6 +3322,8 @@ contains
   !!    Removed old ewald calls
   !!   2016/09/16 17:00 nakata
   !!    Used RadiusAtomf instead of RadiusSupport
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine updateIndices2(matrix_update, fixed_potential)
@@ -3399,6 +3435,8 @@ contains
   !!    processes if an empty bundle is found
   !!   2019/11/18 14:37 dave
   !!    Updates to rebuild covering sets if cell varies during run
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !! SOURCE
   !!
   subroutine updateIndices3(fixed_potential,velocity)
@@ -3633,6 +3671,8 @@ contains
   !!    Added scaling of electron density after atom move
   !!   2017/11/17 14:51 dave
   !!    Bug fix: removed erroneous spin scaling on electron density
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine update_H(fixed_potential)
@@ -3839,6 +3879,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2008/07/18 ast
   !!     Added timers
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine checkBonds(newAtom, prim, gcs, amat, partsproc, rcut)
@@ -3930,6 +3972,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2008/07/18 ast
   !!     Added timers
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine primary_update(x_position, y_position, z_position, prim, &
@@ -3937,7 +3981,7 @@ contains
 
     use datatypes
     use basic_types
-    use global_module, only: ni_in_cell, rcellx, rcelly, rcellz, &
+    use global_module, only: ni_in_cell, lat_vec, &
                              IPRINT_TIME_THRES3
     use timer_module
 
@@ -3960,9 +4004,9 @@ contains
     call start_timer(tmr_l_tmp1,WITH_LEVEL)
     n_prim = 0
     nnd = myid+1
-    dcellx=rcellx/groups%ngcellx
-    dcelly=rcelly/groups%ngcelly
-    dcellz=rcellz/groups%ngcellz
+    dcellx=lat_vec(1,1)/groups%ngcellx
+    dcelly=lat_vec(2,2)/groups%ngcelly
+    dcellz=lat_vec(3,3)/groups%ngcellz
     do ng = 1,groups%ng_on_node(nnd)
        ind_group=groups%ngnode(groups%inode_beg(nnd)+ng-1)
        nx=1+(ind_group-1)/(groups%ngcelly*groups%ngcellz)
@@ -4024,13 +4068,15 @@ contains
   !!    Added timers
   !!   2019/11/04 15:14 dave
   !!    Replace call to indexx with call to heapsort_integer_index
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine cover_update(x_position, y_position, z_position, set, groups)
 
     use datatypes
     use basic_types
-    use global_module, only: ni_in_cell, rcellx, rcelly, rcellz, &
+    use global_module, only: ni_in_cell, lat_vec, &
                              IPRINT_TIME_THRES3
     use functions,  only: heapsort_integer_index
     use GenComms,      only: cq_abort, myid
@@ -4078,9 +4124,9 @@ contains
          call cq_abort("Error allocating nx_in_cover: ", set%ng_cover,stat)
     call stop_timer(tmr_std_allocation)
     ! Conversion factors from unit cell lengths->groups
-    dcellx=rcellx/real(groups%ngcellx,double)
-    dcelly=rcelly/real(groups%ngcelly,double)
-    dcellz=rcellz/real(groups%ngcellz,double)
+    dcellx=lat_vec(1,1)/real(groups%ngcellx,double)
+    dcelly=lat_vec(2,2)/real(groups%ngcelly,double)
+    dcellz=lat_vec(3,3)/real(groups%ngcellz,double)
     ! Used in calculating offsets of groups in CS
     nmodx=((groups%ngcellx+set%nspanlx-1)/groups%ngcellx)*groups%ngcellx
     nmody=((groups%ngcelly+set%nspanly-1)/groups%ngcelly)*groups%ngcelly
@@ -4242,6 +4288,8 @@ contains
   !!    Added timers
   !!   2018/07/11 12:11 dave
   !!    Changed iprint level for output of partition boundary crossing to > 3
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine update_atom_coord
@@ -4320,6 +4368,8 @@ contains
   !!   2019/06/04
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine update_r_atom_cell
@@ -4409,6 +4459,8 @@ contains
   !!    Added rescaling after assignment of velocities so that temperature is correct
   !!   2022/10/03 17:14 dave
   !!    Return ionic KE
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine init_velocity(ni_in_cell, temp, velocity, KE_ions)
@@ -4528,6 +4580,8 @@ contains
   !!   2013/07/01
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine wrap_xyz_atom_cell
@@ -4571,6 +4625,8 @@ contains
   !!  CREATION DATE
   !!   2014/02/03
   !!  MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine calculate_kinetic_energy(v,KE)
@@ -4618,6 +4674,8 @@ contains
   !!  CREATION DATE
   !!   2014/02/03
   !!  MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine zero_COM_velocity(v)
@@ -4675,6 +4733,8 @@ contains
   !!  CREATION DATE
   !!   2014/02/03
   !!  MODIFICATION HISTORY
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine check_move_atoms(flag_movable)
@@ -4723,6 +4783,8 @@ contains
   !!    Update to remove unnecessary code (a/c and c/a etc are the same)
   !!   2022/08/09 09:01 dave
   !!    Restrict output of cell ratios to ionode and iprint_MD>2
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine update_cell_dims(start_rcellx, start_rcelly, start_rcellz, &
@@ -4732,8 +4794,8 @@ contains
     use numbers
     use units
     use global_module,      only: iprint_MD, x_atom_cell, y_atom_cell, z_atom_cell, &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, lat_vec, &
+          flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global, &
          flag_diagonalisation, cell_constraint_flag, min_layer
@@ -4760,58 +4822,58 @@ contains
     real(double) :: orcellx, orcelly, orcellz, xvec, yvec, zvec, r2, scale
     integer :: i, j
 
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
+    orcellx = lat_vec(1,1)
+    orcelly = lat_vec(2,2)
+    orcellz = lat_vec(3,3)
     ! Update based on constraints.
     ! none => Unconstrained case
     if (leqi(cell_constraint_flag, 'none')) then
-        rcellx = start_rcellx + k * search_dir_x
-        rcelly = start_rcelly + k * search_dir_y
-        rcellz = start_rcellz + k * search_dir_z
+        lat_vec(1,1) = start_rcellx + k * search_dir_x
+        lat_vec(2,2) = start_rcelly + k * search_dir_y
+        lat_vec(3,3) = start_rcellz + k * search_dir_z
 
     else if (leqi(cell_constraint_flag, 'volume')) then
-        rcellx = start_rcellx + k * search_dir_mean
-        rcelly = start_rcelly + k * search_dir_mean
-        rcellz = start_rcellz + k * search_dir_mean
+        lat_vec(1,1) = start_rcellx + k * search_dir_mean
+        lat_vec(2,2) = start_rcelly + k * search_dir_mean
+        lat_vec(3,3) = start_rcellz + k * search_dir_mean
 
     ! Fix a single dimension?
     else if (leqi(cell_constraint_flag, 'a')) then
-        rcelly = start_rcelly + k * search_dir_y
-        rcellz = start_rcellz + k * search_dir_z
+        lat_vec(2,2) = start_rcelly + k * search_dir_y
+        lat_vec(3,3) = start_rcellz + k * search_dir_z
     else if (leqi(cell_constraint_flag, 'b')) then
-        rcellx = start_rcellx + k * search_dir_x
-        rcellz = start_rcellz + k * search_dir_z
+        lat_vec(1,1) = start_rcellx + k * search_dir_x
+        lat_vec(3,3) = start_rcellz + k * search_dir_z
     else if (leqi(cell_constraint_flag, 'c')) then
-        rcelly = start_rcelly + k * search_dir_y
-        rcellx = start_rcellx + k * search_dir_x
+        lat_vec(2,2) = start_rcelly + k * search_dir_y
+        lat_vec(1,1) = start_rcellx + k * search_dir_x
 
     ! Fix two dimensions?
     else if (leqi(cell_constraint_flag, 'c a') .or. leqi(cell_constraint_flag, 'a c')) then
-        rcelly = start_rcelly + k * search_dir_y
+        lat_vec(2,2) = start_rcelly + k * search_dir_y
     else if (leqi(cell_constraint_flag, 'a b') .or. leqi(cell_constraint_flag, 'b a')) then
-        rcellz = start_rcellz + k * search_dir_z
+        lat_vec(3,3) = start_rcellz + k * search_dir_z
     else if (leqi(cell_constraint_flag, 'b c') .or. leqi(cell_constraint_flag, 'c b')) then
-        rcellx = start_rcellx + k * search_dir_x
+        lat_vec(1,1) = start_rcellx + k * search_dir_x
 
     ! Fix a single ratio?
     else if (leqi(cell_constraint_flag, 'a/c') .OR. leqi(cell_constraint_flag, 'c/a')) then
-       rcellx = start_rcellx + k * search_dir_x
-       rcelly = start_rcelly + k * search_dir_y
-       rcellz = start_rcellz + k * (start_rcellz/start_rcellx)*search_dir_x
+       lat_vec(1,1) = start_rcellx + k * search_dir_x
+       lat_vec(2,2) = start_rcelly + k * search_dir_y
+       lat_vec(3,3) = start_rcellz + k * (start_rcellz/start_rcellx)*search_dir_x
     else if (leqi(cell_constraint_flag, 'a/b') .OR. leqi(cell_constraint_flag, 'b/a')) then
-       rcellx = start_rcellx + k * search_dir_x
-       rcelly = start_rcelly + k * (start_rcelly/start_rcellx)*search_dir_x
-       rcellz = start_rcellz + k * search_dir_z
+       lat_vec(1,1) = start_rcellx + k * search_dir_x
+       lat_vec(2,2) = start_rcelly + k * (start_rcelly/start_rcellx)*search_dir_x
+       lat_vec(3,3) = start_rcellz + k * search_dir_z
     else if (leqi(cell_constraint_flag, 'b/c') .OR. leqi(cell_constraint_flag, 'c/b')) then
-       rcellx = start_rcellx + k * search_dir_x
-       rcelly = start_rcelly + k * search_dir_y
-       rcellz = start_rcellz + k * (start_rcellz/start_rcelly)*search_dir_y
+       lat_vec(1,1) = start_rcellx + k * search_dir_x
+       lat_vec(2,2) = start_rcelly + k * search_dir_y
+       lat_vec(3,3) = start_rcellz + k * (start_rcellz/start_rcelly)*search_dir_y
     end if
 
-    r_super_x = rcellx
-    r_super_y = rcelly
-    r_super_z = rcellz
+    r_super_x = lat_vec(1,1)
+    r_super_y = lat_vec(2,2)
+    r_super_z = lat_vec(3,3)
     ! DRB added 2017/05/24 17:05
     ! We've changed the simulation cell. Now we must update grids and the density
     r_super_x_squared = r_super_x * r_super_x
@@ -4824,15 +4886,15 @@ contains
     density = density * scale
     if(flag_diagonalisation) then
        do i = 1, nkp
-          kk(1,i) = kk(1,i) * orcellx / rcellx
-          kk(2,i) = kk(2,i) * orcelly / rcelly
-          kk(3,i) = kk(3,i) * orcellz / rcellz
+          kk(1,i) = kk(1,i) * orcellx / lat_vec(1,1)
+          kk(2,i) = kk(2,i) * orcelly / lat_vec(2,2)
+          kk(3,i) = kk(3,i) * orcellz / lat_vec(3,3)
        end do
     end if
     do j = 1, maxngrid
-       recip_vector(j,1) = recip_vector(j,1) * orcellx / rcellx
-       recip_vector(j,2) = recip_vector(j,2) * orcelly / rcelly
-       recip_vector(j,3) = recip_vector(j,3) * orcellz / rcellz
+       recip_vector(j,1) = recip_vector(j,1) * orcellx / lat_vec(1,1)
+       recip_vector(j,2) = recip_vector(j,2) * orcelly / lat_vec(2,2)
+       recip_vector(j,3) = recip_vector(j,3) * orcellz / lat_vec(3,3)
        xvec = recip_vector(j,1)/(two*pi)
        yvec = recip_vector(j,2)/(two*pi)
        zvec = recip_vector(j,3)/(two*pi)
@@ -4840,16 +4902,18 @@ contains
        if(j/=i0) hartree_factor(j) = one/r2 ! i0 notates gamma point
     end do
     do j = 1, ni_in_cell
-       x_atom_cell(j) = (rcellx/orcellx)*x_atom_cell(j)
-       y_atom_cell(j) = (rcelly/orcelly)*y_atom_cell(j)
-       z_atom_cell(j) = (rcellz/orcellz)*z_atom_cell(j)
+       x_atom_cell(j) = (lat_vec(1,1)/orcellx)*x_atom_cell(j)
+       y_atom_cell(j) = (lat_vec(2,2)/orcelly)*y_atom_cell(j)
+       z_atom_cell(j) = (lat_vec(3,3)/orcellz)*z_atom_cell(j)
        !if (inode == ionode .and. iprint_MD > 3) &
        !     write (io_lun,*) 'Position: ', j, x_atom_cell(j), &
        !     y_atom_cell(j), z_atom_cell(j)
     end do
     if(inode==ionode.and.iprint_MD>2) then
-       write(io_lun,fmt='(6x,"Scaling cell dimenstions by: ",3f9.6)') rcellx/start_rcellx, rcelly/start_rcelly, rcellz/start_rcellz
-       write(io_lun,fmt='(6x,"Updated cell dimensions: ",f10.6," a0 x",f10.6," a0 x",f10.6," a0")') rcellx, rcelly, rcellz
+       write(io_lun,fmt='(6x,"Scaling cell dimenstions by: ",3f9.6)') lat_vec(1,1)/start_rcellx, &
+lat_vec(2,2)/start_rcelly, lat_vec(3,3)/start_rcellz
+       write(io_lun,fmt='(6x,"Updated cell dimensions: ",f10.6," a0 x",f10.6," a0 x",f10.6," a0")') &
+lat_vec(1,1), lat_vec(2,2), lat_vec(3,3)
     end if
   end subroutine update_cell_dims
   !!***
@@ -4868,6 +4932,8 @@ contains
   !!   2018/02/07
   !!  MODIFICATION HISTORY
   !! 
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine rescale_grids_and_density(orcellx, orcelly, orcellz)
@@ -4875,7 +4941,7 @@ contains
     use datatypes
     use numbers
     use global_module,  only: x_atom_cell, y_atom_cell, z_atom_cell, &
-                              rcellx, rcelly, rcellz, flag_diagonalisation, &
+                              lat_vec, flag_diagonalisation, &
                               iprint_MD
     use GenComms,       only: inode, ionode
     use maxima_module,  only: maxngrid
@@ -4900,9 +4966,9 @@ contains
     if (inode==ionode .and. iprint_MD > 3) &
       write(io_lun,'(6x,a)') "move_atoms/rescale_grid_and_density"
 
-    r_super_x = rcellx
-    r_super_y = rcelly
-    r_super_z = rcellz
+    r_super_x = lat_vec(1,1)
+    r_super_y = lat_vec(2,2)
+    r_super_z = lat_vec(3,3)
     ! DRB added 2017/05/24 17:05
     ! We've changed the simulation cell. Now we must update grids and the density
     r_super_x_squared = r_super_x * r_super_x
@@ -4915,15 +4981,15 @@ contains
     density = density * scale
     if(flag_diagonalisation) then
        do i = 1, nkp
-          kk(1,i) = kk(1,i) * orcellx / rcellx
-          kk(2,i) = kk(2,i) * orcelly / rcelly
-          kk(3,i) = kk(3,i) * orcellz / rcellz
+          kk(1,i) = kk(1,i) * orcellx / lat_vec(1,1)
+          kk(2,i) = kk(2,i) * orcelly / lat_vec(2,2)
+          kk(3,i) = kk(3,i) * orcellz / lat_vec(3,3)
        end do
     end if
     do j = 1, maxngrid
-       recip_vector(j,1) = recip_vector(j,1) * orcellx / rcellx
-       recip_vector(j,2) = recip_vector(j,2) * orcelly / rcelly
-       recip_vector(j,3) = recip_vector(j,3) * orcellz / rcellz
+       recip_vector(j,1) = recip_vector(j,1) * orcellx / lat_vec(1,1)
+       recip_vector(j,2) = recip_vector(j,2) * orcelly / lat_vec(2,2)
+       recip_vector(j,3) = recip_vector(j,3) * orcellz / lat_vec(3,3)
        xvec = recip_vector(j,1)/(two*pi)
        yvec = recip_vector(j,2)/(two*pi)
        zvec = recip_vector(j,3)/(two*pi)
@@ -4969,13 +5035,15 @@ contains
   !!    Made velocity optional (mainly for cell updates)
   !!   2022/09/19 08:20 dave
   !!    Added dummy variable for when velocity is not passed
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine update_pos_and_matrices(update_method, velocity)
     use datatypes
     use numbers,         only: half, zero, one, very_small
     use global_module,   only: flag_diagonalisation, atom_coord, atom_vels, atom_coord_diff, &
-         rcellx, rcelly, rcellz, ni_in_cell, nspin, nspin_SF, id_glob, &
+         lat_vec, ni_in_cell, nspin, nspin_SF, id_glob, &
          area_moveatoms, flag_basis_set, blips
     ! n_proc_old and glob2node_old have been removed
     use GenComms,        only: my_barrier, inode, ionode, cq_abort, gcopy
@@ -5185,6 +5253,8 @@ contains
   !!  MODIFICATION HISTORY
   !!   2025/01/20 13:45 dave
   !!    Added conditions for fixed cell side ratios (average stresses)
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   subroutine propagate_vector(force, config, config_new, cell_ref, k)
 
@@ -5268,12 +5338,14 @@ contains
   !!   2019/02/06
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   subroutine vector_to_cq(config, cell_ref, orcellx, orcelly, orcellz)
 
     use numbers
     use GenComms,      only: inode, ionode
-    use global_module, only: rcellx, rcelly, rcellz, ni_in_cell, &
+    use global_module, only: lat_vec, ni_in_cell, &
                              iprint_MD, id_glob_inv, atom_coord
 
     implicit none
@@ -5291,17 +5363,17 @@ contains
       write(io_lun,'(6x,a)') "move_atoms/vector_to_cq"
 
 
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
+    orcellx = lat_vec(1,1)
+    orcelly = lat_vec(2,2)
+    orcellz = lat_vec(3,3)
 
-    rcellx = (one + config(1,ni_in_cell+1))*cell_ref(1)
-    rcelly = (one + config(2,ni_in_cell+1))*cell_ref(2)
-    rcellz = (one + config(3,ni_in_cell+1))*cell_ref(3)
+    lat_vec(1,1) = (one + config(1,ni_in_cell+1))*cell_ref(1)
+    lat_vec(2,2) = (one + config(2,ni_in_cell+1))*cell_ref(2)
+    lat_vec(3,3) = (one + config(3,ni_in_cell+1))*cell_ref(3)
     do i=1,ni_in_cell
-      atom_coord(1,i) = config(1,i)*rcellx
-      atom_coord(2,i) = config(2,i)*rcelly
-      atom_coord(3,i) = config(3,i)*rcellz
+      atom_coord(1,i) = config(1,i)*lat_vec(1,1)
+      atom_coord(2,i) = config(2,i)*lat_vec(2,2)
+      atom_coord(3,i) = config(3,i)*lat_vec(3,3)
     end do
 
     ! Now we've changed atom_coord, we want these changes to be reflected
@@ -5333,12 +5405,14 @@ contains
   !!   2019/02/06
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine cq_to_vector(force, config, cell_ref, target_press)
  
     use numbers
-    use global_module, only: rcellx, rcelly, rcellz, ni_in_cell, &
+    use global_module, only: lat_vec, ni_in_cell, &
                              iprint_MD, id_glob, atom_coord
     use GenComms,      only: inode, ionode
     use force_module,  only: stress, tot_force
@@ -5359,22 +5433,22 @@ contains
     if (inode==ionode .and. iprint_MD>3) &
       write(io_lun,'(6x,a)') "move_atoms/cq_to_vector"
  
-    vol = rcellx*rcelly*rcellz
-    one_plus_strain(1) = rcellx/cell_ref(1)
-    one_plus_strain(2) = rcelly/cell_ref(2)
-    one_plus_strain(3) = rcellz/cell_ref(3)
+    vol = lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
+    one_plus_strain(1) = lat_vec(1,1)/cell_ref(1)
+    one_plus_strain(2) = lat_vec(2,2)/cell_ref(2)
+    one_plus_strain(3) = lat_vec(3,3)/cell_ref(3)
     do i=1,3
       config(i,ni_in_cell+1) = one_plus_strain(i) - one
       force(i,ni_in_cell+1) = &
         -(stress(i,i) + target_press*vol)/one_plus_strain(i)
     end do
     do i=1,ni_in_cell
-      config(1,i) = atom_coord(1,i)/rcellx ! Fractional coordinates
-      config(2,i) = atom_coord(2,i)/rcelly
-      config(3,i) = atom_coord(3,i)/rcellz
-      force(1,i) = tot_force(1,i)*rcellx
-      force(2,i) = tot_force(2,i)*rcelly
-      force(3,i) = tot_force(3,i)*rcellz
+      config(1,i) = atom_coord(1,i)/lat_vec(1,1) ! Fractional coordinates
+      config(2,i) = atom_coord(2,i)/lat_vec(2,2)
+      config(3,i) = atom_coord(3,i)/lat_vec(3,3)
+      force(1,i) = tot_force(1,i)*lat_vec(1,1)
+      force(2,i) = tot_force(2,i)*lat_vec(2,2)
+      force(3,i) = tot_force(3,i)*lat_vec(3,3)
     end do
 
     if (inode==ionode .and. iprint_MD>3) call print_atomic_positions
@@ -5400,12 +5474,14 @@ contains
   !!   2019/02/07
   !!  MODIFICATION HISTORY
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   function enthalpy(e, p) result(h)
 
     use datatypes
     use GenComms,       only: inode, ionode
-    use global_module,  only: rcellx, rcelly, rcellz, iprint_MD, flag_MDdebug
+    use global_module,  only: lat_vec, iprint_MD, flag_MDdebug
 
     implicit none
 
@@ -5416,7 +5492,7 @@ contains
     ! local variables
     real(double)              :: pv
 
-    pv = p*(rcellx*rcelly*rcellz)
+    pv = p*(lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3))
     h = e + pv
 
     if (inode==ionode .and. iprint_MD > 2) then
@@ -5424,7 +5500,7 @@ contains
           write(io_lun,'(2x,a)') "move_atoms/enthalpy"
           write(io_lun,'(4x,"energy   = ",f16.8)') e
           write(io_lun,'(4x,"P        = ",f16.8)') p
-          write(io_lun,'(4x,"V        = ",f16.8)') rcellx*rcelly*rcellz
+          write(io_lun,'(4x,"V        = ",f16.8)') lat_vec(1,1)*lat_vec(2,2)*lat_vec(3,3)
           write(io_lun,'(4x,"PV       = ",f16.8)') pv
           write(io_lun,'(4x,"enthalpy = ",f16.8)') h
        end if 

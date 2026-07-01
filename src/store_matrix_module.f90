@@ -65,7 +65,7 @@ module store_matrix
      integer :: MDstep                       ! Will be used as "***"
      integer :: ni_in_cell, numprocs         ! number of atoms, number of MPI processes
      integer :: npcellx, npcelly, npcellz    ! partition
-     real(double) :: rcellx, rcelly, rcellz  ! cell length (should be changed to 3x3 cell parameters)
+     real(double) :: lat_vec(3,3)  ! cell length (should be changed to 3x3 cell parameters)
      integer, allocatable :: glob_to_node(:)     ! global id of atoms -> index of MPI-process
      real(double), allocatable :: atom_coord(:,:)! atomic coordinates (3, global-id)
      real(double), allocatable :: atom_veloc(:,:)! atomic velocities  (3, global-id)
@@ -127,6 +127,8 @@ contains
   !!   2013/08/22
   !!  MODIFICATION
   !!   2019/12/30 flag_DumpMatrices are introduced 
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine dump_pos_and_matrices(index, MDstep, velocity)
@@ -245,6 +247,8 @@ contains
   !!  MODIFICATION
   !!   2019/09/02 TM : nspin is introduced
   !!   
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine dump_matrix_update(stub,matA,range,index,nspin,iprint_mode,MDstep,velocity)
@@ -335,6 +339,8 @@ contains
   !!      nmatrix -> nspin
   !!   2019/11/15 Tsuyoshi Miyazaki
   !!      nspin -> n_matrix to be consistent with grab_matrix2
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine dump_matrix2(stub,matA,range,n_matrix,index)
@@ -494,6 +500,8 @@ contains
   !!   2016/10/03
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine set_matrix_store(stub,matrices,range,n_matrix,matinfo)
@@ -506,7 +514,7 @@ contains
     use cover_module, ONLY: BCS_parts
     use matrix_data, ONLY: mat
     use mult_module, ONLY: mat_p
-    use global_module, ONLY: rcellx, rcelly, rcellz
+    use global_module, ONLY: lat_vec
 
     implicit none
 
@@ -623,9 +631,9 @@ contains
                 matinfo%vec_Rij(3,jst) = bundle%zprim(iprim) - BCS_parts%zcover(gcspart)
 
                 !vec_Rij is changed from cartesian unit to fractional coordinate  : 2017Dec14
-                matinfo%vec_Rij(1,jst) = matinfo%vec_Rij(1,jst)/rcellx
-                matinfo%vec_Rij(2,jst) = matinfo%vec_Rij(2,jst)/rcelly
-                matinfo%vec_Rij(3,jst) = matinfo%vec_Rij(3,jst)/rcellz
+                matinfo%vec_Rij(1,jst) = matinfo%vec_Rij(1,jst)/lat_vec(1,1)
+                matinfo%vec_Rij(2,jst) = matinfo%vec_Rij(2,jst)/lat_vec(2,2)
+                matinfo%vec_Rij(3,jst) = matinfo%vec_Rij(3,jst)/lat_vec(3,3)
 
              enddo !neigh = 1, mat(np,range)%n_nab(ni)
 
@@ -695,12 +703,14 @@ contains
   !!   2016/10/04 (2013/08/21)
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine dump_InfoMatGlobal(index,velocity,MDstep)
 
     ! Module usage
-    use global_module, ONLY: ni_in_cell,numprocs,rcellx,rcelly,rcellz,id_glob, &
+    use global_module, ONLY: ni_in_cell,numprocs,lat_vec,id_glob, &
          min_layer, io_lun, iprint_MD
     use GenComms, ONLY: cq_abort, inode, ionode, my_barrier, myid
     use group_module, ONLY: parts
@@ -755,7 +765,8 @@ contains
        write (lun,*) flag_velocity, flag_MDstep,'  = flag_velocity, flag_MDstep'
        write (lun,*) mat_global_tmp%ni_in_cell, mat_global_tmp%numprocs, ' # of atoms, # of process '
        write (lun,*) mat_global_tmp%npcellx,mat_global_tmp%npcelly,mat_global_tmp%npcellz,' npcellx,y,z'
-       write (lun,fmt='(3f25.15,a)') mat_global_tmp%rcellx,mat_global_tmp%rcelly,mat_global_tmp%rcellz,' rcellx,y,z'
+       write (lun,fmt='(3f25.15,a)') mat_global_tmp%lat_vec(1,1), &
+          mat_global_tmp%lat_vec(2,2), mat_global_tmp%lat_vec(3,3),' lat_vec(1,1),y,z'
        write (lun,*) mat_global_tmp%glob_to_node(1:mat_global_tmp%ni_in_cell)   
        write (lun,*) mat_global_tmp%MDstep,'  MD step'
 
@@ -802,13 +813,15 @@ contains
   !!   2016/10/04 (2013/08/21)
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine set_InfoMatGlobal(mat_glob, step, velocity_in)
 
     ! Module usage
     use numbers, ONLY: zero
-    use global_module, ONLY: ni_in_cell,numprocs,rcellx,rcelly,rcellz,id_glob, atom_coord
+    use global_module, ONLY: ni_in_cell,numprocs,lat_vec,id_glob, atom_coord
     use GenComms, ONLY: cq_abort
     use group_module, ONLY: parts
 
@@ -831,9 +844,10 @@ contains
     mat_glob%ni_in_cell = ni_in_cell
     mat_glob%numprocs   = numprocs
 
-    mat_glob%rcellx     = rcellx
-    mat_glob%rcelly     = rcelly
-    mat_glob%rcellz     = rcellz
+    mat_glob%lat_vec = 0.0_double
+    mat_glob%lat_vec(1,1)     = lat_vec(1,1)
+    mat_glob%lat_vec(2,2)     = lat_vec(2,2)
+    mat_glob%lat_vec(3,3)     = lat_vec(3,3)
 
     mat_glob%npcellx     = parts%ngcellx
     mat_glob%npcelly     = parts%ngcelly
@@ -891,6 +905,8 @@ contains
   !!   2016/10/04 (2013/08/21)
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine free_InfoMatGlobal(mat_glob)
@@ -932,6 +948,8 @@ contains
   !!   2017/10/13 made from grab_InfoGlobal
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine grab_InfoMatGlobal(InfoGlob,index,flag_velocity)
@@ -988,7 +1006,8 @@ contains
        if(ni_in_cell /= InfoGlob%ni_in_cell) &
             call cq_abort('Error in grab_InfoMatGlobal: ni_in_cell= ',ni_in_cell,InfoGlob%ni_in_cell)
        read(lun,*) InfoGlob%npcellx,InfoGlob%npcelly,InfoGlob%npcellz
-       read(lun,*) InfoGlob%rcellx,InfoGlob%rcelly,InfoGlob%rcellz
+       InfoGlob%lat_vec = 0.0_double
+       read(lun,*) InfoGlob%lat_vec(1,1),InfoGlob%lat_vec(2,2),InfoGlob%lat_vec(3,3)
        read(lun,*) InfoGlob%glob_to_node(1:InfoGlob%ni_in_cell)
        read(lun,*) InfoGlob%MDstep
 
@@ -1025,9 +1044,9 @@ contains
     call gcopy(InfoGlob%npcelly)
     call gcopy(InfoGlob%npcellz)
 
-    call gcopy(InfoGlob%rcellx)
-    call gcopy(InfoGlob%rcelly)
-    call gcopy(InfoGlob%rcellz)
+    call gcopy(InfoGlob%lat_vec(1,1))
+    call gcopy(InfoGlob%lat_vec(2,2))
+    call gcopy(InfoGlob%lat_vec(3,3))
 
     call gcopy(InfoGlob%glob_to_node, ni_in_cell)
     call gcopy(InfoGlob%MDstep)
@@ -1063,6 +1082,8 @@ contains
   !!  MODIFICATION
   !!   2019/Nov/14 glob2node_old was removed.
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine set_atom_coord_diff(InfoGlob)
@@ -1070,7 +1091,7 @@ contains
     use datatypes
     use numbers,      only: one, half, very_small
     use global_module,only: atom_coord, atom_coord_diff, io_lun,&
-         rcellx, rcelly, rcellz, ni_in_cell
+         lat_vec, ni_in_cell
 
     implicit none
 
@@ -1083,7 +1104,9 @@ contains
     integer      :: ig
 
     ! Test for unit cell size change
-    scale_x = rcellx/InfoGlob%rcellx; scale_y = rcelly/InfoGlob%rcelly; scale_z = rcellz/InfoGlob%rcellz
+    scale_x = lat_vec(1,1)/InfoGlob%lat_vec(1,1)
+    scale_y = lat_vec(2,2)/InfoGlob%lat_vec(2,2)
+    scale_z = lat_vec(3,3)/InfoGlob%lat_vec(3,3)
     rms_change = (scale_x - one)**2 + (scale_y - one)**2 + (scale_z - one)**2
     rms_change = sqrt(rms_change)
     if(rms_change > small_change .and. inode == ionode) &
@@ -1102,12 +1125,12 @@ contains
     endif
 
     do ig = 1, ni_in_cell
-       if((atom_coord_diff(1,ig)) > half*rcellx) atom_coord_diff(1,ig)=atom_coord_diff(1,ig)-rcellx
-       if((atom_coord_diff(1,ig)) < -half*rcellx) atom_coord_diff(1,ig)=atom_coord_diff(1,ig)+rcellx
-       if((atom_coord_diff(2,ig)) > half*rcelly) atom_coord_diff(2,ig)=atom_coord_diff(2,ig)-rcelly
-       if((atom_coord_diff(2,ig)) < -half*rcelly) atom_coord_diff(2,ig)=atom_coord_diff(2,ig)+rcelly
-       if((atom_coord_diff(3,ig)) > half*rcellz) atom_coord_diff(3,ig)=atom_coord_diff(3,ig)-rcellz
-       if((atom_coord_diff(3,ig)) < -half*rcellz) atom_coord_diff(3,ig)=atom_coord_diff(3,ig)+rcellz
+       if((atom_coord_diff(1,ig)) > half*lat_vec(1,1)) atom_coord_diff(1,ig)=atom_coord_diff(1,ig)-lat_vec(1,1)
+       if((atom_coord_diff(1,ig)) < -half*lat_vec(1,1)) atom_coord_diff(1,ig)=atom_coord_diff(1,ig)+lat_vec(1,1)
+       if((atom_coord_diff(2,ig)) > half*lat_vec(2,2)) atom_coord_diff(2,ig)=atom_coord_diff(2,ig)-lat_vec(2,2)
+       if((atom_coord_diff(2,ig)) < -half*lat_vec(2,2)) atom_coord_diff(2,ig)=atom_coord_diff(2,ig)+lat_vec(2,2)
+       if((atom_coord_diff(3,ig)) > half*lat_vec(3,3)) atom_coord_diff(3,ig)=atom_coord_diff(3,ig)-lat_vec(3,3)
+       if((atom_coord_diff(3,ig)) < -half*lat_vec(3,3)) atom_coord_diff(3,ig)=atom_coord_diff(3,ig)+lat_vec(3,3)
     enddo
 
     return
@@ -1136,6 +1159,8 @@ contains
   !!   2017 June
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine make_index_iter(mx_store, iter_present, index_iter)
@@ -1194,6 +1219,8 @@ contains
   !!    Moved from io_module2 to store_matrix
   !!   2019/11/08 tsuyoshi 
   !!    Added InfoGlob in the dummy arguments, and removed n_proc_old
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine grab_matrix2(stub,inode,nfile,InfoMat,InfoGlob,index,n_matrix)
@@ -1443,6 +1470,8 @@ contains
   !!   2017/11/10 tsuyoshi
   !!    Moved from io_module2
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine deallocate_InfoMatrixFile(nfile,InfoMat)
@@ -1513,6 +1542,8 @@ contains
   !!    Change the filenames and tidying up the code
   !!   2019/11/15 tsuyoshi
   !!    Moved from XLBOMD_module to store_matrix
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   subroutine dump_XL()
 
@@ -1579,6 +1610,8 @@ contains
   !!   2024/08/30
   !!  MODIFICATION
   !!
+  !!   2026/06/30 Augustin LU
+  !!    Replaced rcellx, rcelly, rcellz with lat_vec(3,3)
   !!  SOURCE
   !!
   subroutine write_Rij_MatrixElements(stub,matA,range,n_matrix,index)
@@ -1586,7 +1619,7 @@ contains
     use GenComms, ONLY: inode, ionode, cq_abort
     use global_module, ONLY: numprocs, id_glob
     use io_module, ONLY: get_file_name, get_file_name_2rank
-    use global_module, ONLY: rcellx, rcelly, rcellz
+    use global_module, ONLY: lat_vec
 
     implicit none
 
@@ -1648,9 +1681,9 @@ contains
 
            do jj=1,jmax
               Rij(1:3) = tmp_matrix_store%vec_Rij(1:3,ibeg+jj-1)
-               Rij(1) = Rij(1)*rcellx
-               Rij(2) = Rij(2)*rcelly
-               Rij(3) = Rij(3)*rcellz
+               Rij(1) = Rij(1)*lat_vec(1,1)
+               Rij(2) = Rij(2)*lat_vec(2,2)
+               Rij(3) = Rij(3)*lat_vec(3,3)
               Rij_2 = Rij(1)**2 + Rij(2)**2 + Rij(3)**2
               nspin_local=tmp_matrix_store%nspin
              do n2=1,tmp_matrix_store%beta_j(ibeg+jj-1)
