@@ -888,7 +888,7 @@ contains
          flag_precondition_blips,                  &
          flag_fix_spin_population,                 &
          flag_fractional_atomic_coords,            &
-         ne_in_cell,          &
+         ne_in_cell, flag_calc_bec, bec_disp,      &
          max_L_iterations, flag_read_blocks,       &
          runtype, restart_DM, restart_rho,         &
          flag_basis_set, blips, PAOs,              &
@@ -2013,6 +2013,15 @@ contains
     ! Calculate bulk polarisation
     flag_calc_pol   = fdf_boolean('General.CalcPol', .false.)
     flag_do_pol_calc = .false.
+    flag_calc_bec   = fdf_boolean('Polarisation.CalcBEC', .false.)
+    bec_disp        = fdf_double('Polarisation.BECDisp', 0.015_double)
+    ! bec_disp is typically in Angstrom in user input, but we convert to Bohr internally
+    bec_disp        = bec_disp / BohrToAng
+
+    if (flag_calc_bec) then
+       flag_calc_pol = .true.
+       runtype = 'bec'
+    end if
     ! Find direction for polarisation calculation: 0 means all three
     i_pol_dir = 0
     i_pol_dir(1) = fdf_integer('General.PolDir',0)

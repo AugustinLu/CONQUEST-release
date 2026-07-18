@@ -420,6 +420,9 @@ module global_module
 
   ! Polarisation
   logical :: flag_calc_pol, flag_do_pol_calc
+  logical :: flag_calc_bec
+  real(double) :: bec_disp
+  real(double), allocatable, dimension(:,:,:) :: bec_tensor
   integer, dimension(3) :: mat_polX_re, mat_polX_im
   integer, dimension(3) :: mat_polX_re_atomf, mat_polX_im_atomf
   complex(double_cplx), dimension(:,:,:,:), allocatable, target :: polS
