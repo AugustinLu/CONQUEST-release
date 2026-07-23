@@ -114,9 +114,7 @@ contains
 
           ! Plus displacement
           atom_coord_old = atom_coord
-          atom_coord_old = atom_coord
-          atom_coord(j, i) = r_orig(j, i)
-          atom_coord_diff = atom_coord - atom_coord_old + bec_disp
+          atom_coord(j, i) = r_orig(j, i) + bec_disp
           atom_coord_diff = atom_coord - atom_coord_old
           if (inode == ionode) write(io_lun, fmt='(6x,"Plus displacement...")')
                     call wrap_xyz_atom_cell()
@@ -136,9 +134,7 @@ contains
 
           ! Minus displacement
           atom_coord_old = atom_coord
-          atom_coord_old = atom_coord
-          atom_coord(j, i) = r_orig(j, i)
-          atom_coord_diff = atom_coord - atom_coord_old - bec_disp
+          atom_coord(j, i) = r_orig(j, i) - bec_disp
           atom_coord_diff = atom_coord - atom_coord_old
           if (inode == ionode) write(io_lun, fmt='(6x,"Minus displacement...")')
                     call wrap_xyz_atom_cell()
