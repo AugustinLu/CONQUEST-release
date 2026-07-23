@@ -48,16 +48,17 @@ contains
   subroutine bec_run(fixed_potential, vary_mu, total_energy)
 
     use dimens,           only: r_super_x, r_super_y, r_super_z
-    use global_module,    only: ni_in_cell, atom_coord, flag_calc_pol, &
+    use global_module,    only: flag_move_atom, flag_reset_dens_on_atom_move, flag_LmatrixReuse, &
+                                flag_DM_converged, restart_DM, ni_in_cell, atom_coord, flag_calc_pol, &
                                 bec_disp, io_lun, iprint_gen, bec_tensor, &
-                                flag_calc_bec, ne_in_cell, species_glob, flag_LmatrixReuse, flag_DM_converged, restart_DM
+                                flag_calc_bec, ne_in_cell, species_glob
     use polarisation,     only: get_polarisation, Pel_gamma, get_P_ionic
     use minimise,         only: get_E_and_F
     use GenComms,         only: inode, ionode, cq_abort, my_barrier
     use io_module,        only: write_extxyz
     use force_module,     only: tot_force, stress
     use species_module,   only: species_label
-    use move_atoms,       only: update_pos_and_matrices, update_H, update_r_atom_cell
+    use move_atoms,       only: update_r_atom_cell, updateIndices3, update_H, wrap_xyz_atom_cell, check_move_atoms
 
     implicit none
 
@@ -76,6 +77,8 @@ contains
     real(double), dimension(3) :: p_ionic_plus, p_ionic_minus
     logical :: flag_LmatrixReuse_orig
     logical :: flag_DM_converged_orig
+    logical :: restart_DM_orig
+    logical :: flag_reset_dens_on_atom_move_orig
 
     if (.not. allocated(bec_tensor)) allocate(bec_tensor(3,3,ni_in_cell))
     bec_tensor = zero
@@ -97,17 +100,11 @@ contains
        write(io_lun, fmt='(4x,60("-"),/)')
     end if
 
-    flag_LmatrixReuse_orig = flag_LmatrixReuse
-    flag_LmatrixReuse = .false.
-    flag_DM_converged_orig = flag_DM_converged
-    flag_DM_converged = .false.
-
-
     ! Base calculation (Optional but helps converge DM)
     if (inode == ionode) write(io_lun, fmt='(4x,"Calculating ground state...")')
     flag_DM_converged = .false.
-          restart_DM = .false.
-          call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
+    restart_DM = .false.
+    call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
 
     ! Loop over atoms and coordinates
     do i = 1, ni_in_cell
@@ -117,12 +114,14 @@ contains
           ! Plus displacement
           atom_coord(j, i) = r_orig(j, i) + bec_disp
           if (inode == ionode) write(io_lun, fmt='(6x,"Plus displacement...")')
+                    call wrap_xyz_atom_cell()
           call update_r_atom_cell()
-          call update_pos_and_matrices(0)
+          call check_move_atoms(flag_move_atom)
+          call updateIndices3(fixed_potential, tot_force)
           call update_H(fixed_potential)
           flag_DM_converged = .false.
-          restart_DM = .false.
-          call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
+    restart_DM = .false.
+    call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
           call get_polarisation()
           call get_P_ionic(p_ionic_plus)
           ! P = P_el + P_ion. We use cell_vec / cell_vol to convert to standard units
@@ -133,20 +132,24 @@ contains
           ! Minus displacement
           atom_coord(j, i) = r_orig(j, i) - bec_disp
           if (inode == ionode) write(io_lun, fmt='(6x,"Minus displacement...")')
+                    call wrap_xyz_atom_cell()
           call update_r_atom_cell()
-          call update_pos_and_matrices(0)
+          call check_move_atoms(flag_move_atom)
+          call updateIndices3(fixed_potential, tot_force)
           call update_H(fixed_potential)
           flag_DM_converged = .false.
-          restart_DM = .false.
-          call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
+    restart_DM = .false.
+    call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
           call get_polarisation()
           call get_P_ionic(p_ionic_minus)
           p_minus = Pel_gamma + p_ionic_minus
 
           ! Restore atom
           atom_coord(j, i) = r_orig(j, i)
+                    call wrap_xyz_atom_cell()
           call update_r_atom_cell()
-          call update_pos_and_matrices(0)
+          call check_move_atoms(flag_move_atom)
+          call updateIndices3(fixed_potential, tot_force)
           call update_H(fixed_potential)
 
           ! Calculate difference and unwrap phase
@@ -191,6 +194,8 @@ contains
     ! Actually, write_extxyz is usually called from control_run. We will call it here.
     flag_LmatrixReuse = flag_LmatrixReuse_orig
     flag_DM_converged = flag_DM_converged_orig
+    restart_DM = restart_DM_orig
+    flag_reset_dens_on_atom_move = flag_reset_dens_on_atom_move_orig
     call write_extxyz('trajectory.xyz', total_energy, tot_force, stress)
 
     deallocate(r_orig)
