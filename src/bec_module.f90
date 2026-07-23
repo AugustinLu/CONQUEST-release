@@ -48,7 +48,7 @@ contains
   subroutine bec_run(fixed_potential, vary_mu, total_energy)
 
     use dimens,           only: r_super_x, r_super_y, r_super_z
-    use global_module,    only: flag_move_atom, flag_reset_dens_on_atom_move, flag_LmatrixReuse, &
+    use global_module,    only: atom_coord_diff, flag_move_atom, flag_reset_dens_on_atom_move, flag_LmatrixReuse, &
                                 flag_DM_converged, restart_DM, ni_in_cell, atom_coord, flag_calc_pol, &
                                 bec_disp, io_lun, iprint_gen, bec_tensor, &
                                 flag_calc_bec, ne_in_cell, species_glob
@@ -75,6 +75,7 @@ contains
     real(double) :: cell_vol
     real(double) :: quantum_val(3)
     real(double), dimension(3) :: p_ionic_plus, p_ionic_minus
+    real(double), dimension(3, ni_in_cell) :: atom_coord_old
     logical :: flag_LmatrixReuse_orig
     logical :: flag_DM_converged_orig
     logical :: restart_DM_orig
@@ -112,7 +113,11 @@ contains
           if (inode == ionode) write(io_lun, fmt='(/,4x,"Atom ", i5, " disp direction ", i1)') i, j
 
           ! Plus displacement
-          atom_coord(j, i) = r_orig(j, i) + bec_disp
+          atom_coord_old = atom_coord
+          atom_coord_old = atom_coord
+          atom_coord(j, i) = r_orig(j, i)
+          atom_coord_diff = atom_coord - atom_coord_old + bec_disp
+          atom_coord_diff = atom_coord - atom_coord_old
           if (inode == ionode) write(io_lun, fmt='(6x,"Plus displacement...")')
                     call wrap_xyz_atom_cell()
           call update_r_atom_cell()
@@ -130,7 +135,11 @@ contains
           p_plus = Pel_gamma + p_ionic_plus
 
           ! Minus displacement
-          atom_coord(j, i) = r_orig(j, i) - bec_disp
+          atom_coord_old = atom_coord
+          atom_coord_old = atom_coord
+          atom_coord(j, i) = r_orig(j, i)
+          atom_coord_diff = atom_coord - atom_coord_old - bec_disp
+          atom_coord_diff = atom_coord - atom_coord_old
           if (inode == ionode) write(io_lun, fmt='(6x,"Minus displacement...")')
                     call wrap_xyz_atom_cell()
           call update_r_atom_cell()
@@ -145,7 +154,9 @@ contains
           p_minus = Pel_gamma + p_ionic_minus
 
           ! Restore atom
+          atom_coord_old = atom_coord
           atom_coord(j, i) = r_orig(j, i)
+          atom_coord_diff = atom_coord - atom_coord_old
                     call wrap_xyz_atom_cell()
           call update_r_atom_cell()
           call check_move_atoms(flag_move_atom)
