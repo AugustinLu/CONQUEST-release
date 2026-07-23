@@ -50,14 +50,14 @@ contains
     use dimens,           only: r_super_x, r_super_y, r_super_z
     use global_module,    only: ni_in_cell, atom_coord, flag_calc_pol, &
                                 bec_disp, io_lun, iprint_gen, bec_tensor, &
-                                flag_calc_bec, ne_in_cell, species_glob
+                                flag_calc_bec, ne_in_cell, species_glob, flag_LmatrixReuse, flag_DM_converged, restart_DM
     use polarisation,     only: get_polarisation, Pel_gamma, get_P_ionic
     use minimise,         only: get_E_and_F
     use GenComms,         only: inode, ionode, cq_abort, my_barrier
     use io_module,        only: write_extxyz
     use force_module,     only: tot_force, stress
     use species_module,   only: species_label
-    use move_atoms,       only: update_atom_coord, updateIndices3, update_H
+    use move_atoms,       only: update_pos_and_matrices, update_H, update_r_atom_cell
 
     implicit none
 
@@ -74,6 +74,8 @@ contains
     real(double) :: cell_vol
     real(double) :: quantum_val(3)
     real(double), dimension(3) :: p_ionic_plus, p_ionic_minus
+    logical :: flag_LmatrixReuse_orig
+    logical :: flag_DM_converged_orig
 
     if (.not. allocated(bec_tensor)) allocate(bec_tensor(3,3,ni_in_cell))
     bec_tensor = zero
@@ -95,9 +97,17 @@ contains
        write(io_lun, fmt='(4x,60("-"),/)')
     end if
 
+    flag_LmatrixReuse_orig = flag_LmatrixReuse
+    flag_LmatrixReuse = .false.
+    flag_DM_converged_orig = flag_DM_converged
+    flag_DM_converged = .false.
+
+
     ! Base calculation (Optional but helps converge DM)
     if (inode == ionode) write(io_lun, fmt='(4x,"Calculating ground state...")')
-    call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
+    flag_DM_converged = .false.
+          restart_DM = .false.
+          call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
 
     ! Loop over atoms and coordinates
     do i = 1, ni_in_cell
@@ -107,9 +117,11 @@ contains
           ! Plus displacement
           atom_coord(j, i) = r_orig(j, i) + bec_disp
           if (inode == ionode) write(io_lun, fmt='(6x,"Plus displacement...")')
-          call update_atom_coord()
-          call updateIndices3(fixed_potential, tot_force)
+          call update_r_atom_cell()
+          call update_pos_and_matrices(0)
           call update_H(fixed_potential)
+          flag_DM_converged = .false.
+          restart_DM = .false.
           call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
           call get_polarisation()
           call get_P_ionic(p_ionic_plus)
@@ -121,9 +133,11 @@ contains
           ! Minus displacement
           atom_coord(j, i) = r_orig(j, i) - bec_disp
           if (inode == ionode) write(io_lun, fmt='(6x,"Minus displacement...")')
-          call update_atom_coord()
-          call updateIndices3(fixed_potential, tot_force)
+          call update_r_atom_cell()
+          call update_pos_and_matrices(0)
           call update_H(fixed_potential)
+          flag_DM_converged = .false.
+          restart_DM = .false.
           call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
           call get_polarisation()
           call get_P_ionic(p_ionic_minus)
@@ -131,8 +145,8 @@ contains
 
           ! Restore atom
           atom_coord(j, i) = r_orig(j, i)
-          call update_atom_coord()
-          call updateIndices3(fixed_potential, tot_force)
+          call update_r_atom_cell()
+          call update_pos_and_matrices(0)
           call update_H(fixed_potential)
 
           ! Calculate difference and unwrap phase
@@ -175,6 +189,8 @@ contains
 
     ! Output to XYZ if write_extxyz is called by main logic
     ! Actually, write_extxyz is usually called from control_run. We will call it here.
+    flag_LmatrixReuse = flag_LmatrixReuse_orig
+    flag_DM_converged = flag_DM_converged_orig
     call write_extxyz('trajectory.xyz', total_energy, tot_force, stress)
 
     deallocate(r_orig)

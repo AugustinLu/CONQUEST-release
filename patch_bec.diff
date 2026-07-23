@@ -1,0 +1,71 @@
+--- src/bec_module.f90
++++ src/bec_module.f90
+@@ -51,7 +51,7 @@
+     use dimens,           only: r_super_x, r_super_y, r_super_z
+     use global_module,    only: ni_in_cell, atom_coord, flag_calc_pol, &
+                                 bec_disp, io_lun, iprint_gen, bec_tensor, &
+-                                flag_calc_bec, ne_in_cell, species_glob
++                                flag_calc_bec, ne_in_cell, species_glob, flag_LmatrixReuse
+     use polarisation,     only: get_polarisation, Pel_gamma, get_P_ionic
+     use minimise,         only: get_E_and_F
+     use GenComms,         only: inode, ionode, cq_abort, my_barrier
+@@ -59,7 +59,7 @@
+     use force_module,     only: tot_force, stress
+     use species_module,   only: species_label
+-    use move_atoms,       only: update_atom_coord, updateIndices3, update_H
++    use move_atoms,       only: update_r_atom_cell, updateIndices3, update_H
+
+     implicit none
+
+@@ -73,6 +73,7 @@
+     real(double) :: cell_vol
+     real(double) :: quantum_val(3)
+     real(double), dimension(3) :: p_ionic_plus, p_ionic_minus
++    logical :: flag_LmatrixReuse_orig
+
+     if (.not. allocated(bec_tensor)) allocate(bec_tensor(3,3,ni_in_cell))
+     bec_tensor = zero
+@@ -95,6 +96,9 @@
+        write(io_lun, fmt='(4x,"Displacement amplitude (Bohr): ", f10.6)') bec_disp
+        write(io_lun, fmt='(4x,60("-"),/)')
+     end if
++
++    flag_LmatrixReuse_orig = flag_LmatrixReuse
++    flag_LmatrixReuse = .false.
+
+     ! Base calculation (Optional but helps converge DM)
+     if (inode == ionode) write(io_lun, fmt='(4x,"Calculating ground state...")')
+@@ -106,7 +110,7 @@
+           ! Plus displacement
+           atom_coord(j, i) = r_orig(j, i) + bec_disp
+           if (inode == ionode) write(io_lun, fmt='(6x,"Plus displacement...")')
+-          call update_atom_coord()
++          call update_r_atom_cell()
+           call updateIndices3(fixed_potential, tot_force)
+           call update_H(fixed_potential)
+           call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
+@@ -123,7 +127,7 @@
+           ! Minus displacement
+           atom_coord(j, i) = r_orig(j, i) - bec_disp
+           if (inode == ionode) write(io_lun, fmt='(6x,"Minus displacement...")')
+-          call update_atom_coord()
++          call update_r_atom_cell()
+           call updateIndices3(fixed_potential, tot_force)
+           call update_H(fixed_potential)
+           call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
+@@ -136,7 +140,7 @@
+           ! Restore atom
+           atom_coord(j, i) = r_orig(j, i)
+-          call update_atom_coord()
++          call update_r_atom_cell()
+           call updateIndices3(fixed_potential, tot_force)
+           call update_H(fixed_potential)
+
+@@ -165,6 +169,8 @@
+     end if
+
++    flag_LmatrixReuse = flag_LmatrixReuse_orig
++
+     ! Output to XYZ if write_extxyz is called by main logic
+     ! Actually, write_extxyz is usually called from control_run. We will call it here.
+     call write_extxyz('trajectory.xyz', total_energy, tot_force, stress)

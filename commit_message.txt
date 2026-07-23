@@ -1,0 +1,10 @@
+Fix: Reset density matrix and atomic coords cleanly during BEC calculation
+
+The Born Effective Charge (BEC) calculation loop evaluates structures across atomic displacements but was suffering from the following:
+1. "Charge density from K is strange: Infinity" due to invalid re-use of K/L matrices generated from unshifted structures.
+2. Coordinates not correctly updated in the spatial partitioning arrays causing the static energy bug and 0 values for Z*.
+
+Changes:
+- Replaced `update_atom_coord` + `updateIndices3` sequence with the proper `update_pos_and_matrices(0)` + `update_H` wrappers.
+- Explicitly disabled `flag_LmatrixReuse`, `flag_DM_converged` and `restart_DM` within `bec_run` loop.
+- Implemented `flag_reset_dens_on_atom_move` manually during BEC displacements to force full exact SCF re-convergence per displacement.
