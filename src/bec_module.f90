@@ -127,6 +127,7 @@ contains
           call update_H(fixed_potential)
           flag_DM_converged = .false.
           restart_DM = .false.
+          flag_reset_dens_on_atom_move = .true.
           call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
           call get_polarisation()
           call get_P_ionic(p_ionic_plus)
@@ -153,6 +154,7 @@ contains
           call update_H(fixed_potential)
           flag_DM_converged = .false.
           restart_DM = .false.
+          flag_reset_dens_on_atom_move = .true.
           call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
           call get_polarisation()
           call get_P_ionic(p_ionic_minus)
@@ -169,7 +171,7 @@ contains
           do k = 1, 3
              p_diff(k) = p_plus(k) - p_minus(k)
              ! Unwrap phase difference to be in [-0.5, 0.5] (since quantum=1 in frac coords)
-             p_diff(k) = p_diff(k) - nint(p_diff(k))
+             p_diff(k) = p_diff(k) - anint(p_diff(k))
 
              ! Z*_{i, kj} = V * dP_k / dU_j
              ! Here p_diff is in frac coords. To get physical P change: p_diff_phys = p_diff_frac * cell_vec / V
