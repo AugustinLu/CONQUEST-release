@@ -51,14 +51,16 @@ contains
     use global_module,    only: atom_coord_diff, flag_move_atom, flag_reset_dens_on_atom_move, flag_LmatrixReuse, &
                                 flag_DM_converged, restart_DM, ni_in_cell, atom_coord, flag_calc_pol, &
                                 bec_disp, io_lun, iprint_gen, bec_tensor, &
-                                flag_calc_bec, ne_in_cell, species_glob
+                                flag_calc_bec, ne_in_cell, species_glob, &
+                                x_atom_cell, y_atom_cell, z_atom_cell
     use polarisation,     only: get_polarisation, Pel_gamma, get_P_ionic
     use minimise,         only: get_E_and_F
     use GenComms,         only: inode, ionode, cq_abort, my_barrier
     use io_module,        only: write_extxyz
     use force_module,     only: tot_force, stress
     use species_module,   only: species_label
-    use move_atoms,       only: update_r_atom_cell, updateIndices3, update_H, wrap_xyz_atom_cell, check_move_atoms
+    use move_atoms,       only: update_H, update_pos_and_matrices, updateLorK
+    use store_matrix,     only: dump_pos_and_matrices
 
     implicit none
 
@@ -106,6 +108,9 @@ contains
     flag_DM_converged = .false.
     restart_DM = .false.
     call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
+    
+    ! Dump matrices so we can recover the unperturbed ground state density matrix
+    call dump_pos_and_matrices()
 
     ! Loop over atoms and coordinates
     do i = 1, ni_in_cell
@@ -113,18 +118,16 @@ contains
           if (inode == ionode) write(io_lun, fmt='(/,4x,"Atom ", i5, " disp direction ", i1)') i, j
 
           ! Plus displacement
-          atom_coord_old = atom_coord
-          atom_coord(j, i) = r_orig(j, i) + bec_disp
-          atom_coord_diff = atom_coord - atom_coord_old
+          if (j == 1) x_atom_cell(i) = x_atom_cell(i) + bec_disp
+          if (j == 2) y_atom_cell(i) = y_atom_cell(i) + bec_disp
+          if (j == 3) z_atom_cell(i) = z_atom_cell(i) + bec_disp
+
           if (inode == ionode) write(io_lun, fmt='(6x,"Plus displacement...")')
-                    call wrap_xyz_atom_cell()
-          call update_r_atom_cell()
-          call check_move_atoms(flag_move_atom)
-          call updateIndices3(fixed_potential, tot_force)
+          call update_pos_and_matrices(updateLorK)
           call update_H(fixed_potential)
           flag_DM_converged = .false.
-    restart_DM = .false.
-    call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
+          restart_DM = .false.
+          call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
           call get_polarisation()
           call get_P_ionic(p_ionic_plus)
           ! P = P_el + P_ion. We use cell_vec / cell_vol to convert to standard units
@@ -133,41 +136,33 @@ contains
           p_plus = Pel_gamma + p_ionic_plus
 
 
-          ! Intermediate restore to avoid large double-jumps crossing partition bounds
-          atom_coord_old = atom_coord
-          atom_coord(j, i) = r_orig(j, i)
-          atom_coord_diff = atom_coord - atom_coord_old
-          call wrap_xyz_atom_cell()
-          call update_r_atom_cell()
-          call check_move_atoms(flag_move_atom)
-          call updateIndices3(.true., tot_force)
+          ! Intermediate restore to 0.0 (reads dumped matrices from unperturbed state)
+          if (j == 1) x_atom_cell(i) = x_atom_cell(i) - bec_disp
+          if (j == 2) y_atom_cell(i) = y_atom_cell(i) - bec_disp
+          if (j == 3) z_atom_cell(i) = z_atom_cell(i) - bec_disp
+          call update_pos_and_matrices(updateLorK)
           call update_H(fixed_potential)
 
           ! Minus displacement
-          atom_coord_old = atom_coord
-          atom_coord(j, i) = r_orig(j, i) - bec_disp
-          atom_coord_diff = atom_coord - atom_coord_old
+          if (j == 1) x_atom_cell(i) = x_atom_cell(i) - bec_disp
+          if (j == 2) y_atom_cell(i) = y_atom_cell(i) - bec_disp
+          if (j == 3) z_atom_cell(i) = z_atom_cell(i) - bec_disp
+
           if (inode == ionode) write(io_lun, fmt='(6x,"Minus displacement...")')
-                    call wrap_xyz_atom_cell()
-          call update_r_atom_cell()
-          call check_move_atoms(flag_move_atom)
-          call updateIndices3(fixed_potential, tot_force)
+          call update_pos_and_matrices(updateLorK)
           call update_H(fixed_potential)
           flag_DM_converged = .false.
-    restart_DM = .false.
-    call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
+          restart_DM = .false.
+          call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
           call get_polarisation()
           call get_P_ionic(p_ionic_minus)
           p_minus = Pel_gamma + p_ionic_minus
 
-          ! Restore atom
-          atom_coord_old = atom_coord
-          atom_coord(j, i) = r_orig(j, i)
-          atom_coord_diff = atom_coord - atom_coord_old
-                    call wrap_xyz_atom_cell()
-          call update_r_atom_cell()
-          call check_move_atoms(flag_move_atom)
-          call updateIndices3(fixed_potential, tot_force)
+          ! Restore atom to 0.0
+          if (j == 1) x_atom_cell(i) = x_atom_cell(i) + bec_disp
+          if (j == 2) y_atom_cell(i) = y_atom_cell(i) + bec_disp
+          if (j == 3) z_atom_cell(i) = z_atom_cell(i) + bec_disp
+          call update_pos_and_matrices(updateLorK)
           call update_H(fixed_potential)
 
           ! Calculate difference and unwrap phase
