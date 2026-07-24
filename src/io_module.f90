@@ -2934,12 +2934,12 @@ second:   do
       write(vec_c,fmt='(3f15.8)') zero, zero, r_super_z*BohrToAng
       comment=TRIM(comment)//' Lattice="'//ADJUSTL(vec_a)//ADJUSTL(vec_b)//TRIM(ADJUSTL(vec_c))//'" '
       if (flag_calc_bec) then
-         comment=TRIM(comment)//' Properties=species:S:1:pos:R:3:born_effective_charges:R:9:forces:R:3 potential_energy='
+         comment=TRIM(comment)//' Properties=species:S:1:pos:R:3:born_effective_charges:R:9:forces:R:3 energy='
       else
-         comment=TRIM(comment)//' Properties=species:S:1:pos:R:3:forces:R:3 potential_energy='
+         comment=TRIM(comment)//' Properties=species:S:1:pos:R:3:forces:R:3 energy='
       end if
       write(energy_str,'(f0.8)') energy0 * en_conv_loc
-      comment = TRIM(comment)//TRIM(energy_str)//' pbc="T T T" '
+      comment = TRIM(comment)//TRIM(energy_str)
 
       volume = r_super_x*r_super_y*r_super_z*BohrToAng**3
 
@@ -2953,7 +2953,11 @@ second:   do
       write(stress_str(91:135), '(3f15.8)') stress_tensor(3,1)*HaToeV/volume,&
               stress_tensor(3,2)*HaToeV/volume,&
               stress_tensor(3,3)*HaToeV/volume
-      comment = TRIM(comment)//' stress=" '//TRIM(stress_str)//'" '
+      comment = TRIM(comment)//' stress="'//TRIM(stress_str)//'" free_energy='//TRIM(energy_str)
+      if (flag_calc_bec) then
+          comment = TRIM(comment)//' bec_tensor_convention="Z[polarization_cartesian,displacement_cartesian]"'
+      end if
+      comment = TRIM(comment)//' pbc="T T T"'
 
       write(lun,'(a)') TRIM(comment)
 
