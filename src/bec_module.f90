@@ -127,7 +127,6 @@ contains
           call update_H(fixed_potential)
           flag_DM_converged = .false.
           restart_DM = .false.
-          flag_reset_dens_on_atom_move = .true.
           call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
           call get_polarisation()
           call get_P_ionic(p_ionic_plus)
@@ -154,7 +153,6 @@ contains
           call update_H(fixed_potential)
           flag_DM_converged = .false.
           restart_DM = .false.
-          flag_reset_dens_on_atom_move = .true.
           call get_E_and_F(fixed_potential, vary_mu, total_energy, .true., .true., 0)
           call get_polarisation()
           call get_P_ionic(p_ionic_minus)
