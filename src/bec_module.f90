@@ -132,6 +132,17 @@ contains
           ! Let's get total P in fractional coordinates first (quantum = 1).
           p_plus = Pel_gamma + p_ionic_plus
 
+
+          ! Intermediate restore to avoid large double-jumps crossing partition bounds
+          atom_coord_old = atom_coord
+          atom_coord(j, i) = r_orig(j, i)
+          atom_coord_diff = atom_coord - atom_coord_old
+          call wrap_xyz_atom_cell()
+          call update_r_atom_cell()
+          call check_move_atoms(flag_move_atom)
+          call updateIndices3(.true., tot_force)
+          call update_H(fixed_potential)
+
           ! Minus displacement
           atom_coord_old = atom_coord
           atom_coord(j, i) = r_orig(j, i) - bec_disp
