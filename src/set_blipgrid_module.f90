@@ -40,6 +40,8 @@
 !!    Renamed naba_atm -> naba_atoms_of_blocks, halo_atm -> halo_atoms_of_blocks
 !!   2016/08/01 17:30 nakata
 !!    Introduced atomf
+!!   2026/07/29 lu
+!!    Generalised integration-grid indexing and wrapping to skew cells
 !!  SOURCE
 !!
 module set_blipgrid_module

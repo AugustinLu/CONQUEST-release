@@ -56,6 +56,8 @@
 !!    Try to make blocks of variables clearer
 !!    Added experimental backtrace
 !!
+!!   2026/07/29 lu
+!!    Generalised initial lattice, reciprocal-space and volume setup
 !!  SOURCE
 !!
 module initial_read

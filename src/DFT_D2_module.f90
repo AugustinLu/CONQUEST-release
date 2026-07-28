@@ -22,6 +22,8 @@
 !!  2022/06/09 12:27 dave
 !!   Moved disp_energy to energy module, partition_distance taken
 !!   from ion_electrostatic
+!!  2026/07/29 lu
+!!   Generalised DFT-D2 lattice translations to non-orthogonal cells
 !! SOURCE
 module DFT_D2
 

@@ -56,6 +56,8 @@
 !!    Added XSF and XSF output frequency as user-adjustable parameter
 !!   2024/01/18 lin
 !!    Added extended XYZ file output for run types of static, cg, lbfgs, sqnm, and optcell
+!!   2026/07/29 lu
+!!    Enabled general-cell stress relaxation and guarded legacy method 3
 !!  SOURCE
 !!
 module control

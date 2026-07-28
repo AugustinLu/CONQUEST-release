@@ -17,6 +17,8 @@
 ! CREATION DATE
 !  2014/02/04
 ! MODIFICATION HISTORY
+! 2026/07/29 lu
+!  Generalised cell constraints to symmetric strain for skew lattices
 ! SOURCE
 !
 module constraint_module

@@ -48,6 +48,8 @@
 !!    Adding local blip-to-grid and grid-to-blip transforms
 !!   2014/09/15 18:30 lat
 !!    fixed call start/stop_timer to timer_module (not timer_stdlocks_module !)
+!!   2026/07/29 lu
+!!    Generalised blip-grid coordinate transforms to non-orthogonal cells
 !!  SOURCE
 module blip_grid_transform_module
 

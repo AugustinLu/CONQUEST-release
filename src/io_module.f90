@@ -78,6 +78,8 @@
 !!    they don't exist
 !!   2019/11/04 11:36 dave
 !!    Removed redundant code (old SFC routines)
+!!   2026/07/29 lu
+!!    Added general lattice input/output and complete extended-XYZ cells
 module io_module
 
   use datatypes,              only: double

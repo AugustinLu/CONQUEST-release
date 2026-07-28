@@ -31,6 +31,8 @@
 !!
 !!  MODIFICATION HISTORY
 !!
+!!  2026/07/29 lu
+!!   Updated EXX grid spacing to use general lattice-vector lengths
 !!  SOURCE
 !!
 module exx_module

@@ -64,6 +64,8 @@
 !!    Moved erfc to functions module; also energies to energy.module
 !!   2019/04/09 zamaan
 !!    Off-diagonal stress tensor contributions
+!!   2026/07/29 lu
+!!    Generalised Ewald energy, forces and stress to arbitrary lattices
 !!  SOURCE
 !!
 module ion_electrostatic

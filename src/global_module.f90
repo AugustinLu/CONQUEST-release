@@ -161,6 +161,8 @@
 !!    Variables for polarisation calculation
 !!   2024/05/29 17:40 nakata
 !!    Added DFT+U flag
+!!   2026/07/29 lu
+!!    Added full direct/inverse/reciprocal lattice and exact triclinic MIC
 !!  SOURCE
 !!
 module global_module

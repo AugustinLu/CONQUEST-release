@@ -59,6 +59,8 @@
 !!    Removed old RNG, replaced calls with new one from rng module
 !!   2019/11/18 tsuyoshi
 !!    Removed the places related to flag_MDold
+!!   2026/07/29 lu
+!!    Added symmetric-strain method-2 atom/cell optimisation for skew cells
 !!  SOURCE
 !!
 module move_atoms

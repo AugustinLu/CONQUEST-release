@@ -15,7 +15,8 @@
 !!  CREATION DATE
 !!   2023/01/12
 !!  MODIFICATION HISTORY
-!!
+!!   2026/07/29 lu
+!!    Generalised polarisation volume and ionic fractional coordinates
 !!  SOURCE
 !!
 module polarisation

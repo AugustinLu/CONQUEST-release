@@ -42,6 +42,8 @@
 !!    Commented out some tricks used in MD & structure optimisation
 !!   2016/09/16 16:00 nakata
 !!    Added variables for PAO-based matrices and multi-site SFs
+!!   2026/07/29 lu
+!!    Generalised cell and grid dimensions for non-orthogonal lattices
 !!  SOURCE
 module dimens
 

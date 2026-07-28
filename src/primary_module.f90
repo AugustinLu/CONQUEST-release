@@ -37,6 +37,8 @@
 !!    Bug fix for make_prim (from TM), added RCSid and more comments
 !!   2008/02/06 08:32 dave
 !!    Changed for output to file not stdout
+!!   2026/07/29 lu
+!!    Generalised primary-set translations to full lattice vectors
 !!  SOURCE
 !!
 module primary_module 

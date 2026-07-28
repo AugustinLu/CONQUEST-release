@@ -21,6 +21,8 @@
 !!    and removed n_matrix
 !!   2019/11/27 08:11 dave
 !!    Tidying source
+!!   2026/07/29 lu
+!!    Generalised stored-neighbour translations to non-orthogonal cells
 !!  SOURCE
 !!
 module UpdateInfo

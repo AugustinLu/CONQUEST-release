@@ -77,6 +77,8 @@
 !!    include off-diagonal elements.
 !!   2019/05/08 zamaan
 !!    Added atomic contributions to stress for computing heat flux
+!!   2026/07/29 lu
+!!    Generalised force and full stress assembly to non-orthogonal cells
 !!  SOURCE
 !!
 module force_module

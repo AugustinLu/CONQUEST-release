@@ -14,6 +14,8 @@
 !!   - Added derived data types for XL-BOMD
 !!   2020/01/02 16:57 dave
 !!    Defined units for saving intermediary charge etc during optimisation
+!!   2026/07/29 lu
+!!    Preserved full lattice geometry in matrix snapshots and remapping
 !!
 module store_matrix
 

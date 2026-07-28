@@ -16,6 +16,8 @@
 !!    conductivity calculations
 !!  2022/09/30 08:31 dave
 !!    Rearranging definitions and locations of types
+!!  2026/07/29 lu
+!!    Updated MD model cell access for general lattice-vector lengths
 !!  SOURCE
 !!
 module md_model

@@ -13,6 +13,8 @@
 !!    2013/07/01
 !!  MODIFICATION HISTORY
 !!    Added atom2part
+!!   2026/07/29 lu
+!!    Generalised fractional partition assignment to non-orthogonal cells
 !!***
 module atom_dispenser
 

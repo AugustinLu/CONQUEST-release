@@ -61,6 +61,8 @@
 !!    Changed ewald_CS to ion_ion_CS
 !!   2019/11/04 15:12 dave
 !!    Replace indexx from Numerical Recipes with generic heapsort
+!!   2026/07/29 lu
+!!    Generalised covering-set translations and bounds to non-orthogonal cells
 !!  SOURCE
 !!
 module cover_module

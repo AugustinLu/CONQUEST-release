@@ -40,6 +40,8 @@
 !!    Added timers
 !!   2014/09/15 18:30 lat
 !!    fixed call start/stop_timer to timer_module (not timer_stdlocks_module !)
+!!   2026/07/29 lu
+!!    Generalised pseudopotential lattice translations to non-orthogonal cells
 !!  SOURCE
 !!
 module pseudopotential_data

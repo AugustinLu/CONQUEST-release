@@ -75,6 +75,8 @@
 !!    Adding in routines for dipole correction in slabs with surface charges
 !!    from L. Bengtsson PRB 59, 12301 (1999) and J. Neugebauer and M. Scheffler,
 !!    PRB 46, 16067 (1992)
+!!   2026/07/29 lu
+!!    Generalised density-grid coordinate handling to non-orthogonal cells
 !!  SOURCE
 module density_module
 

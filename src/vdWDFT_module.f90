@@ -26,6 +26,8 @@
 !! CREATION DATE
 !!   2012/02/21
 !! MODIFICATION HISTORY
+!! 2026/07/29 lu
+!!  Corrected nonlocal vdW reciprocal normalization for arbitrary cells
 !! SOURCE
 !!
 module vdWDFT_module

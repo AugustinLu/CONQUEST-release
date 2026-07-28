@@ -19,6 +19,8 @@
 !!  CREATION DATE
 !!   2022/09/30 08:43
 !!  MODIFICATION HISTORY
+!!   2026/07/29 lu
+!!    Recorded complete non-orthogonal lattices in MD frame output
 !!  SOURCE
 !!
 module md_misc

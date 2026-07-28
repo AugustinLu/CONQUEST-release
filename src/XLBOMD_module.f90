@@ -27,6 +27,8 @@
   !!     1. matX, matXvel, matX_store are now moved to mult_module, and 
   !!     their names were changed to matXL, matXLvel, matXL_store.
   !!     2. the three routines (grab_XXvelS, ...) are now moved to store_matrix.
+  !!   2026/07/29 lu
+  !!     Updated cell-dimension access for general lattice storage
   !!  SOURCE
   !!
   module XLBOMD_module

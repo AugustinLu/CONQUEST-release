@@ -38,6 +38,8 @@
 !!    Added get_r_on_support for calculations of stress, polarisation and TDDFT in periodic boundaries
 !!   2016/08/05 15:00 nakata
 !!    Renamed get_r_on_support -> get_r_on_atomfns
+!!   2026/07/29 lu
+!!    Generalised Resta phase factors to full Cartesian/fractional transforms
 !!  SOURCE
 !!
 module S_matrix_module

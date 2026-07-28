@@ -22,6 +22,8 @@
 !!    Changed Info type from allocatable to pointer (fix gcc 4.4.7 compile issue)
 !!   2018/07/11 12:21 dave
 !!    Removed ambiguous and unnecessary parts and blocks variables, and added test for empty bundle
+!!   2026/07/29 lu
+!!    Generalised moving-atom partition updates to non-orthogonal cells
 !!  SOURCE
 !!
 module UpdateMember_module

@@ -30,6 +30,8 @@
 !!    Adding stress
 !!   2019/04/08 zamaan
 !!    Added off-diagonal elements of stress tensor contribution
+!!   2026/07/29 lu
+!!    Generalised pseudopotential grid coordinates to non-orthogonal cells
 !!  SOURCE
 !!
 module pseudo_tm_module

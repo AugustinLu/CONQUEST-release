@@ -53,6 +53,8 @@
 !!    Moved subroutines from control and tidied output
 !!   2023/10/09 lu
 !!    Added variables to enable simulations with a variable temperature
+!!   2026/07/29 lu
+!!    Preserved full lattice geometry during variable-cell MD
 !!  SOURCE
 !!
 module md_control

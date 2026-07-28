@@ -15,6 +15,8 @@
 ! CREATION DATE
 !   2013/04/03
 ! MODIFICATION HISTORY
+! 2026/07/29 lu
+!  Generalised Hilbert partition coordinates to non-orthogonal cells
 ! SOURCE
 !
 module sfc_partitions_module
