@@ -1,0 +1,26 @@
+IO.Title                    nonorthogonal_polarisation_extxyz
+IO.Coordinates              coords.dat
+IO.FractionalAtomicCoords   T
+IO.Iprint                   0
+
+General.NumberOfSpecies     1
+General.PAOFromFiles        T
+General.CalcPol             T
+General.PolDir              0
+%block ChemicalSpeciesLabel
+1 28.086 Si Si.ion
+%endblock
+
+AtomMove.TypeOfRun          static
+AtomMove.FullStress         T
+AtomMove.WriteExtXYZ        T
+Basis.BasisSet              PAOs
+Grid.GridCutoff             120
+DM.SolutionMethod           diagon
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-9
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.MPMeshX                1
+Diag.MPMeshY                1
+Diag.MPMeshZ                1

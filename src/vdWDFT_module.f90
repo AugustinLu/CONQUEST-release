@@ -2166,7 +2166,7 @@ contains
     use datatypes
     use numbers
     use dimens
-    use global_module, only: nspin, spin_factor, cell_vec_len, &
+    use global_module, only: nspin, spin_factor, cell_vec_len, cell_vol, &
                              IPRINT_TIME_THRES2
     use maxima_module, only: maxngrid
     use XC,     only: build_gradient,           &
@@ -2228,12 +2228,14 @@ contains
 
     ! work out kcut, this should be less or equal to Nyquist critical
     ! frequency, fc = 2*pi/2*dr = pi/dr, dr is the real-space grid
-    ! spacing. Also cell in conquest is orthorhombic
+    ! spacing.  For a general lattice these are the distances from the
+    ! origin to the three pairs of faces of the reciprocal-grid
+    ! parallelotope; their minimum is the radius of its inscribed sphere.
     fc(1) = pi / (cell_vec_len(1) / n_grid_x)
     fc(2) = pi / (cell_vec_len(2) / n_grid_y)
     fc(3) = pi / (cell_vec_len(3) / n_grid_z)
     kcut = minval(fc)
-    d3k = one / (cell_vec_len(1) * cell_vec_len(2) * cell_vec_len(3))
+    d3k = one / cell_vol
 
     ! set kcut
     call start_timer(tmr_set_kcut, WITH_LEVEL)
@@ -2789,4 +2791,3 @@ contains
   !!*****
 
 end module vdWDFT_module
-

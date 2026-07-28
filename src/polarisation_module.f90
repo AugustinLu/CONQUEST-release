@@ -21,7 +21,7 @@
 module polarisation
 
   use datatypes
-    use global_module, ONLY: cell_vec_len
+  use global_module, ONLY: cell_vec_len, cell_vol, lat_vec_inv
 
   implicit none
 
@@ -93,7 +93,7 @@ contains
     character(len=20) :: subname = "get_polarisation: "
     complex(double_cplx) :: detS
     real(double), dimension(3) :: Pion, cell_vec
-    real(double) :: cell_vol
+    real(double) :: volume
 
     if(inode==ionode) then
        if(iprint>1) then
@@ -106,7 +106,7 @@ contains
     cell_vec(1) = cell_vec_len(1)
     cell_vec(2) = cell_vec_len(2)
     cell_vec(3) = cell_vec_len(3)
-    cell_vol = cell_vec_len(1) * cell_vec_len(2) * cell_vec_len(3)
+    volume = cell_vol
     ! Electronic contribution
     tmp_fn = allocate_temp_fn_on_grid(atomfns)
     gridfunctions(tmp_fn)%griddata = zero
@@ -183,21 +183,21 @@ contains
              write(io_lun,fmt='(4x,"Direction: ",i2)') i_pol_dir(direction)
              write(io_lun,fmt='(4x,"Total polarisation:      ",e20.12," e / Bohr^2")') &
                   (Pel_gamma(direction) + Pion(i_pol_dir(direction))) &
-                  * cell_vec(i_pol_dir(direction))/cell_vol
+                  * cell_vec(i_pol_dir(direction))/volume
              write(io_lun,fmt='(4x,"Quantum of polarisation: ",e20.12," e / Bohr^2")') &
-                  cell_vec(i_pol_dir(direction))/cell_vol
+                  cell_vec(i_pol_dir(direction))/volume
              write(io_lun,fmt='(4x,"Total polarisation:      ",e20.12," C / m^2")') &
                   (Pel_gamma(direction) + Pion(i_pol_dir(direction))) &
-                  * cell_vec(i_pol_dir(direction))*eVToJ/(cell_vol*BohrToAng*BohrToAng*1e-20_double)
+                  * cell_vec(i_pol_dir(direction))*eVToJ/(volume*BohrToAng*BohrToAng*1e-20_double)
           end do
        else
           do direction=i_pol_dir_st, i_pol_dir_end
              write(io_lun,fmt='(4x,"Direction: ",i2)') i_pol_dir(direction)
              write(io_lun,fmt='(4x,"Total polarisation:      ",e20.12," e / Bohr^2")') &
                   (Pel_gamma(direction) + Pion(i_pol_dir(direction))) &
-                  * cell_vec(i_pol_dir(direction))/cell_vol
+                  * cell_vec(i_pol_dir(direction))/volume
              write(io_lun,fmt='(4x,"Quantum of polarisation: ",e20.12," e / Bohr^2")') &
-                  cell_vec(i_pol_dir(direction))/cell_vol
+                  cell_vec(i_pol_dir(direction))/volume
           end do
        end if
     end if
@@ -259,7 +259,8 @@ contains
     ! Local variables
     integer     :: ipoint, i, ni
     integer     :: atom
-    real(double):: q_i, x, y, z
+    real(double):: q_i
+    real(double), dimension(3) :: fractional
     real(double):: testphase,wrappedtestphase
 
     Pion = zero
@@ -269,17 +270,14 @@ contains
          do ni = 1, bundle%nm_nodgroup(ipoint)
             atom = atom + 1
             i = bundle%ig_prim(bundle%nm_nodbeg(ipoint)+ni-1)
-!           --- We want the positions of atom i in fractional coordinates ---
-!           --- (hence we divide by cell_vec_len(1))                            ---
-            x = atom_coord(1,i) / cell_vec_len(1)
-            y = atom_coord(2,i) / cell_vec_len(2)
-            z = atom_coord(3,i) / cell_vec_len(3)
+            ! Ionic polarization is accumulated in lattice-fractional
+            ! coordinates.  Component-wise division by vector lengths is only
+            ! valid for an axis-aligned orthorhombic cell.
+            fractional = matmul(lat_vec_inv, atom_coord(:,i))
             q_i = charge(bundle%species(bundle%nm_nodbeg(ipoint)+ni-1))
 
             ! write (io_lun, *) "q_i: ",q_i
-            Pion(1) = Pion(1) + (x * q_i)
-            Pion(2) = Pion(2) + (y * q_i)
-            Pion(3) = Pion(3) + (z * q_i)
+            Pion = Pion + fractional*q_i
          enddo
       endif
     enddo

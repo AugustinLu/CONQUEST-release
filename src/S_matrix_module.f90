@@ -534,8 +534,9 @@ contains
 
     use datatypes
     use numbers
-    use global_module,               only: cell_vec_len, atomf, species_glob, &
-         ni_in_cell, id_glob, atom_coord, lattice_grid_block_origin
+    use global_module,               only: cell_vec_len, lat_vec_inv, atomf, &
+         species_glob, ni_in_cell, id_glob, atom_coord, &
+         lattice_grid_block_origin
     use cover_module,                only: DCS_parts
     use block_module,                only: nx_in_block,ny_in_block,nz_in_block, &
                                            n_blocks, n_pts_in_block
@@ -573,6 +574,7 @@ contains
     real(double), allocatable :: r_store(:)
     integer :: offset_position, ip, npoint, stat
     real(double) :: x, y, z, rcut
+    real(double), dimension(3) :: point_cart, fractional
     
     ! Test for direction=0 and all three grid functions
     if(direction==0.AND.(.NOT.PRESENT(gridfunc2).OR..NOT.PRESENT(gridfunc3))) then
@@ -629,19 +631,25 @@ contains
                       x = x_store(ip)
                       y = y_store(ip)
                       z = z_store(ip)
+                      if(flag_func/=0) then
+                         point_cart = (/ x + atom_coord(1,ig_atom), &
+                              y + atom_coord(2,ig_atom), &
+                              z + atom_coord(3,ig_atom) /)
+                         fractional = matmul(lat_vec_inv, point_cart)
+                      end if
                       if(direction==0) then
                          if(flag_func==0) then
                             rx = x
                             ry = y
                             rz = z
                          else if(flag_func==1) then
-                            rx = cos(twopi*(x + atom_coord(1,ig_atom))/cell_vec_len(1))
-                            ry = cos(twopi*(y + atom_coord(2,ig_atom))/cell_vec_len(2))
-                            rz = cos(twopi*(z + atom_coord(3,ig_atom))/cell_vec_len(3))
+                            rx = cos(twopi*fractional(1))
+                            ry = cos(twopi*fractional(2))
+                            rz = cos(twopi*fractional(3))
                          else if(flag_func==2) then
-                            rx = sin(twopi*(x + atom_coord(1,ig_atom))/cell_vec_len(1))
-                            ry = sin(twopi*(y + atom_coord(2,ig_atom))/cell_vec_len(2))
-                            rz = sin(twopi*(z + atom_coord(3,ig_atom))/cell_vec_len(3))
+                            rx = sin(twopi*fractional(1))
+                            ry = sin(twopi*fractional(2))
+                            rz = sin(twopi*fractional(3))
                          end if
                          do nsf1=1,this_nsf
                             sfni = gridfunctions(inputgf)%griddata(position+(nsf1-1)*n_pts_in_block)
@@ -654,25 +662,25 @@ contains
                             if(flag_func==0) then
                                rx = x
                             else if(flag_func==1) then
-                               rx = cos(twopi*(x + atom_coord(1,ig_atom))/cell_vec_len(1))
+                               rx = cos(twopi*fractional(1))
                             else if(flag_func==2) then
-                               rx = sin(twopi*(x + atom_coord(1,ig_atom))/cell_vec_len(1))
+                               rx = sin(twopi*fractional(1))
                             end if
                          else if(direction==2) then
                             if(flag_func==0) then
                                rx = y
                             else if(flag_func==1) then
-                               rx = cos(twopi*(y + atom_coord(2,ig_atom))/cell_vec_len(2))
+                               rx = cos(twopi*fractional(2))
                             else if(flag_func==2) then
-                               rx = sin(twopi*(y + atom_coord(2,ig_atom))/cell_vec_len(2))
+                               rx = sin(twopi*fractional(2))
                             end if
                          else if(direction==3) then
                             if(flag_func==0) then
                                rx = z
                             else if(flag_func==1) then
-                               rx = cos(twopi*(z + atom_coord(3,ig_atom))/cell_vec_len(3))
+                               rx = cos(twopi*fractional(3))
                             else if(flag_func==2) then
-                               rx = sin(twopi*(z + atom_coord(3,ig_atom))/cell_vec_len(3))
+                               rx = sin(twopi*fractional(3))
                             end if
                          end if
                          do nsf1=1,this_nsf

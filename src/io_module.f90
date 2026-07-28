@@ -2870,7 +2870,7 @@ second:   do
     use numbers,        only: zero
     use dimens,         only:
     use global_module,  only: ni_in_cell, iprint_init, atom_coord, &
-                              species_glob
+                              species_glob, lat_vec, cell_vol
     use species_module, only: species_label
     use GenComms,       only: inode, ionode, cq_abort
     use units,          only: BohrToAng, HaToeV
@@ -2916,15 +2916,15 @@ second:   do
       comment = 'config_type='//TRIM(titles_xyz)
 
       ! Add information about lattice and energy
-      write(vec_a,fmt='(3f15.8)') cell_vec_len(1)*BohrToAng, zero, zero
-      write(vec_b,fmt='(3f15.8)') zero, cell_vec_len(2)*BohrToAng, zero
-      write(vec_c,fmt='(3f15.8)') zero, zero, cell_vec_len(3)*BohrToAng
+      write(vec_a,fmt='(3f15.8)') lat_vec(:,1)*BohrToAng
+      write(vec_b,fmt='(3f15.8)') lat_vec(:,2)*BohrToAng
+      write(vec_c,fmt='(3f15.8)') lat_vec(:,3)*BohrToAng
       comment=TRIM(comment)//' Lattice="'//ADJUSTL(vec_a)//ADJUSTL(vec_b)//TRIM(ADJUSTL(vec_c))//'" '
       comment=TRIM(comment)//' Properties=species:S:1:pos:R:3:forces:R:3 potential_energy='
       write(energy_str,'(f0.8)') energy0 * en_conv_loc
       comment = TRIM(comment)//TRIM(energy_str)//' pbc="T T T" '
 
-      volume = cell_vec_len(1)*cell_vec_len(2)*cell_vec_len(3)*BohrToAng**3
+      volume = cell_vol*BohrToAng**3
 
       ! Convert each row to string
       write(stress_str(1:45), '(3f15.8)') stress_tensor(1,1)*HaToeV/volume,&
