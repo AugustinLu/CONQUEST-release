@@ -1,0 +1,20 @@
+# Generated exploratory and future staged runs
+relax/
+scf/
+bands/
+pdos/
+results*/
+
+*.log
+*.out
+Conquest_out
+Conquest_warnings
+InfoGlobal*
+Kmatrix*
+Process*WF.dat
+chden.*
+coord_next.dat
+eigenvalues.dat
+fort.*
+hilbert_make_blk.dat
+.DS_Store

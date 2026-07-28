@@ -19,13 +19,13 @@
 !!  MODIFICATION HISTORY
 !!   17:31, 2003/02/05 dave
 !!    Changed flow of control so that the switch occurs on the local variable runtype
-!!   14:26, 26/02/2003 drb 
+!!   14:26, 26/02/2003 drb
 !!    Small bug fixes
-!!   10:06, 12/03/2003 drb 
+!!   10:06, 12/03/2003 drb
 !!    Added simple MD
-!!   13:19, 22/09/2003 drb 
+!!   13:19, 22/09/2003 drb
 !!    Bug fixes in cg
-!!   10:52, 13/02/2006 drb 
+!!   10:52, 13/02/2006 drb
 !!    General tidying related to new matrices
 !!   2008/02/04 17:10 dave
 !!    Changes for output to file not stdout
@@ -39,7 +39,7 @@
 !!    Added SSM integrator, adapted from W. Shinoda et al., PRB 69:134103
 !!    (2004)
 !!   2019/05/09 zamaan
-!!    Renamed init_ensemble to init_md, created new end_md subroutine 
+!!    Renamed init_ensemble to init_md, created new end_md subroutine
 !!    to deallocate any stray allocated arrays. Added heat flux calculation
 !!    to md_run.
 !!   2019/02/28 zamaan
@@ -61,15 +61,16 @@
 module control
 
   use datatypes
+  use global_module, only: cell_vec_len, cell_vol
   use global_module, only: io_lun
   use GenComms,      only: cq_abort
-  use timer_module,  only: start_timer, stop_timer, cq_timer 
+  use timer_module,  only: start_timer, stop_timer, cq_timer
   use timer_module,  only: start_backtrace, stop_backtrace
   use md_control,    only: md_ensemble, MDtimestep
 
   implicit none
 
-  integer      :: MDn_steps 
+  integer      :: MDn_steps
   integer      :: MDfreq
   integer      :: XSFfreq
   integer      :: XYZfreq
@@ -86,17 +87,17 @@ contains
 
 !!****f* control/control_run *
 !!
-!!  NAME 
+!!  NAME
 !!   control
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   Very simple routine to control execution of Conquest
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!!   atoms, common, datatypes, dimens, ewald_module, force_module, GenComms, 
+!!   atoms, common, datatypes, dimens, ewald_module, force_module, GenComms,
 !!   matrix_data, pseudopotential_data
 !!  AUTHOR
 !!   D.R.Bowler
@@ -116,7 +117,7 @@ contains
 !!   17:31, 2003/02/05 dave
 !!   - Removed old, silly MD and replaced with call to either static
 !!    (i.e. just ground state) or CG
-!!   10:06, 12/03/2003 drb 
+!!   10:06, 12/03/2003 drb
 !!   - Added MD
 !!   2004/11/10, drb
 !!   - Removed common use
@@ -256,16 +257,16 @@ contains
 
   !!****f* control/cg_run *
   !!
-  !!  NAME 
+  !!  NAME
   !!   cg_run - Does CG minimisation
   !!  USAGE
   !!   cg_run(velocity,atmforce)
   !!  PURPOSE
   !!   Performs CG minimisation by repeated calling of minimiser
   !!  INPUTS
-  !! 
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -275,9 +276,9 @@ contains
   !!    Added vast numbers of passed arguments for get_E_and_F
   !!   17:26, 2003/02/05 dave
   !!    Corrected atom position arguments
-  !!   14:27, 26/02/2003 drb 
+  !!   14:27, 26/02/2003 drb
   !!    Other small bug fixes
-  !!   13:20, 22/09/2003 drb 
+  !!   13:20, 22/09/2003 drb
   !!    Added id_glob referencing for forces
   !!   2006/09/04 07:53 dave
   !!    Dynamic allocation for positions
@@ -288,7 +289,7 @@ contains
   !!   2013/08/21 M.Arita
   !!   - Added call for safemin2 necessary in reusing L-matrix
   !!    2017/08/29 jack baker & dave
-  !!     Removed rcellx references (redundant)
+  !!     Removed cell_vec_len(1) references (redundant)
   !!   2017/11/10 14:06 dave
   !!    Removing dump_InfoGlobal calls
   !!   2019/12/04 11:47 dave
@@ -336,7 +337,7 @@ contains
     ! Shared variables needed by get_E_and_F for now (!)
     logical :: vary_mu, fixed_potential
     real(double) :: total_energy
-    
+
     ! Local variables
     real(double)   :: energy0, energy1, max, g0, dE, gg, ggold, gamma,gg1, test_dot
     integer        :: i,j,k,iter,length, jj, lun, stat
@@ -396,7 +397,7 @@ contains
     call dump_pos_and_matrices
     call get_maxf(max)
     if (inode==ionode) then
-      write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," E: ",f16.8,x,a2," dE: ",f14.8,x,a2/)') & 
+      write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," E: ",f16.8,x,a2," dE: ",f14.8,x,a2/)') &
            trim(prefixGO)//" - Iter: ",0, for_conv*max, en_units(energy_units), d_units(dist_units), &
            en_conv*energy0, en_units(energy_units), en_conv*dE, en_units(energy_units)
     end if
@@ -505,7 +506,7 @@ contains
        dE = energy1 - energy0
 
        if (inode==ionode) then
-          write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," E: ",f16.8,x,a2," dE: ",f14.8,x,a2/)') & 
+          write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," E: ",f16.8,x,a2," dE: ",f14.8,x,a2/)') &
                trim(prefixGO)//" - Iter: ", iter, for_conv*max, &
                en_units(energy_units), d_units(dist_units), &
                en_conv*energy1, en_units(energy_units), en_conv*dE, en_units(energy_units)
@@ -542,7 +543,7 @@ contains
        iter = iter + 1
 
        !call dump_pos_and_matrices
-       
+
        call stop_print_timer(tmr_l_iter, "a CG iteration", IPRINT_TIME_THRES1)
        if (.not. done) call check_stop(done, iter)
     end do
@@ -564,10 +565,10 @@ contains
 
 !!****f* control/md_run *
 !!
-!!  NAME 
+!!  NAME
 !!   md_run
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   Does a QUENCHED MD run
 !!   Now, this can also employ NVE-MD
@@ -575,14 +576,14 @@ contains
 !!   Note that we require fire_N_below_thresh consecutive steps with the force below threshold
 !!   before convergence is accepted
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   D.R.Bowler
 !!  CREATION DATE
-!!   10:07, 12/03/2003 drb 
+!!   10:07, 12/03/2003 drb
 !!  MODIFICATION HISTORY
 !!   2011/12/07 L.Tong
 !!    - changed 0.0_double to zero in numbers module
@@ -637,7 +638,7 @@ contains
 !!    Replaced calculate_kinetic_energy calls with get_temperature_and_ke,
 !!    which also computes the kinetic stress
 !!   2018/8/11 zamaan
-!!    Moved ionic position and box update to its own subroutine; moved 
+!!    Moved ionic position and box update to its own subroutine; moved
 !!    velocity initialisation to init_md
 !!   2019/05/09 zamaan
 !!    Moved velocity array allocation/deallocation to init_md/end_md
@@ -662,7 +663,7 @@ contains
                               flag_dissipation,flag_FixCOM,           &
                               flag_fire_qMD, flag_diagonalisation,    &
                               nspin, flag_thermoDebug, flag_baroDebug,&
-                              flag_move_atom,rcellx, rcelly, rcellz,  &
+                              flag_move_atom,cell_vec_len,  &
                               flag_Multisite,flag_SFcoeffReuse, &
                               atom_coord, flag_quench_MD, atomic_stress, &
                               non_atomic_stress, flag_heat_flux, min_layer
@@ -711,7 +712,7 @@ contains
     ! Shared variables needed by get_E_and_F for now (!)
     logical      :: vary_mu, fixed_potential
     real(double) :: total_energy
-    
+
     ! Local variables
     integer       ::  iter, i, j, k, length, stat, i_first, i_last, md_ndof
     integer       :: nequil ! number of equilibration steps - zamaan
@@ -761,7 +762,7 @@ contains
         nequil = md_equil_steps - MDinit_step
       end if
     else
-      nequil = md_equil_steps 
+      nequil = md_equil_steps
     end if
 
     ! Initialise number of degrees of freedom
@@ -823,7 +824,7 @@ contains
             en_conv*mdl%dft_total_energy, en_units(energy_units), &
             en_conv*(mdl%ion_kinetic_energy+mdl%dft_total_energy), en_units(energy_units)
        if(iprint_MD + min_layer > 0) write(io_lun, fmt='(4x,"Ionic temperature       : ",f15.8," K")') &
-            mdl%ion_kinetic_energy / (three_halves * real(ni_in_cell,double) * fac_Kelvin2Hartree) 
+            mdl%ion_kinetic_energy / (three_halves * real(ni_in_cell,double) * fac_Kelvin2Hartree)
     end if
 
     if (flag_fire_qMD) then
@@ -936,11 +937,11 @@ contains
        if (flag_XLBOMD) call Do_XLBOMD(iter,MDtimestep)
        call update_H(fixed_potential)
 
-       !2018.Jan.4 TM 
-       !   We need to update flag_movable, since the order of x_atom_cell (or id_glob) 
+       !2018.Jan.4 TM
+       !   We need to update flag_movable, since the order of x_atom_cell (or id_glob)
        !   may change after the atomic positions are updated.
        call check_move_atoms(flag_movable)
-       
+
        min_layer = min_layer - 1
        if (flag_fire_qMD) then
           call get_E_and_F(fixed_potential, vary_mu, energy1, .true., .true.,iter)
@@ -949,7 +950,7 @@ contains
        else
           call get_E_and_F(fixed_potential, vary_mu, energy1, .true., .false.,iter)
           call check_stop(done, iter)   !2019/Nov/14
-          ! Here so that the kinetic stress is reported just after the 
+          ! Here so that the kinetic stress is reported just after the
           ! static stress - zamaan
           if (inode == ionode .and. iprint_MD > 2) then
             write(io_lun,fmt='(/4x,a, 3f15.8,a3)') trim(prefix)//" Kinetic stress    ",&
@@ -965,13 +966,13 @@ contains
        !******
        !2019/Nov/14 tsuyoshi
        ! we would dump the files(InfoGlobal and *matrix2.i**.p******)  once at the end of each job.
-       ! We should call "dump_pos_and_matrices" after calling "check_stop", since 
+       ! We should call "dump_pos_and_matrices" after calling "check_stop", since
        ! this subroutine would change the format (binary or ascii) of the files,
        ! if user sets different "IO.MatrixFile.BinaryFormat.Grab" and "IO.MatrixFile.BinaryFormat.Dump".
        !  (reading binary files at the beginning and writing ascii files at the end is possible.)
-       ! 
+       !
        ! In the near future,  (depending on "IO.DumpEveryStep")
-       !  we would use "store_pos_and_matrices" at each MD step, 
+       !  we would use "store_pos_and_matrices" at each MD step,
        !  while call "dump_pos_and_matrices" if "done" is true.
        !******
 
@@ -997,7 +998,7 @@ contains
                        en_conv*mdl%dft_total_energy, en_units(energy_units), &
                        en_conv*(mdl%ion_kinetic_energy+mdl%dft_total_energy), en_units(energy_units)
          if(iprint_MD + min_layer > 0) write(io_lun, fmt='(4x,"Ionic temperature       : ",f15.8," K")') &
-              mdl%ion_kinetic_energy / (three_halves * real(ni_in_cell,double) * fac_Kelvin2Hartree) 
+              mdl%ion_kinetic_energy / (three_halves * real(ni_in_cell,double) * fac_Kelvin2Hartree)
        end if
 
        ! Analyse forces
@@ -1037,12 +1038,12 @@ contains
        call my_barrier
 
        ! The kinetic component of stress changes after the second velocity
-       ! update 
+       ! update
        call thermo%get_temperature_and_ke(baro, ion_velocity, &
                                           mdl%ion_kinetic_energy, &
                                           final_call)
        call baro%get_pressure_and_stress(final_call)
- 
+
        if (nequil > 0) then
           nequil = nequil - 1
           if (abs(baro%P_int - baro%P_ext) < md_equil_press) nequil = 0
@@ -1096,7 +1097,7 @@ contains
   !! RETURN VALUE
   !! AUTHOR
   !!   David Bowler
-  !! CREATION DATE 
+  !! CREATION DATE
   !!
   !! MODIFICATION HISTORY
   !!   2011/12/07 L.Tong
@@ -1131,7 +1132,7 @@ contains
     ! Shared variables needed by get_E_and_F for now (!)
     logical      :: vary_mu, fixed_potential
     real(double) :: total_energy
-    
+
     ! Local variables
     integer      :: iter, i, k, length, stat
     real(double) :: temp, KE, energy1, energy0, dE, max, g0
@@ -1173,7 +1174,7 @@ contains
             call write_positions(iter, parts)
        call my_barrier
     end do
-    
+
     return
 1   format(4x,'Atom ',i4,' Position ',3f15.8)
 2   format(4x,'Welcome to dummy_run. Doing ',i4,' steps')
@@ -1187,16 +1188,16 @@ contains
 
   !!****f* control/pulay_relax *
   !!
-  !!  NAME 
+  !!  NAME
   !!   pulay_relax
   !!  USAGE
-  !!   
+  !!
   !!  PURPOSE
   !!   Performs pulay relaxation
   !!  INPUTS
-  !! 
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -1217,7 +1218,7 @@ contains
   !!   - Added call for update_H since it is not called at
   !!     updateIndices any longer
   !!   2017/08/29 jack baker & dave
-  !!    Removed rcellx references (redundant)
+  !!    Removed cell_vec_len(1) references (redundant)
   !!   2017/11/10 dave
   !!    Removed calls to dump K matrix (now done in DMMinModule)
   !!   2018/01/22 tsuyoshi (with dave)
@@ -1478,14 +1479,14 @@ contains
           posnStore (2,jj,npmod) = y_atom_cell(i)
           posnStore (3,jj,npmod) = z_atom_cell(i)
           forceStore(:,jj,npmod) = tot_force(:,jj)
-       end do       
+       end do
        if (.not. done) call check_stop(done, iter)
        iter = iter + 1
        dE = energy1 - energy0
        guess_step = dE*sqrt(real(ni_in_cell,double)/g0)!real(ni_in_cell,double)/sqrt(g0)
        if(myid==0) write(*,*) 'Guessed step is ',guess_step
        ! We really need a proper trust radius or something
-       if(guess_step>2.0_double) guess_step = 2.0_double 
+       if(guess_step>2.0_double) guess_step = 2.0_double
        if(guess_step>MDtimestep) then
           step=guess_step
        else
@@ -1518,16 +1519,16 @@ contains
 
   !!****f* control/lbfgs *
   !!
-  !!  NAME 
+  !!  NAME
   !!   lbfgs
   !!  USAGE
-  !!   
+  !!
   !!  PURPOSE
   !!   Performs L-BFGS relaxation
   !!  INPUTS
-  !! 
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -1548,7 +1549,7 @@ contains
     use units
     use global_module,  only: iprint_MD, ni_in_cell, x_atom_cell,   &
          y_atom_cell, z_atom_cell, id_glob,    &
-         atom_coord, area_general, flag_pulay_simpleStep, &
+         atom_coord, area_general, flag_pulay_simpleStep, mic_vector, &
          flag_diagonalisation, nspin, flag_LmatrixReuse, &
          flag_SFcoeffReuse
     use group_module,   only: parts
@@ -1567,7 +1568,7 @@ contains
     use store_matrix,   only: dump_pos_and_matrices
     use mult_module, ONLY: matK, S_trans, matrix_scale, matL, L_trans
     use matrix_data, ONLY: Hrange, Lrange
-    use dimens,        only: r_super_x, r_super_y, r_super_z
+    use dimens,        only:
     use md_control,    only: flag_write_xsf, flag_write_extxyz
 
     implicit none
@@ -1619,7 +1620,7 @@ contains
     done = .false.
     length = 3 * ni_in_cell
     if (myid == 0 .and. iprint_MD > 0) &
-         write (io_lun, 2) MDn_steps, MDcgtol, en_units(energy_units), & 
+         write (io_lun, 2) MDn_steps, MDcgtol, en_units(energy_units), &
          d_units(dist_units)
     energy0 = total_energy
     energy1 = zero
@@ -1634,11 +1635,11 @@ contains
     if (abs(max) < MDcgtol) then
        done = .true.
        if (inode==ionode) then
-          write(io_lun,'(2x,"GeomOpt - Iter: ",i4," MaxF: ",f12.8," E: ",e16.8," dE: ",f12.8)') & 
+          write(io_lun,'(2x,"GeomOpt - Iter: ",i4," MaxF: ",f12.8," E: ",e16.8," dE: ",f12.8)') &
                iter, max, energy1, en_conv*dE
           if (iprint_MD > 1) then
              write(io_lun,'(4x,"Force Residual:     ",f19.8," ",a2,"/",a2)') &
-                  for_conv*sqrt(g0/ni_in_cell), en_units(energy_units), & 
+                  for_conv*sqrt(g0/ni_in_cell), en_units(energy_units), &
                   d_units(dist_units)
              write(io_lun,'(4x,"Maximum force:      ",f19.8)') max
              write(io_lun,'(4x,"Force tolerance:    ",f19.8)') MDcgtol
@@ -1658,12 +1659,12 @@ contains
        ! Define g0 consistently on all processes
        g0 = dot(length, cg_new, 1, cg_new, 1)
        if (inode==ionode) then
-          write(io_lun,'(/4x,"GeomOpt - Iter: ",i4," MaxF: ",f12.8," E: ",e16.8," dE: ",f12.8/)') & 
+          write(io_lun,'(/4x,"GeomOpt - Iter: ",i4," MaxF: ",f12.8," E: ",e16.8," dE: ",f12.8/)') &
                iter, max, energy1, en_conv*dE
           if (iprint_MD > 1) then
              temp = dot(length, tot_force, 1, tot_force, 1)
              write(io_lun,'(4x,"Force Residual:     ",f19.8," ",a2,"/",a2)') &
-                  for_conv*sqrt(temp/ni_in_cell), en_units(energy_units), & 
+                  for_conv*sqrt(temp/ni_in_cell), en_units(energy_units), &
                   d_units(dist_units)
              write(io_lun,'(4x,"Maximum force:      ",f19.8)') max
              write(io_lun,'(4x,"Force tolerance:    ",f19.8)') MDcgtol
@@ -1701,17 +1702,9 @@ contains
        do i=1,ni_in_cell
           jj = id_glob(i)
           posnStore (1,jj,npmod) = x_atom_cell(i) - posnStore (1,jj,npmod)
-          if(abs(posnStore(1,jj,npmod)/r_super_x)>0.7_double) posnStore(1,jj,npmod) &
-               = posnStore(1,jj,npmod) &
-               - nint(posnStore(1,jj,npmod)/r_super_x)*r_super_x
           posnStore (2,jj,npmod) = y_atom_cell(i) - posnStore (2,jj,npmod)
-          if(abs(posnStore(2,jj,npmod)/r_super_y)>0.7_double) posnStore(2,jj,npmod) &
-               = posnStore(2,jj,npmod) &
-               - nint(posnStore(2,jj,npmod)/r_super_y)*r_super_y
           posnStore (3,jj,npmod) = z_atom_cell(i) - posnStore (3,jj,npmod)
-          if(abs(posnStore(3,jj,npmod)/r_super_z)>0.7_double) posnStore(3,jj,npmod) &
-               = posnStore(3,jj,npmod) &
-               - nint(posnStore(3,jj,npmod)/r_super_z)*r_super_z
+          call mic_vector(posnStore(:,jj,npmod))
           forceStore(:,jj,npmod) = -tot_force(:,jj) - forceStore(:,jj,npmod)
           ! New search direction
        end do
@@ -1775,11 +1768,11 @@ contains
        if (abs(max) < MDcgtol) then
           done = .true.
           if (inode==ionode) then
-             write(io_lun,'(/4x,"GeomOpt - Iter: ",i4," MaxF: ",f12.8," E: ",f16.8," dE: ",f12.8/)') & 
+             write(io_lun,'(/4x,"GeomOpt - Iter: ",i4," MaxF: ",f12.8," E: ",f16.8," dE: ",f12.8/)') &
                   iter, max, energy1, en_conv*dE
              if (iprint_MD > 1) then
                 write(io_lun,'(4x,"Force Residual:     ",f19.8," ",a2,"/",a2)') &
-                     for_conv*sqrt(g0/ni_in_cell), en_units(energy_units), & 
+                     for_conv*sqrt(g0/ni_in_cell), en_units(energy_units), &
                      d_units(dist_units)
                 write(io_lun,'(4x,"Maximum force:      ",f19.8)') max
                 write(io_lun,'(4x,"Force tolerance:    ",f19.8)') MDcgtol
@@ -1810,17 +1803,17 @@ contains
 
   !!****f* control/sqnm *
   !!
-  !!  NAME 
+  !!  NAME
   !!   sqnm
   !!  USAGE
-  !!   
+  !!
   !!  PURPOSE
   !!   Performs stabilised Quasi-Newton minimisation
   !!   Based on J. Chem. Phys. 142, 034112 (2015)
   !!  INPUTS
-  !! 
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -1843,7 +1836,7 @@ contains
                               y_atom_cell, z_atom_cell, id_glob,    &
                               atom_coord, area_general, flag_pulay_simpleStep, &
                               flag_diagonalisation, nspin, flag_LmatrixReuse, &
-                              flag_SFcoeffReuse, flag_move_atom, min_layer
+                              flag_SFcoeffReuse, flag_move_atom, min_layer, mic_vector
     use group_module,   only: parts
     use minimise,       only: get_E_and_F
     use move_atoms,     only: single_step, backtrack_linemin
@@ -1854,7 +1847,7 @@ contains
                               check_stop, write_xsf, print_atomic_positions, return_prefix
     use memory_module,  only: reg_alloc_mem, reg_dealloc_mem, type_dbl
     use store_matrix,   only: dump_pos_and_matrices
-    use dimens,        only: r_super_x, r_super_y, r_super_z
+    use dimens,        only:
     use md_control,    only: flag_write_xsf, flag_write_extxyz
 
     implicit none
@@ -1924,7 +1917,7 @@ contains
     min_layer = min_layer + 1
     iter = 0
     if (inode==ionode) then
-       write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," E: ",f16.8,x,a2," dE: ",f14.8,x,a2/)') & 
+       write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," E: ",f16.8,x,a2," dE: ",f14.8,x,a2/)') &
             trim(prefixGO)//" - Iter: ", iter, for_conv*max, &
             en_units(energy_units), d_units(dist_units), &
             en_conv*energy0, en_units(energy_units), en_conv*dE, en_units(energy_units)
@@ -1995,17 +1988,9 @@ contains
        do i=1,ni_in_cell
           jj = id_glob(i)
           posnStore (1,jj,npmod) = x_atom_cell(i) - posnStore (1,jj,npmod)
-          if(abs(posnStore(1,jj,npmod)/r_super_x)>0.7_double) posnStore(1,jj,npmod) &
-               = posnStore(1,jj,npmod) &
-               - nint(posnStore(1,jj,npmod)/r_super_x)*r_super_x
           posnStore (2,jj,npmod) = y_atom_cell(i) - posnStore (2,jj,npmod)
-          if(abs(posnStore(2,jj,npmod)/r_super_y)>0.7_double) posnStore(2,jj,npmod) &
-               = posnStore(2,jj,npmod) &
-               - nint(posnStore(2,jj,npmod)/r_super_y)*r_super_y
           posnStore (3,jj,npmod) = z_atom_cell(i) - posnStore (3,jj,npmod)
-          if(abs(posnStore(3,jj,npmod)/r_super_z)>0.7_double) posnStore(3,jj,npmod) &
-               = posnStore(3,jj,npmod) &
-               - nint(posnStore(3,jj,npmod)/r_super_z)*r_super_z
+          call mic_vector(posnStore(:,jj,npmod))
           forceStore(:,jj,npmod) = -tot_force(:,jj) - forceStore(:,jj,npmod)
           ! New search direction
        end do
@@ -2170,7 +2155,7 @@ contains
        dE = energy1 - energy0
        energy0 = energy1
        if (inode==ionode) then
-          write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," E: ",f16.8,x,a2," dE: ",f14.8,x,a2/)') & 
+          write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," E: ",f16.8,x,a2," dE: ",f14.8,x,a2/)') &
                trim(prefixGO)//" - Iter: ", iter, for_conv*max, &
                en_units(energy_units), d_units(dist_units), &
                en_conv*energy1, en_units(energy_units), en_conv*dE, en_units(energy_units)
@@ -2252,7 +2237,7 @@ contains
     use units
     use global_module, only: iprint_gen, ni_in_cell, x_atom_cell,  &
                              y_atom_cell, z_atom_cell, id_glob,    &
-                             atom_coord, rcellx, rcelly, rcellz,   &
+                             atom_coord, cell_vec_len,   &
                              area_general, iprint_MD,              &
                              IPRINT_TIME_THRES1, cell_en_tol,      &
                              cell_constraint_flag, cell_stress_tol, min_layer
@@ -2266,7 +2251,7 @@ contains
                              check_stop, write_xsf, leqi, write_extxyz
     use memory_module, only: reg_alloc_mem, reg_dealloc_mem, type_dbl
     use timer_module
-    use dimens, ONLY: r_super_x, r_super_y, r_super_z
+    use dimens, ONLY: n_grid_x
     use store_matrix,  only: dump_pos_and_matrices
     use md_control,    only: target_pressure, flag_write_xsf, flag_write_extxyz
 
@@ -2296,12 +2281,12 @@ contains
          stress_diff, volume, stress_target, orcellx, orcelly, orcellz, wscal
 
     ! Store original cell size
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
-    orcell(1) = rcellx
-    orcell(2) = rcelly
-    orcell(3) = rcellz
+    orcellx = cell_vec_len(1)
+    orcelly = cell_vec_len(2)
+    orcellz = cell_vec_len(3)
+    orcell(1) = cell_vec_len(1)
+    orcell(2) = cell_vec_len(2)
+    orcell(3) = cell_vec_len(3)
     ! Scaling: w = 2 Bohr x sqrt(Natoms)
     wscal = two*sqrt(real(ni_in_cell,double))
     step = MDtimestep
@@ -2342,7 +2327,7 @@ contains
     enthalpy1 = enthalpy0
     dH = zero
     max_stress = zero
-    volume = rcellx*rcelly*rcellz
+    volume = abs(cell_vol)
     do i=1,3
        stress_diff = abs(press*volume + stress(i,i))/volume
        if (stress_diff > max_stress) max_stress = stress_diff
@@ -2358,9 +2343,9 @@ contains
        cg_new(1) = third*(stress(1,1)+stress(2,2)+stress(3,3)) - press*volume
     else
        !do i = 1,3
-       cg_new(1) = (stress(1,1) - press*volume)*orcellx/(rcellx*wscal)
-       cg_new(2) = (stress(2,2) - press*volume)*orcelly/(rcelly*wscal)
-       cg_new(3) = (stress(3,3) - press*volume)*orcellz/(rcellz*wscal)
+       cg_new(1) = (stress(1,1) - press*volume)*orcellx/(cell_vec_len(1)*wscal)
+       cg_new(2) = (stress(2,2) - press*volume)*orcelly/(cell_vec_len(2)*wscal)
+       cg_new(3) = (stress(3,3) - press*volume)*orcellz/(cell_vec_len(3)*wscal)
        !end do
     end if
     if (inode==ionode .and. iprint_MD > 1) then
@@ -2373,17 +2358,17 @@ contains
        iter_loc = iter_loc + 1
        npmod = mod(iter_loc, LBFGS_history)
        if(npmod==0) npmod = LBFGS_history
-       volume = rcellx*rcelly*rcellz
-       posnStore (1,npmod) = wscal*rcellx/orcellx
-       posnStore (2,npmod) = wscal*rcelly/orcelly
-       posnStore (3,npmod) = wscal*rcellz/orcellz
+       volume = abs(cell_vol)
+       posnStore (1,npmod) = wscal*cell_vec_len(1)/orcellx
+       posnStore (2,npmod) = wscal*cell_vec_len(2)/orcelly
+       posnStore (3,npmod) = wscal*cell_vec_len(3)/orcellz
        if (leqi(cell_constraint_flag, 'volume')) then
           forceStore(1,npmod) = -third*(stress(1,1)+stress(2,2)+stress(3,3)) + press*volume
           cg(1) = -cg_new(1)
        else
-          forceStore(1,npmod) = (-stress(1,1) + press*volume)*orcellx/(wscal*rcellx)
-          forceStore(2,npmod) = (-stress(2,2) + press*volume)*orcelly/(wscal*rcelly)
-          forceStore(3,npmod) = (-stress(3,3) + press*volume)*orcellz/(wscal*rcellz)
+          forceStore(1,npmod) = (-stress(1,1) + press*volume)*orcellx/(wscal*cell_vec_len(1))
+          forceStore(2,npmod) = (-stress(2,2) + press*volume)*orcelly/(wscal*cell_vec_len(2))
+          forceStore(3,npmod) = (-stress(3,3) + press*volume)*orcellz/(wscal*cell_vec_len(3))
           cg(1) = -cg_new(1)*wscal/orcellx
           cg(2) = -cg_new(2)*wscal/orcelly
           cg(3) = -cg_new(3)*wscal/orcellz
@@ -2400,9 +2385,9 @@ contains
        end if
        if(enthalpy1>enthalpy0) then
           if(inode==ionode.AND.iprint_MD>1) write(io_lun,fmt='(4x,"Energy rise: resetting history")')
-          cg_new(1) = (stress(1,1) - press*volume)*orcellx/(wscal*rcellx)
-          cg_new(2) = (stress(2,2) - press*volume)*orcelly/(wscal*rcelly)
-          cg_new(3) = (stress(3,3) - press*volume)*orcellz/(wscal*rcellz)
+          cg_new(1) = (stress(1,1) - press*volume)*orcellx/(wscal*cell_vec_len(1))
+          cg_new(2) = (stress(2,2) - press*volume)*orcelly/(wscal*cell_vec_len(2))
+          cg_new(3) = (stress(3,3) - press*volume)*orcellz/(wscal*cell_vec_len(3))
           cg(1) = -cg_new(1)*wscal/orcellx
           cg(2) = -cg_new(2)*wscal/orcelly
           cg(3) = -cg_new(3)*wscal/orcellz
@@ -2419,12 +2404,12 @@ contains
           alpha = one
        endif
        ! Update stored position difference and force difference
-       posnStore (1,npmod) = rcellx*wscal/orcellx - posnStore (1,npmod)
-       posnStore (2,npmod) = rcelly*wscal/orcelly - posnStore (2,npmod)
-       posnStore (3,npmod) = rcellz*wscal/orcellz - posnStore (3,npmod)
-       forceStore(1,npmod) = (-stress(1,1) + press*volume)*orcellx/(wscal*rcellx) - forceStore(1,npmod)
-       forceStore(2,npmod) = (-stress(2,2) + press*volume)*orcelly/(wscal*rcelly) - forceStore(2,npmod)
-       forceStore(3,npmod) = (-stress(3,3) + press*volume)*orcellz/(wscal*rcellz) - forceStore(3,npmod)
+       posnStore (1,npmod) = cell_vec_len(1)*wscal/orcellx - posnStore (1,npmod)
+       posnStore (2,npmod) = cell_vec_len(2)*wscal/orcelly - posnStore (2,npmod)
+       posnStore (3,npmod) = cell_vec_len(3)*wscal/orcellz - posnStore (3,npmod)
+       forceStore(1,npmod) = (-stress(1,1) + press*volume)*orcellx/(wscal*cell_vec_len(1)) - forceStore(1,npmod)
+       forceStore(2,npmod) = (-stress(2,2) + press*volume)*orcelly/(wscal*cell_vec_len(2)) - forceStore(2,npmod)
+       forceStore(3,npmod) = (-stress(3,3) + press*volume)*orcellz/(wscal*cell_vec_len(3)) - forceStore(3,npmod)
        n_store = min(iter_loc,LBFGS_history) ! Number of stored states
        if(inode==ionode.AND.iprint_MD>2) write(io_lun,fmt='(4x,"Number of stored histories ",i3)') n_store
        allocate(mod_dr(n_store),Sij(n_store,n_store),lambda(n_store),&
@@ -2524,9 +2509,9 @@ contains
        if (leqi(cell_constraint_flag, 'volume')) then
           cg_new(1) = third*(stress(1,1)+stress(2,2)+stress(3,3)) - press*volume
        else
-          cg_new(1) = (stress(1,1) - press*volume)*orcellx/(wscal*rcellx)
-          cg_new(2) = (stress(2,2) - press*volume)*orcelly/(wscal*rcelly)
-          cg_new(3) = (stress(3,3) - press*volume)*orcellz/(wscal*rcellz)
+          cg_new(1) = (stress(1,1) - press*volume)*orcellx/(wscal*cell_vec_len(1))
+          cg_new(2) = (stress(2,2) - press*volume)*orcelly/(wscal*cell_vec_len(2))
+          cg_new(3) = (stress(3,3) - press*volume)*orcellz/(wscal*cell_vec_len(3))
           !do i = 1,3
           !   cg_new(i) = (stress(i,i) - press*volume)*orcell(i)/wscal
           !end do
@@ -2535,9 +2520,9 @@ contains
        do i=1,n_dim
           temp = zero
           !do j=1,3
-          temp = temp + (stress(1,1)-press*volume)*orcell(1)*vi_tilde(1,i)/(wscal*rcellx)
-          temp = temp + (stress(2,2)-press*volume)*orcell(2)*vi_tilde(2,i)/(wscal*rcelly)
-          temp = temp + (stress(3,3)-press*volume)*orcell(3)*vi_tilde(3,i)/(wscal*rcellz)
+          temp = temp + (stress(1,1)-press*volume)*orcell(1)*vi_tilde(1,i)/(wscal*cell_vec_len(1))
+          temp = temp + (stress(2,2)-press*volume)*orcell(2)*vi_tilde(2,i)/(wscal*cell_vec_len(2))
+          temp = temp + (stress(3,3)-press*volume)*orcell(3)*vi_tilde(3,i)/(wscal*cell_vec_len(3))
           !end do
           do j=1,3
              cg_new(j) = cg_new(j) - (one/kappa_prime(i) - alpha)*temp*vi_tilde(j,i)
@@ -2559,7 +2544,7 @@ contains
        end if
        if(inode==ionode.AND.iprint_MD>2) write(io_lun,fmt='(4x,"Alpha set to: ",f9.5)') alpha
        max_stress = zero
-       volume = rcellx*rcelly*rcellz
+       volume = abs(cell_vol)
        do i=1,3
           stress_diff = abs(press*volume + stress(i,i))/volume
           if (stress_diff > max_stress) max_stress = stress_diff
@@ -2571,7 +2556,7 @@ contains
        dRMSstress = (RMSstress - newRMSstress)/volume
        enthalpy0 = enthalpy1
        ! Check exit criteria
-       volume = rcellx*rcelly*rcellz
+       volume = abs(cell_vol)
        max_stress = zero
        do i=1,3
           stress_diff = abs(press*volume + stress(i,i))/volume
@@ -2627,10 +2612,10 @@ contains
 
   !!****f* control/full_sqnm *
   !!
-  !!  NAME 
+  !!  NAME
   !!   sqnm
   !!  USAGE
-  !!   
+  !!
   !!  PURPOSE
   !!   Performs stabilised Quasi-Newton minimisation
   !!   optimisation for ionic positions and simulation cell
@@ -2640,9 +2625,9 @@ contains
   !!  ** NB not yet functional: do not use 2022/09/16 16:52 dave **
   !!
   !!  INPUTS
-  !! 
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -2659,7 +2644,7 @@ contains
          y_atom_cell, z_atom_cell, id_glob,    &
          atom_coord, area_general, flag_pulay_simpleStep, &
          flag_diagonalisation, nspin, flag_LmatrixReuse, &
-         flag_SFcoeffReuse, flag_move_atom, rcellx, rcelly, rcellz, &
+         flag_SFcoeffReuse, flag_move_atom, cell_vec_len, &
          cell_constraint_flag, cell_stress_tol, min_layer
     use group_module,   only: parts
     use minimise,       only: get_E_and_F
@@ -2677,7 +2662,7 @@ contains
     use store_matrix,   only: dump_pos_and_matrices
     use mult_module, ONLY: matK, S_trans, matrix_scale, matL, L_trans
     use matrix_data, ONLY: Hrange, Lrange
-    use dimens,        only: r_super_x, r_super_y, r_super_z
+    use dimens,        only:
     use md_control,    only: flag_write_xsf, flag_write_extxyz, target_pressure
 
     implicit none
@@ -2704,12 +2689,12 @@ contains
     logical      :: done
 
     ! Store original cell size
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
-    orcell(1) = rcellx
-    orcell(2) = rcelly
-    orcell(3) = rcellz
+    orcellx = cell_vec_len(1)
+    orcelly = cell_vec_len(2)
+    orcellz = cell_vec_len(3)
+    orcell(1) = cell_vec_len(1)
+    orcell(2) = cell_vec_len(2)
+    orcell(3) = cell_vec_len(3)
     ! Scaling: w = 2 Bohr x sqrt(Natoms)
     wscal = two*sqrt(real(ni_in_cell,double))
     step = MDtimestep
@@ -2760,13 +2745,13 @@ contains
     enthalpy1 = enthalpy0
     dH = zero
     max_stress = zero
-    volume = rcellx*rcelly*rcellz
+    volume = abs(cell_vol)
     do i=1,3
        stress_diff = abs(press*volume + stress(i,i))/volume
        if (stress_diff > max_stress) max_stress = stress_diff
     end do
     if (inode==ionode) then
-       write(io_lun,'(2x,"GeomOpt - Iter: ",i4," MaxF: ",f12.8," E: ",e18.10)') & 
+       write(io_lun,'(2x,"GeomOpt - Iter: ",i4," MaxF: ",f12.8," E: ",e18.10)') &
             iter, for_conv*max, en_conv*energy0
        write(io_lun,'(2x,"GeomOpt - Iter: ",i4," MaxStr: ",f12.8," MaxF: ",f12.8," H: ",f16.8," dH: ",f12.8)') &
             iter, max_stress*volume, for_conv*max, en_conv*enthalpy1, en_conv*dH
@@ -2774,9 +2759,9 @@ contains
     iter_loc = 0
     ggold = zero
     energy1 = energy0
-    cg_new(1,1:ni_in_cell) = -tot_force(1,:)*rcellx/orcellx
-    cg_new(2,1:ni_in_cell) = -tot_force(2,:)*rcellx/orcellx
-    cg_new(3,1:ni_in_cell) = -tot_force(3,:)*rcellx/orcellx
+    cg_new(1,1:ni_in_cell) = -tot_force(1,:)*cell_vec_len(1)/orcellx
+    cg_new(2,1:ni_in_cell) = -tot_force(2,:)*cell_vec_len(1)/orcellx
+    cg_new(3,1:ni_in_cell) = -tot_force(3,:)*cell_vec_len(1)/orcellx
     cg_new(1,ni_in_cell+1) = (stress(1,1) - press*volume)*orcell(1)/wscal
     cg_new(2,ni_in_cell+1) = (stress(2,2) - press*volume)*orcell(2)/wscal
     cg_new(3,ni_in_cell+1) = (stress(3,3) - press*volume)*orcell(3)/wscal
@@ -2794,23 +2779,23 @@ contains
        ! Ions
        do i=1,ni_in_cell
           jj = id_glob(i)
-          posnStore (1,jj,npmod) = x_atom_cell(i)*orcellx/rcellx
-          posnStore (2,jj,npmod) = y_atom_cell(i)*orcelly/rcelly
-          posnStore (3,jj,npmod) = z_atom_cell(i)*orcellz/rcellz
-          forceStore(1,jj,npmod) = -tot_force(1,jj)*rcellx/orcellx
-          forceStore(2,jj,npmod) = -tot_force(2,jj)*rcelly/orcelly
-          forceStore(3,jj,npmod) = -tot_force(3,jj)*rcellz/orcellz
+          posnStore (1,jj,npmod) = x_atom_cell(i)*orcellx/cell_vec_len(1)
+          posnStore (2,jj,npmod) = y_atom_cell(i)*orcelly/cell_vec_len(2)
+          posnStore (3,jj,npmod) = z_atom_cell(i)*orcellz/cell_vec_len(3)
+          forceStore(1,jj,npmod) = -tot_force(1,jj)*cell_vec_len(1)/orcellx
+          forceStore(2,jj,npmod) = -tot_force(2,jj)*cell_vec_len(2)/orcelly
+          forceStore(3,jj,npmod) = -tot_force(3,jj)*cell_vec_len(3)/orcellz
           x_new_pos(i) = x_atom_cell(i)
           y_new_pos(i) = y_atom_cell(i)
           z_new_pos(i) = z_atom_cell(i)
-          cg(1,i) = -cg_new(1,jj)*orcellx/rcellx ! Search downhill
-          cg(2,i) = -cg_new(2,jj)*orcelly/rcelly ! Search downhill
-          cg(3,i) = -cg_new(3,jj)*orcellz/rcellz ! Search downhill
+          cg(1,i) = -cg_new(1,jj)*orcellx/cell_vec_len(1) ! Search downhill
+          cg(2,i) = -cg_new(2,jj)*orcelly/cell_vec_len(2) ! Search downhill
+          cg(3,i) = -cg_new(3,jj)*orcellz/cell_vec_len(3) ! Search downhill
        end do
        ! Cell
-       posnStore(1,ni_in_cell+1,npmod) = wscal*rcellx/orcellx
-       posnStore(2,ni_in_cell+1,npmod) = wscal*rcelly/orcelly
-       posnStore(3,ni_in_cell+1,npmod) = wscal*rcellz/orcellz
+       posnStore(1,ni_in_cell+1,npmod) = wscal*cell_vec_len(1)/orcellx
+       posnStore(2,ni_in_cell+1,npmod) = wscal*cell_vec_len(2)/orcelly
+       posnStore(3,ni_in_cell+1,npmod) = wscal*cell_vec_len(3)/orcellz
        forceStore(1,ni_in_cell+1,npmod) = (-stress(1,1) + press*volume)*orcellx/wscal
        forceStore(2,ni_in_cell+1,npmod) = (-stress(2,2) + press*volume)*orcelly/wscal
        forceStore(3,ni_in_cell+1,npmod) = (-stress(3,3) + press*volume)*orcellz/wscal
@@ -2831,9 +2816,9 @@ contains
           cg_new(:,1:ni_in_cell) = -tot_force
           do i=1,ni_in_cell
              jj = id_glob(i)
-             cg(1,i) = -cg_new(1,jj)*orcellx/rcellx ! Search downhill
-             cg(2,i) = -cg_new(2,jj)*orcelly/rcelly ! Search downhill
-             cg(3,i) = -cg_new(3,jj)*orcellz/rcellz ! Search downhill
+             cg(1,i) = -cg_new(1,jj)*orcellx/cell_vec_len(1) ! Search downhill
+             cg(2,i) = -cg_new(2,jj)*orcelly/cell_vec_len(2) ! Search downhill
+             cg(3,i) = -cg_new(3,jj)*orcellz/cell_vec_len(3) ! Search downhill
           end do
           do i=1,3
              cg_new(i,ni_in_cell+1) = (stress(i,i) - press*volume)*orcell(i)/wscal
@@ -2851,26 +2836,26 @@ contains
        ! Update stored position difference and force difference
        do i=1,ni_in_cell
           jj = id_glob(i)
-          posnStore (1,jj,npmod) = x_atom_cell(i)*orcellx/rcellx - posnStore (1,jj,npmod)
-          if(abs(posnStore(1,jj,npmod)/r_super_x)>0.7_double) posnStore(1,jj,npmod) &
+          posnStore (1,jj,npmod) = x_atom_cell(i)*orcellx/cell_vec_len(1) - posnStore (1,jj,npmod)
+          if(abs(posnStore(1,jj,npmod)/cell_vec_len(1))>0.7_double) posnStore(1,jj,npmod) &
                = posnStore(1,jj,npmod) &
-               - nint(posnStore(1,jj,npmod)/r_super_x)*r_super_x
-          posnStore (2,jj,npmod) = y_atom_cell(i)*orcelly/rcelly - posnStore (2,jj,npmod)
-          if(abs(posnStore(2,jj,npmod)/r_super_y)>0.7_double) posnStore(2,jj,npmod) &
+               - nint(posnStore(1,jj,npmod)/cell_vec_len(1))*cell_vec_len(1)
+          posnStore (2,jj,npmod) = y_atom_cell(i)*orcelly/cell_vec_len(2) - posnStore (2,jj,npmod)
+          if(abs(posnStore(2,jj,npmod)/cell_vec_len(2))>0.7_double) posnStore(2,jj,npmod) &
                = posnStore(2,jj,npmod) &
-               - nint(posnStore(2,jj,npmod)/r_super_y)*r_super_y
-          posnStore (3,jj,npmod) = z_atom_cell(i)*orcellz/rcellz - posnStore (3,jj,npmod)
-          if(abs(posnStore(3,jj,npmod)/r_super_z)>0.7_double) posnStore(3,jj,npmod) &
+               - nint(posnStore(2,jj,npmod)/cell_vec_len(2))*cell_vec_len(2)
+          posnStore (3,jj,npmod) = z_atom_cell(i)*orcellz/cell_vec_len(3) - posnStore (3,jj,npmod)
+          if(abs(posnStore(3,jj,npmod)/cell_vec_len(3))>0.7_double) posnStore(3,jj,npmod) &
                = posnStore(3,jj,npmod) &
-               - nint(posnStore(3,jj,npmod)/r_super_z)*r_super_z
-          forceStore(1,jj,npmod) = -tot_force(1,jj)*rcellx/orcellx - forceStore(1,jj,npmod)
-          forceStore(2,jj,npmod) = -tot_force(2,jj)*rcelly/orcelly - forceStore(2,jj,npmod)
-          forceStore(3,jj,npmod) = -tot_force(3,jj)*rcellz/orcellz - forceStore(3,jj,npmod)
+               - nint(posnStore(3,jj,npmod)/cell_vec_len(3))*cell_vec_len(3)
+          forceStore(1,jj,npmod) = -tot_force(1,jj)*cell_vec_len(1)/orcellx - forceStore(1,jj,npmod)
+          forceStore(2,jj,npmod) = -tot_force(2,jj)*cell_vec_len(2)/orcelly - forceStore(2,jj,npmod)
+          forceStore(3,jj,npmod) = -tot_force(3,jj)*cell_vec_len(3)/orcellz - forceStore(3,jj,npmod)
           ! New search direction
        end do
-       posnStore (1,ni_in_cell+1,npmod) = rcellx*wscal/orcellx - posnStore (1,ni_in_cell+1,npmod)
-       posnStore (2,ni_in_cell+1,npmod) = rcelly*wscal/orcelly - posnStore (2,ni_in_cell+1,npmod)
-       posnStore (3,ni_in_cell+1,npmod) = rcellz*wscal/orcellz - posnStore (3,ni_in_cell+1,npmod)
+       posnStore (1,ni_in_cell+1,npmod) = cell_vec_len(1)*wscal/orcellx - posnStore (1,ni_in_cell+1,npmod)
+       posnStore (2,ni_in_cell+1,npmod) = cell_vec_len(2)*wscal/orcelly - posnStore (2,ni_in_cell+1,npmod)
+       posnStore (3,ni_in_cell+1,npmod) = cell_vec_len(3)*wscal/orcellz - posnStore (3,ni_in_cell+1,npmod)
        forceStore(1,ni_in_cell+1,npmod) = (-stress(1,1) + press*volume)*orcellx/wscal - forceStore(1,ni_in_cell+1,npmod)
        forceStore(2,ni_in_cell+1,npmod) = (-stress(2,2) + press*volume)*orcelly/wscal - forceStore(2,ni_in_cell+1,npmod)
        forceStore(3,ni_in_cell+1,npmod) = (-stress(3,3) + press*volume)*orcellz/wscal - forceStore(3,ni_in_cell+1,npmod)
@@ -2971,15 +2956,15 @@ contains
        end do
        if(inode==ionode.AND.iprint_MD>3) write(io_lun,fmt='(4x,"Kappa prime: ",(f7.4))') kappa_prime
        ! Build preconditioned search
-       cg_new(1,1:ni_in_cell) = -alpha*tot_force(1,:)*rcellx/orcellx
-       cg_new(2,1:ni_in_cell) = -alpha*tot_force(2,:)*rcellx/orcellx
-       cg_new(3,1:ni_in_cell) = -alpha*tot_force(3,:)*rcellx/orcellx
+       cg_new(1,1:ni_in_cell) = -alpha*tot_force(1,:)*cell_vec_len(1)/orcellx
+       cg_new(2,1:ni_in_cell) = -alpha*tot_force(2,:)*cell_vec_len(1)/orcellx
+       cg_new(3,1:ni_in_cell) = -alpha*tot_force(3,:)*cell_vec_len(1)/orcellx
        cg_new(1,ni_in_cell+1) =  alpha*(stress(1,1) - press*volume)*orcell(1)/wscal
        cg_new(2,ni_in_cell+1) =  alpha*(stress(2,2) - press*volume)*orcell(2)/wscal
        cg_new(3,ni_in_cell+1) =  alpha*(stress(3,3) - press*volume)*orcell(3)/wscal
-       rcell(1) = rcellx
-       rcell(2) = rcelly
-       rcell(3) = rcellz
+       rcell(1) = cell_vec_len(1)
+       rcell(2) = cell_vec_len(2)
+       rcell(3) = cell_vec_len(3)
        do i=1,n_dim
           temp = zero
           do j=1,3
@@ -3006,16 +2991,16 @@ contains
        gg = dot(length, cg_new, 1, cg_new, 1)
        ! Analyse forces
        g0 = zero
-       g0 = g0 + dot(ni_in_cell,tot_force(1,:),1,tot_force(1,:),1)*rcellx*rcellx/(orcellx*orcellx)
-       g0 = g0 + dot(ni_in_cell,tot_force(2,:),1,tot_force(2,:),1)*rcelly*rcelly/(orcelly*orcelly)
-       g0 = g0 + dot(ni_in_cell,tot_force(3,:),1,tot_force(3,:),1)*rcellz*rcellz/(orcellz*orcellz)
+       g0 = g0 + dot(ni_in_cell,tot_force(1,:),1,tot_force(1,:),1)*cell_vec_len(1)*cell_vec_len(1)/(orcellx*orcellx)
+       g0 = g0 + dot(ni_in_cell,tot_force(2,:),1,tot_force(2,:),1)*cell_vec_len(2)*cell_vec_len(2)/(orcelly*orcelly)
+       g0 = g0 + dot(ni_in_cell,tot_force(3,:),1,tot_force(3,:),1)*cell_vec_len(3)*cell_vec_len(3)/(orcellz*orcellz)
        g0 = g0 + (stress(1,1)-press*volume)*(stress(1,1)-press*volume)*orcellx*orcellx/(wscal*wscal)
        g0 = g0 + (stress(2,2)-press*volume)*(stress(2,2)-press*volume)*orcelly*orcelly/(wscal*wscal)
        g0 = g0 + (stress(3,3)-press*volume)*(stress(3,3)-press*volume)*orcellz*orcellz/(wscal*wscal)
        f_dot_sd = zero
-       f_dot_sd = f_dot_sd - dot(ni_in_cell,cg_new(1,1:ni_in_cell),1,tot_force(1,:),1)*rcellx/orcellx
-       f_dot_sd = f_dot_sd - dot(ni_in_cell,cg_new(2,1:ni_in_cell),1,tot_force(2,:),1)*rcelly/orcelly
-       f_dot_sd = f_dot_sd - dot(ni_in_cell,cg_new(3,1:ni_in_cell),1,tot_force(3,:),1)*rcellz/orcellz
+       f_dot_sd = f_dot_sd - dot(ni_in_cell,cg_new(1,1:ni_in_cell),1,tot_force(1,:),1)*cell_vec_len(1)/orcellx
+       f_dot_sd = f_dot_sd - dot(ni_in_cell,cg_new(2,1:ni_in_cell),1,tot_force(2,:),1)*cell_vec_len(2)/orcelly
+       f_dot_sd = f_dot_sd - dot(ni_in_cell,cg_new(3,1:ni_in_cell),1,tot_force(3,:),1)*cell_vec_len(3)/orcellz
        f_dot_sd = f_dot_sd + cg_new(1,ni_in_cell+1)*(stress(1,1)-press*volume)*orcellx/wscal
        f_dot_sd = f_dot_sd + cg_new(2,ni_in_cell+1)*(stress(2,2)-press*volume)*orcelly/wscal
        f_dot_sd = f_dot_sd + cg_new(3,ni_in_cell+1)*(stress(3,3)-press*volume)*orcellz/wscal
@@ -3039,12 +3024,12 @@ contains
        dE = energy1 - energy0
        energy0 = energy1
        if (inode==ionode) then
-          write(io_lun,'(2x,"GeomOpt - Iter: ",i4," MaxF: ",f12.8," E: ",e18.10," dE: ",f12.8)') & 
+          write(io_lun,'(2x,"GeomOpt - Iter: ",i4," MaxF: ",f12.8," E: ",e18.10," dE: ",f12.8)') &
                iter, for_conv*max, en_conv*energy1, en_conv*dE
           if (iprint_MD > 1) then
              g0 = dot(length, tot_force, 1, tot_force, 1)
              write(io_lun,'(4x,"Force Residual:     ",f19.8," ",a2,"/",a2)') &
-                  for_conv*sqrt(g0/ni_in_cell), en_units(energy_units), & 
+                  for_conv*sqrt(g0/ni_in_cell), en_units(energy_units), &
                   d_units(dist_units)
              write(io_lun,'(4x,"Maximum force:      ",f19.8)') for_conv*max
              write(io_lun,'(4x,"Force tolerance:    ",f19.8)') for_conv*MDcgtol
@@ -3117,14 +3102,16 @@ contains
     use units
     use global_module, only: iprint_gen, ni_in_cell, x_atom_cell,  &
          y_atom_cell, z_atom_cell, id_glob,    &
-         atom_coord, rcellx, rcelly, rcellz,   &
+         atom_coord, cell_vec_len,   &
          area_general, iprint_MD,              &
          IPRINT_TIME_THRES1, cell_en_tol,      &
-         cell_constraint_flag, cell_stress_tol, min_layer
+         cell_constraint_flag, cell_stress_tol, min_layer, &
+         flag_full_stress
     use group_module,  only: parts
     use minimise,      only: get_E_and_F
     use move_atoms,    only: safemin_cell, enthalpy, enthalpy_tolerance, &
-         backtrack_linemin_cell, adapt_backtrack, backtrack, safe, cg_line_min
+         backtrack_linemin_cell, backtrack_linemin_lattice, &
+         adapt_backtrack, backtrack, safe, cg_line_min
     use GenComms,      only: gsum, myid, inode, ionode
     use GenBlas,       only: dot
     use force_module,  only: stress, tot_force
@@ -3133,7 +3120,7 @@ contains
     use memory_module, only: reg_alloc_mem, reg_dealloc_mem, type_dbl
     use timer_module
     use io_module,      only: leqi
-    use dimens, ONLY: r_super_x, r_super_y, r_super_z
+    use dimens, ONLY: n_grid_x
     use store_matrix,  only: dump_pos_and_matrices
     use md_control,    only: target_pressure, flag_write_extxyz
 
@@ -3148,13 +3135,14 @@ contains
     real(double)   :: energy0, energy1, max, g0, dE, gg, ggold, gamma, &
          enthalpy0, enthalpy1, dH, press
     integer        :: i,j,k,iter,length, jj, lun, stat, reset_iter
-    logical        :: done
+    logical        :: done, full_lattice_relax, lattice_step_accepted
     type(cq_timer) :: tmr_l_iter
     real(double) :: new_rcellx, new_rcelly, new_rcellz, search_dir_x, search_dir_y,&
          search_dir_z, stressx, stressy, stressz, RMSstress, newRMSstress,&
          dRMSstress, search_dir_mean, mean_stress, max_stress, &
-         stress_diff, volume, stress_target
+         stress_diff, volume, stress_target, grad_dot_dir
     real(double), dimension(3) :: cg
+    real(double), dimension(3,3) :: lattice_direction, effective_stress
 
     character(len=20) :: subname = "cell_cg_run: "
     character(len=120) :: prefix, prefixGO
@@ -3162,6 +3150,9 @@ contains
 
     prefix = return_prefix(subname, min_layer)
     prefixGO = return_prefix("GeomOpt", min_layer)
+    full_lattice_relax = flag_full_stress .and. &
+         leqi(cell_constraint_flag,'none') .and. &
+         (cg_line_min==backtrack .or. cg_line_min==adapt_backtrack)
     if (myid == 0) then
        if(cg_line_min==safe) then
           write(io_lun, fmt='(/4x,a)') &
@@ -3203,11 +3194,19 @@ contains
     enthalpy1 = enthalpy0
     dH = zero
     max_stress = zero
-    volume = rcellx*rcelly*rcellz
+    volume = abs(cell_vol)
     do i=1,3
        stress_diff = abs(press*volume + stress(i,i))/volume
        if (stress_diff > max_stress) max_stress = stress_diff
     end do
+    if (full_lattice_relax) then
+       do i=1,3
+          do j=i+1,3
+             stress_diff = abs(stress(i,j))/volume
+             if (stress_diff > max_stress) max_stress = stress_diff
+          end do
+       end do
+    end if
     if (inode==ionode) then
        write(io_lun,'(/4x,a,i4," MaxStr: ",f12.8," GPa H: ",f16.8,x,a2," dH: ",f12.8,a2/)') &
             trim(prefixGO)//" - Iter: ",0, max_stress*HaBohr3ToGPa, en_conv*enthalpy0, &
@@ -3227,7 +3226,7 @@ contains
     call dump_pos_and_matrices(index=0,MDstep=iter)
     do while (.not. done)
        call start_timer(tmr_l_iter, WITH_LEVEL)
-       volume = rcellx*rcelly*rcellz
+       volume = abs(cell_vol)
        ! Keep these as stresses
        stressx = -stress(1,1)!/volume
        stressy = -stress(2,2)!/volume
@@ -3238,6 +3237,13 @@ contains
        ! Construct ratio for conjugacy. Constraints are initially applied within
        ! get_gamma_cell_cg.
        call get_gamma_cell_cg(ggold, gg, gamma, stressx, stressy, stressz)
+       ! The cell backtracking line search enforces Armijo decrease but not
+       ! the curvature (Wolfe) condition required by Fletcher-Reeves CG.
+       ! Reusing the previous cell direction can therefore cease to be
+       ! downhill even when the scalar CG test looks acceptable.  Use the
+       ! stress-derived steepest-descent direction for robust cell steps;
+       ! ionic relaxation remains conjugate-gradient.
+       gamma = zero
        if (CGreset) then
           if (gamma > one .or. reset_iter > length) then
              if (inode == ionode .and. iprint_MD + min_layer > 1) &
@@ -3262,11 +3268,29 @@ contains
           search_dir_x = gamma*search_dir_x + stressx - press*volume
           search_dir_y = gamma*search_dir_y + stressy - press*volume
           search_dir_z = gamma*search_dir_z + stressz - press*volume
+
+          ! Fletcher-Reeves can cease to be a descent direction after a
+          ! finite/noisy cell line minimisation.  Restart with steepest
+          ! descent instead of handing a non-descent direction to the line
+          ! search, which otherwise shrinks the step until it aborts.
+          grad_dot_dir = (stress(1,1) + press*volume)*search_dir_x + &
+                         (stress(2,2) + press*volume)*search_dir_y + &
+                         (stress(3,3) + press*volume)*search_dir_z
+          if (grad_dot_dir >= zero) then
+             gamma = zero
+             search_dir_x = -stress(1,1) - press*volume
+             search_dir_y = -stress(2,2) - press*volume
+             search_dir_z = -stress(3,3) - press*volume
+             reset_iter = 0
+             if (inode == ionode .and. iprint_MD + min_layer > 1) &
+                  write(io_lun,fmt='(4x,a)') trim(prefix)// &
+                  " restarting non-descent cell CG direction"
+          end if
        end if
 
-       new_rcellx = rcellx
-       new_rcelly = rcelly
-       new_rcellz = rcellz
+       new_rcellx = cell_vec_len(1)
+       new_rcelly = cell_vec_len(2)
+       new_rcellz = cell_vec_len(3)
 
        ! Minimise in this direction. Constraint information is also used within
        ! safemin_cell. Look in move_atoms.module.f90 for further information.
@@ -3276,23 +3300,47 @@ contains
                search_dir_y, search_dir_z, search_dir_mean, press, &
                enthalpy0, enthalpy1, fixed_potential, vary_mu)
        else if(cg_line_min==backtrack.OR.cg_line_min==adapt_backtrack) then
-          cg(1) = search_dir_x
-          cg(2) = search_dir_y
-          cg(3) = search_dir_z
-          call backtrack_linemin_cell(cg, press, enthalpy0, enthalpy1, fixed_potential, vary_mu)
+          if (full_lattice_relax) then
+             effective_stress = stress
+             do i=1,3
+                effective_stress(i,i) = effective_stress(i,i) + &
+                     press*volume
+             end do
+             ! Use the symmetric strain tensor as the six-dimensional
+             ! cell-search coordinate.  This is independent of the
+             ! Cartesian orientation of the input lattice, unlike updating
+             ! only the upper triangle of lat_vec.
+             lattice_direction = -half*(effective_stress + &
+                  transpose(effective_stress))
+             call backtrack_linemin_lattice(lattice_direction,press, &
+                  enthalpy0,enthalpy1,fixed_potential,vary_mu, &
+                  lattice_step_accepted)
+             if (.not.lattice_step_accepted) then
+                done = .true.
+                if (inode == ionode) write(io_lun,fmt='(4x,a)') &
+                     trim(prefix)// &
+                     " stopping: full-lattice energy change is below numerical resolution"
+             end if
+          else
+             cg(1) = search_dir_x
+             cg(2) = search_dir_y
+             cg(3) = search_dir_z
+             call backtrack_linemin_cell(cg, press, enthalpy0, &
+                  enthalpy1, fixed_potential, vary_mu)
+          end if
        end if
        min_layer = min_layer + 1
        ! Output positions to UpdatedAtoms.dat
        if (myid == 0 .and. iprint_gen + min_layer > 1) then
           write(io_lun, fmt='(/4x,a)') trim(prefix)//" simulation cell dimensions: "
           write(io_lun, fmt='(6x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            cell_vec_len(1), d_units(dist_units), cell_vec_len(2), d_units(dist_units), cell_vec_len(3), d_units(dist_units)
        end if
        call write_atomic_positions("UpdatedAtoms.dat", trim(pdb_template))
        if (flag_write_extxyz .and. mod(iter,XYZfreq) == 0) call write_extxyz('trajectory.xyz', energy1, tot_force, stress)
        ! Analyse Stresses and energies
        dH = enthalpy1 - enthalpy0
-       volume = rcellx*rcelly*rcellz
+       volume = abs(cell_vol)
        newRMSstress = sqrt(((stress(1,1)*stress(1,1)) + &
             (stress(2,2)*stress(2,2)) + &
             (stress(3,3)*stress(3,3)))/3)
@@ -3306,6 +3354,14 @@ contains
           stress_diff = abs(press*volume + stress(i,i))/volume
           if (stress_diff > max_stress) max_stress = stress_diff
        end do
+       if (full_lattice_relax) then
+          do i=1,3
+             do j=i+1,3
+                stress_diff = abs(stress(i,j))/volume
+                if (stress_diff > max_stress) max_stress = stress_diff
+             end do
+          end do
+       end if
 
        reset_iter = reset_iter +1
 
@@ -3362,7 +3418,7 @@ contains
     if (myid == 0 .and. iprint_gen + min_layer > 0) then
        write(io_lun, fmt='(/4x,a)') trim(prefix)//" final simulation box dimensions are: "
        write(io_lun, fmt='(8x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            cell_vec_len(1), d_units(dist_units), cell_vec_len(2), d_units(dist_units), cell_vec_len(3), d_units(dist_units)
     end if
 
     call reg_dealloc_mem(area_general, 6*ni_in_cell, type_dbl)
@@ -3418,7 +3474,7 @@ contains
 
           ! no contraints or single ratio fixed = all three stress components used
        else if (leqi(cell_constraint_flag, 'none') .or. leqi(cell_constraint_flag, 'c/a') &
-            .or. leqi(cell_constraint_flag, 'a/c') .or. leqi(cell_constraint_flag, 'a/b') & 
+            .or. leqi(cell_constraint_flag, 'a/c') .or. leqi(cell_constraint_flag, 'a/b') &
             .or. leqi(cell_constraint_flag, 'b/a') .or. leqi(cell_constraint_flag, 'b/c') &
             .or. leqi(cell_constraint_flag, 'c/b')) then
 
@@ -3487,8 +3543,8 @@ contains
          y_atom_cell, z_atom_cell, id_glob,    &
          atom_coord, area_general, iprint_MD,  &
          IPRINT_TIME_THRES1,                   &
-         cell_en_tol, cell_stress_tol,         &
-         rcellx, rcelly, rcellz, runtype, min_layer
+         cell_en_tol, cell_stress_tol, cell_constraint_flag, &
+         cell_vec_len, runtype, min_layer, flag_full_stress
     use input_module,         only: leqi
     use group_module,  only: parts
     use minimise,      only: get_E_and_F
@@ -3585,12 +3641,20 @@ contains
     stress_target = cell_stress_tol/HaBohr3ToGPa
     enthalpy0 = enthalpy(energy0, press)
     dH = zero
-    volume = rcellx*rcelly*rcellz
+    volume = abs(cell_vol)
     max_stress = zero
     do i=1,3
        stress_diff = abs(press*volume + stress(i,i))/volume
        if (stress_diff > max_stress) max_stress = stress_diff
     end do
+    if (flag_full_stress .and. leqi(cell_constraint_flag,'none')) then
+       do i=1,3
+          do j=i+1,3
+             stress_diff = abs(stress(i,j))/volume
+             if (stress_diff > max_stress) max_stress = stress_diff
+          end do
+       end do
+    end if
     if (inode==ionode) then
        write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," H: " ,f16.8,x,a2," MaxS: ",f12.8," GPa")') &
             trim(prefixGO)//" + Iter: ",0, for_conv*max, en_units(energy_units), d_units(dist_units), &
@@ -3633,7 +3697,7 @@ contains
        end if
        enthalpy1 = enthalpy(energy1, press)
        dH = enthalpy1 - enthalpy0
-       volume = rcellx*rcelly*rcellz
+       volume = abs(cell_vol)
        newRMSstress = sqrt(((stress(1,1)*stress(1,1)) + &
             (stress(2,2)*stress(2,2)) + &
             (stress(3,3)*stress(3,3)))/three)
@@ -3644,6 +3708,14 @@ contains
           stress_diff = abs(press*volume + stress(i,i))/volume
           if (stress_diff > max_stress) max_stress = stress_diff
        end do
+       if (flag_full_stress .and. leqi(cell_constraint_flag,'none')) then
+          do i=1,3
+             do j=i+1,3
+                stress_diff = abs(stress(i,j))/volume
+                if (stress_diff > max_stress) max_stress = stress_diff
+             end do
+          end do
+       end if
        ! Test for finish
        if (abs(max) < MDcgtol .and. max_stress < stress_target) then
           done_cell = .true.
@@ -3679,12 +3751,20 @@ contains
             (stress(3,3)*stress(3,3)))/three)
        dRMSstress = (RMSstress - newRMSstress)/volume
 
-       volume = rcellx*rcelly*rcellz
+       volume = abs(cell_vol)
        max_stress = zero
        do i=1,3
           stress_diff = abs(press*volume + stress(i,i))/volume
           if (stress_diff > max_stress) max_stress = stress_diff
        end do
+       if (flag_full_stress .and. leqi(cell_constraint_flag,'none')) then
+          do i=1,3
+             do j=i+1,3
+                stress_diff = abs(stress(i,j))/volume
+                if (stress_diff > max_stress) max_stress = stress_diff
+             end do
+          end do
+       end if
        ! Test for finish
        if (inode==ionode) then
           write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," H: " ,f16.8,x,a2," MaxS: ",f12.8," GPa/")') &
@@ -3735,7 +3815,7 @@ contains
           if (inode==ionode) &
                write(io_lun, fmt='(4x,a,i4)') trim(prefix)//" exceeded number of CG steps: ",iter
        end if
-       
+
        call stop_print_timer(tmr_l_iter, "a CG iteration", IPRINT_TIME_THRES1)
        if (.not. done_cell) call check_stop(done_cell, iter_cell)
     end do
@@ -3743,8 +3823,8 @@ contains
     if (inode == ionode .and. iprint_gen + min_layer > 0) then
        write(io_lun, fmt='(/4x,a)') trim(prefix)//" final simulation box dimensions are: "
        write(io_lun, fmt='(4x,a,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            prefixF(1:-2*min_layer), rcellx, d_units(dist_units), rcelly, d_units(dist_units), &
-            rcellz, d_units(dist_units)
+            prefixF(1:-2*min_layer), cell_vec_len(1), d_units(dist_units), cell_vec_len(2), d_units(dist_units), &
+            cell_vec_len(3), d_units(dist_units)
     end if
 
     deallocate(z_new_pos, y_new_pos, x_new_pos, STAT=stat)
@@ -3774,7 +3854,7 @@ contains
                              atom_coord, area_general, iprint_MD,  &
                              IPRINT_TIME_THRES1,                   &
                              cell_en_tol, cell_stress_tol,         &
-                             rcellx, rcelly, rcellz, min_layer
+                             cell_vec_len, min_layer
     use group_module,  only: parts
     use minimise,      only: get_E_and_F
     use move_atoms,    only: safemin_cell, enthalpy, enthalpy_tolerance, safemin2
@@ -3856,13 +3936,13 @@ contains
     enthalpy0 = enthalpy(energy0, press)
     dH = zero
     if (inode==ionode) then
-      write(io_lun,'(/4x,"GeomOpt - Iter: ",i4," MaxF: ",f12.8," H: ", f16.8," dH: ",f12.8/)') & 
+      write(io_lun,'(/4x,"GeomOpt - Iter: ",i4," MaxF: ",f12.8," H: ", f16.8," dH: ",f12.8/)') &
            0, max, enthalpy0, dH
     end if
 
     if (inode == ionode .and. iprint_gen > 0) then
        write(io_lun, fmt='(/4x,"Starting full cell optimisation"/)')
-       write(io_lun,*)  "Initial cell dims", rcellx, rcelly, rcellz
+       write(io_lun,*)  "Initial cell dims", cell_vec_len
     end if
 
     iter = 1
@@ -3955,7 +4035,7 @@ contains
                iter, max, enthalpy1, en_conv*dH
           if (iprint_MD > 1) then
             write(io_lun,'(4x,"Force Residual:     ",f19.8," ",a2,"/",a2)') &
-              for_conv*sqrt(g0/ni_in_cell), en_units(energy_units), & 
+              for_conv*sqrt(g0/ni_in_cell), en_units(energy_units), &
               d_units(dist_units)
             write(io_lun,'(4x,"Maximum force:      ",f19.8)') max
             write(io_lun,'(4x,"Force tolerance:    ",f19.8)') MDcgtol
@@ -3990,7 +4070,7 @@ contains
       end do ! ionic loop
 
       enthalpy0 = enthalpy(energy0, press)
-      volume = rcellx*rcelly*rcellz
+      volume = abs(cell_vol)
       stressx = -stress(1,1)!/volume
       stressy = -stress(2,2)!/volume
       stressz = -stress(3,3)!/volume
@@ -4013,9 +4093,9 @@ contains
       search_dir_z = gamma*search_dir_z + stressz - press*volume
       ! end if
 
-      new_rcellx = rcellx
-      new_rcelly = rcelly
-      new_rcellz = rcellz
+      new_rcellx = cell_vec_len(1)
+      new_rcelly = cell_vec_len(2)
+      new_rcellz = cell_vec_len(3)
 
       ! Minimise in this direction. Constraint information is also used within
       ! safemin_cell. Look in move_atoms.module.f90 for further information.
@@ -4041,7 +4121,7 @@ contains
                            (stress(3,3)*stress(3,3)))/three)
       dRMSstress = RMSstress - newRMSstress
 
-      volume = rcellx*rcelly*rcellz
+      volume = abs(cell_vol)
       max_stress = zero
       do i=1,3
         stress_diff = abs(press*volume + stress(i,i))/volume
@@ -4053,7 +4133,7 @@ contains
              iter, max, enthalpy1, en_conv*dH
         if (iprint_MD > 1) then
           write(io_lun,'(4x,"Force Residual:     ",f19.8," ",a2,"/",a2)') &
-            for_conv*sqrt(g0/ni_in_cell), en_units(energy_units), & 
+            for_conv*sqrt(g0/ni_in_cell), en_units(energy_units), &
             d_units(dist_units)
           write(io_lun,'(4x,"Maximum force:         ",f19.8)') max
           write(io_lun,'(4x,"Force tolerance:       ",f19.8)') MDcgtol
@@ -4113,7 +4193,7 @@ contains
 
    if (inode == ionode .and. iprint_gen > 0) then
      write(io_lun, fmt='(/4x,"Finished full cell optimisation"/)')
-     write(io_lun,*)  "Final cell dims", rcellx, rcelly, rcellz
+     write(io_lun,*)  "Final cell dims", cell_vec_len
    end if
 
     deallocate(z_new_pos, y_new_pos, x_new_pos, STAT=stat)
@@ -4141,7 +4221,7 @@ contains
   !!  USAGE
   !!
   !!  PURPOSE
-  !!   Conjugate gradients opnimisation of cell vectors and ionic positions 
+  !!   Conjugate gradients opnimisation of cell vectors and ionic positions
   !!   by minimisation of force vector defined in Pfrommer et al.
   !!   J. Comput. Phys. 131, 233 (1997)
   !!
@@ -4167,7 +4247,7 @@ contains
     use units
     use global_module, only: iprint_gen, ni_in_cell, x_atom_cell,  &
                              y_atom_cell, z_atom_cell, id_glob,    &
-                             atom_coord, rcellx, rcelly, rcellz,   &
+                             atom_coord, cell_vec_len,   &
                              area_general, iprint_MD,              &
                              IPRINT_TIME_THRES1,                   &
                              cell_stress_tol, min_layer
@@ -4242,9 +4322,9 @@ contains
     dH = zero
 
     ! reference cell to compute strain
-    cell_ref(1) = rcellx
-    cell_ref(2) = rcelly
-    cell_ref(3) = rcellz
+    cell_ref(1) = cell_vec_len(1)
+    cell_ref(2) = cell_vec_len(2)
+    cell_ref(3) = cell_vec_len(3)
 
     ! Find energy and forces
     min_layer = min_layer - 1
@@ -4256,7 +4336,7 @@ contains
     call dump_pos_and_matrices
     call get_maxf(max)
     min_layer = min_layer + 1
-    volume = rcellx*rcelly*rcellz
+    volume = abs(cell_vol)
     max_stress = zero
     do i=1,3
        stress_diff = abs(press*volume + stress(i,i))/volume
@@ -4345,10 +4425,10 @@ contains
       else if(cg_line_min==backtrack) then
          call safemin_full(config, cg, cell_ref, enthalpy0, enthalpy1, &
               press, fixed_potential, vary_mu)
-         ! Backtrack does not (yet) work - don't use ! 
+         ! Backtrack does not (yet) work - don't use !
          !grad_f_dot_p = -dot(3*ni_in_cell+3,force,1,cg,1)
          !call backtrack_linemin_full(config, cg, cell_ref, enthalpy0, enthalpy1, &
-         !     press, grad_f_dot_p, fixed_potential, vary_mu)         
+         !     press, grad_f_dot_p, fixed_potential, vary_mu)
       end if
       min_layer = min_layer + 1
       ! Output positions
@@ -4362,7 +4442,7 @@ contains
       ! Analyse forces and stress
       g0 = dot(length-3, tot_force, 1, tot_force, 1)
       call get_maxf(max)
-      volume = rcellx*rcelly*rcellz
+      volume = abs(cell_vol)
       max_stress = zero
       do i=1,3
         stress_diff = abs(press*volume + stress(i,i))/volume

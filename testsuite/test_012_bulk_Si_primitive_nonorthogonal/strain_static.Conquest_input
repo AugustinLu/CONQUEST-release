@@ -1,0 +1,19 @@
+IO.Title                    primitive_si_strain_finite_difference
+IO.Coordinates              coords.dat
+IO.FractionalAtomicCoords   T
+AtomMove.TypeOfRun          static
+AtomMove.FullStress         T
+General.NumberOfSpecies     1
+General.PAOFromFiles        T
+%block ChemicalSpeciesLabel
+1 28.086 Si Si.ion
+%endblock
+Grid.GridCutoff             80
+DM.SolutionMethod           diagon
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-10
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.MPMeshX                6
+Diag.MPMeshY                6
+Diag.MPMeshZ                6

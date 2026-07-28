@@ -121,7 +121,7 @@ contains
     integer :: iprojz(groups%mx_gedge)
     integer :: irc,ierr,ind_group0,nx,ny,nz,ng,ind_group,nx1,ny1,nz1,ni
     integer :: nnd
-    real(double) :: dcellx,dcelly,dcellz
+    real(double) :: dcellx(3),dcelly(3),dcellz(3)
     real(double) :: xadd,yadd,zadd
     logical :: members
 
@@ -183,9 +183,9 @@ contains
             groups%ngcellz)-prim%nleftz
     enddo
     ! --- analyse atoms numbers and positions in primary cell -------------
-    dcellx=rcellx/groups%ngcellx
-    dcelly=rcelly/groups%ngcelly
-    dcellz=rcellz/groups%ngcellz
+    dcellx=lat_vec(:,1)/groups%ngcellx
+    dcelly=lat_vec(:,2)/groups%ngcelly
+    dcellz=lat_vec(:,3)/groups%ngcellz
     if(members) prim%iprim_seq = 0
     prim%n_prim=0
     prim%nm_nodbeg(1)=1
@@ -197,9 +197,9 @@ contains
        nx1=prim%nx_origin+prim%idisp_primx(ng)
        ny1=prim%ny_origin+prim%idisp_primy(ng)
        nz1=prim%nz_origin+prim%idisp_primz(ng)
-       xadd=real(nx1-nx,double)*dcellx
-       yadd=real(ny1-ny,double)*dcelly
-       zadd=real(nz1-nz,double)*dcellz
+       xadd=real(nx1-nx,double)*dcellx(1) + real(ny1-ny,double)*dcelly(1) + real(nz1-nz,double)*dcellz(1)
+       yadd=real(nx1-nx,double)*dcellx(2) + real(ny1-ny,double)*dcelly(2) + real(nz1-nz,double)*dcellz(2)
+       zadd=real(nx1-nx,double)*dcellx(3) + real(ny1-ny,double)*dcelly(3) + real(nz1-nz,double)*dcellz(3)
        prim%nm_nodgroup(ng)=groups%nm_group(ind_group)
        if(prim%nm_nodgroup(ng).gt.0) then
           do ni=1,prim%nm_nodgroup(ng)

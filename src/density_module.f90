@@ -224,14 +224,16 @@ contains
 
     use datatypes
     use numbers
-    use global_module,       only: rcellx, rcelly, rcellz, id_glob, &
+    use global_module,       only: cell_vec_len, id_glob, &
                                    ni_in_cell, iprint_SC,           &
                                    species_glob, dens, ne_in_cell,  &
                                    ne_spin_in_cell,                 &
                                    IPRINT_TIME_THRES3, nspin,       &
                                    spin_factor,                     &
                                    flag_fix_spin_population, &
-                                   flag_neutral_atom, area_SC, min_layer
+                                   flag_neutral_atom, area_SC, min_layer, &
+                                   lattice_grid_block_origin,       &
+                                   lattice_grid_point_offset
     use block_module,        only: nx_in_block, ny_in_block,        &
                                    nz_in_block, n_pts_in_block
     use group_module,        only: blocks, parts
@@ -307,9 +309,9 @@ contains
     end if
 
     ! determine the block and grid spacing
-    dcellx_block = rcellx / blocks%ngcellx
-    dcelly_block = rcelly / blocks%ngcelly
-    dcellz_block = rcellz / blocks%ngcellz
+    dcellx_block = cell_vec_len(1) / blocks%ngcellx
+    dcelly_block = cell_vec_len(2) / blocks%ngcelly
+    dcellz_block = cell_vec_len(3) / blocks%ngcellz
     dcellx_grid = dcellx_block / nx_in_block
     dcelly_grid = dcelly_block / ny_in_block
     dcellz_grid = dcellz_block / nz_in_block
@@ -323,9 +325,12 @@ contains
     do iblock = 1, domain%groups_on_node ! loop over blocks of grid points
        !write(io_lun,*) 'Block ',iblock
        ! determine the position of this block
-       xblock = (domain%idisp_primx(iblock) + domain%nx_origin - 1) * dcellx_block
-       yblock = (domain%idisp_primy(iblock) + domain%ny_origin - 1) * dcelly_block
-       zblock = (domain%idisp_primz(iblock) + domain%nz_origin - 1) * dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(iblock)+domain%nx_origin-1, &
+            domain%idisp_primy(iblock)+domain%ny_origin-1, &
+            domain%idisp_primz(iblock)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
        ! if there are neighbour partitions
        if (naba_atoms_of_blocks(dens)%no_of_part(iblock) > 0) then
           iatom = 0
@@ -390,9 +395,9 @@ contains
                          if (igrid > n_my_grid_points) &
                               call cq_abort('set_density: igrid error ', &
                                             igrid, n_my_grid_points)
-                         dx = dcellx_grid * (ix - 1)
-                         dy = dcelly_grid * (iy - 1)
-                         dz = dcellz_grid * (iz - 1)
+                         call lattice_grid_point_offset(ix, iy, iz, &
+                              blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+                              nx_in_block, ny_in_block, nz_in_block, dx, dy, dz)
                          ! determine separation between the current
                          ! grid point and atom
                          rx = xblock + dx - xatom
@@ -529,10 +534,12 @@ contains
 
     use datatypes
     use numbers,             only: zero, one, six
-    use global_module,       only: rcellx, rcelly, rcellz, id_glob, &
+    use global_module,       only: cell_vec_len, id_glob, &
                                    ni_in_cell, iprint_SC,           &
                                    species_glob, dens, ne_in_cell,  &
-                                   IPRINT_TIME_THRES3, min_layer
+                                   IPRINT_TIME_THRES3, min_layer,    &
+                                   lattice_grid_block_origin,       &
+                                   lattice_grid_point_offset
     use block_module,        only: nx_in_block, ny_in_block,        &
                                    nz_in_block, n_pts_in_block
     use group_module,        only: blocks, parts
@@ -578,9 +585,9 @@ contains
     ! call scal(n_my_grid_points,zero,density,1)
 
     ! determine the block and grid spacing
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
 
     ! loop around grid points in this domain, and for each
     ! point, get contributions to the charge density from atoms which are
@@ -591,9 +598,12 @@ contains
     do iblock = 1, domain%groups_on_node ! loop over blocks of grid points
        !write(io_lun,*) 'Block ',iblock
        ! determine the position of this block
-       xblock=(domain%idisp_primx(iblock)+domain%nx_origin-1)*dcellx_block
-       yblock=(domain%idisp_primy(iblock)+domain%ny_origin-1)*dcelly_block
-       zblock=(domain%idisp_primz(iblock)+domain%nz_origin-1)*dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(iblock)+domain%nx_origin-1, &
+            domain%idisp_primy(iblock)+domain%ny_origin-1, &
+            domain%idisp_primz(iblock)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
        if(naba_atoms_of_blocks(dens)%no_of_part(iblock) > 0) then ! if there are neighbour partitions
           iatom=0
           ! loop over neighbour partitions of this block
@@ -645,9 +655,9 @@ contains
                          if(igrid > n_my_grid_points) &
                               call cq_abort('set_density: igrid error ', &
                               igrid, n_my_grid_points)
-                         dx=dcellx_grid*(ix-1)
-                         dy=dcelly_grid*(iy-1)
-                         dz=dcellz_grid*(iz-1)
+                         call lattice_grid_point_offset(ix, iy, iz, &
+                              blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+                              nx_in_block, ny_in_block, nz_in_block, dx, dy, dz)
                          ! determine separation between the current
                          ! grid point and atom
                          rx=xblock+dx-xatom
@@ -930,9 +940,9 @@ contains
 
     use datatypes
     use numbers
-    use global_module,               only: ni_in_cell, x_atom_cell, y_atom_cell, z_atom_cell
+    use global_module,               only: ni_in_cell, x_atom_cell, y_atom_cell, z_atom_cell, cell_vec_len
     use dimens,                      only: grid_point_volume, n_grid_x, n_grid_y, n_grid_z, &
-         r_super_x, r_super_y, r_super_z, x_grid, y_grid, z_grid
+         x_grid, y_grid, z_grid
     use block_module,                only: n_pts_in_block, in_block_x,in_block_y,in_block_z
     use primary_module,              only: domain
     use GenComms,                    only: gsum, inode, ionode, cq_warn
@@ -960,25 +970,25 @@ contains
     case(1) ! X
        n_grid_norm  = n_grid_x
        n_grid_plane = n_grid_y * n_grid_z
-       r_super_norm = r_super_x
-       r_super_area = r_super_y * r_super_z
-       grid_spacing_norm = x_grid*r_super_x
+       r_super_norm = cell_vec_len(1)
+       r_super_area = cell_vec_len(2) * cell_vec_len(3)
+       grid_spacing_norm = x_grid*cell_vec_len(1)
        grid_point_norm => grid_point_x
        atom_cell_norm  => x_atom_cell
     case(2) ! Y
        n_grid_norm = n_grid_y
        n_grid_plane = n_grid_x * n_grid_z
-       r_super_norm = r_super_y
-       r_super_area = r_super_x * r_super_z
-       grid_spacing_norm = y_grid*r_super_y
+       r_super_norm = cell_vec_len(2)
+       r_super_area = cell_vec_len(1) * cell_vec_len(3)
+       grid_spacing_norm = y_grid*cell_vec_len(2)
        grid_point_norm => grid_point_y
        atom_cell_norm  => y_atom_cell
     case(3) ! Z
        n_grid_norm = n_grid_z
        n_grid_plane = n_grid_y * n_grid_x
-       r_super_norm = r_super_z
-       r_super_area = r_super_y * r_super_x
-       grid_spacing_norm = z_grid*r_super_z
+       r_super_norm = cell_vec_len(3)
+       r_super_area = cell_vec_len(2) * cell_vec_len(1)
+       grid_spacing_norm = z_grid*cell_vec_len(3)
        grid_point_norm => grid_point_z
        atom_cell_norm  => z_atom_cell
     end select
@@ -1296,12 +1306,13 @@ contains
     use primary_module,      only: domain
     use set_blipgrid_module, only: naba_atoms_of_blocks
     use GenComms,            only: gsum, cq_abort, inode, ionode
-    use global_module,       only: rcellx, rcelly, rcellz, iprint_SC, &
+    use global_module,       only: cell_vec_len, iprint_SC, &
                                    atomf, paof, sf,                   &
                                    ni_in_cell, species_glob,          &
                                    id_glob, io_lun,                   &
                                    flag_Becke_atomic_radii,           &
-                                   flag_perform_cdft, flag_cdft_atom
+                                   flag_perform_cdft, flag_cdft_atom, &
+                                   lattice_grid_block_origin
     use cover_module,        only: DCS_parts
     use group_module,        only: blocks, parts
     use dimens,              only: RadiusAtomf, atomicnum
@@ -1339,15 +1350,18 @@ contains
     allocate(bw(no_of_ib_ia),STAT=stat)
     bw = -one
     no_of_ib_ia=0
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz
     ! atomcharge = zero   ! LT: seems to be redundant 2011/06/18
     if(flag_perform_cdft) bwgrid = zero
     do blk=1, domain%groups_on_node
-       xblock=(domain%idisp_primx(blk)+domain%nx_origin-1)*dcellx_block
-       yblock=(domain%idisp_primy(blk)+domain%ny_origin-1)*dcelly_block
-       zblock=(domain%idisp_primz(blk)+domain%nz_origin-1)*dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(blk)+domain%nx_origin-1, &
+            domain%idisp_primy(blk)+domain%ny_origin-1, &
+            domain%idisp_primz(blk)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
        if(naba_atoms_of_blocks(atomf)%no_of_atom(blk) > 0) then
           allocate(xatom(naba_atoms_of_blocks(atomf)%no_of_atom(blk)),                   &
                    yatom(naba_atoms_of_blocks(atomf)%no_of_atom(blk)),                   &
@@ -1534,12 +1548,13 @@ contains
     use primary_module,      only: domain
     use set_blipgrid_module, only: naba_atoms_of_blocks
     use GenComms,            only: gsum, cq_abort, inode, ionode
-    use global_module,       only: rcellx, rcelly, rcellz, iprint_SC, &
+    use global_module,       only: cell_vec_len, iprint_SC, &
                                    atomf, paof, sf,                   &
                                    ni_in_cell, species_glob,          &
                                    id_glob, io_lun, flag_cdft_atom,   &
                                    flag_Becke_atomic_radii,           &
-                                   nspin, spin_factor
+                                   nspin, spin_factor,                &
+                                   lattice_grid_block_origin
     use cover_module,        only: DCS_parts
     use group_module,        only: blocks, parts
     use dimens,              only: RadiusAtomf, grid_point_volume,    &
@@ -1578,14 +1593,17 @@ contains
     if (inode == ionode .AND. iprint_SC >= 2)&
          write(io_lun, fmt='(2x,"Entering build_Becke_weight_forces")')
     no_of_ib_ia = 0
-    dcellx_block = rcellx / blocks%ngcellx
-    dcelly_block = rcelly / blocks%ngcelly
-    dcellz_block = rcellz / blocks%ngcellz
+    dcellx_block = cell_vec_len(1) / blocks%ngcellx
+    dcelly_block = cell_vec_len(2) / blocks%ngcelly
+    dcellz_block = cell_vec_len(3) / blocks%ngcellz
     ! atomcharge = zero       ! LT seems redundant 2011/06/18
     do blk=1, domain%groups_on_node
-       xblock = (domain%idisp_primx(blk) + domain%nx_origin-1) * dcellx_block
-       yblock = (domain%idisp_primy(blk) + domain%ny_origin-1) * dcelly_block
-       zblock = (domain%idisp_primz(blk) + domain%nz_origin-1) * dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(blk)+domain%nx_origin-1, &
+            domain%idisp_primy(blk)+domain%ny_origin-1, &
+            domain%idisp_primz(blk)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
        if (naba_atoms_of_blocks(atomf)%no_of_atom(blk) > 0) then
           allocate(xatom(naba_atoms_of_blocks(atomf)%no_of_atom(blk)),                   &
                    yatom(naba_atoms_of_blocks(atomf)%no_of_atom(blk)),                   &
@@ -2349,7 +2367,7 @@ contains
                          z_store, r_store, blocksize, natoms)
 
     use numbers
-    use global_module, only: rcellx,rcelly,rcellz
+    use global_module, only: cell_vec_len, lattice_grid_point_offset
     use group_module,  only: blocks
     use block_module,  only: nx_in_block, ny_in_block, nz_in_block!, &
     ! n_pts_in_block
@@ -2371,9 +2389,9 @@ contains
     integer      :: ipoint, iz, iy, ix, at
     real(double) :: r2, r_from_i, rx, ry, rz, x, y, z, rcut2
 
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz
 
     dcellx_grid=dcellx_block/nx_in_block
     dcelly_grid=dcelly_block/ny_in_block
@@ -2387,9 +2405,9 @@ contains
           do ix=1,nx_in_block
              ipoint=ipoint+1
 
-             dx=dcellx_grid*(ix-1)
-             dy=dcelly_grid*(iy-1)
-             dz=dcellz_grid*(iz-1)
+             call lattice_grid_point_offset(ix, iy, iz, &
+                  blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+                  nx_in_block, ny_in_block, nz_in_block, dx, dy, dz)
              do at = 1,natoms
                 rcut2 = rcut(at)* rcut(at)
                 rx=xblock+dx-xatom(at)

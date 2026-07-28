@@ -1,0 +1,29 @@
+{
+  "status": "validated",
+  "graphite": {
+    "band_path": "Gamma-M-K-Gamma-A",
+    "numerical_gap_at_k_mev": 0.052,
+    "integrated_valence_electrons": 16.0,
+    "cell_relax_mode": "cell-only; fractional atomic coordinates fixed",
+    "cell_relax_initial_max_stress_gpa": 22.3003,
+    "cell_relax_final_max_stress_gpa": 0.011651,
+    "cell_relax_accepted_steps": 19,
+    "coupled_relaxation": {
+      "method": "AtomMove.OptCellMethod 2",
+      "mpi_ranks": 2,
+      "outer_ionic_cell_steps": 6,
+      "initial_max_force_ha_per_bohr": 0.03191205,
+      "final_max_force_ha_per_bohr": 0.00019971,
+      "initial_max_stress_gpa": 22.30031607,
+      "final_max_stress_gpa": 0.04311287,
+      "initial_enthalpy_ha": -23.92637972,
+      "final_enthalpy_ha": -23.93717586
+    }
+  },
+  "graphene": {
+    "band_path": "Gamma-M-K-Gamma",
+    "numerical_gap_at_k_mev": 0.493,
+    "integrated_valence_electrons": 8.0
+  },
+  "note": "Tiny K-point gaps are numerical acceptance signals for the compact basis, not physical gap predictions."
+}

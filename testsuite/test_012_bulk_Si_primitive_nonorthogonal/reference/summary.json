@@ -1,0 +1,40 @@
+{
+  "spacegroup_number": 227,
+  "spacegroup_international": "Fd-3m",
+  "bravais_lattice_extended": "cF2",
+  "path": [
+    [
+      "GAMMA",
+      "X"
+    ],
+    [
+      "X",
+      "U"
+    ],
+    [
+      "K",
+      "GAMMA"
+    ],
+    [
+      "GAMMA",
+      "L"
+    ],
+    [
+      "L",
+      "W"
+    ],
+    [
+      "W",
+      "X"
+    ]
+  ],
+  "band_kpoints": 296,
+  "indirect_path_gap_ev": 0.7381041824485459,
+  "minimum_direct_path_gap_ev": 2.6026585345664355,
+  "integrated_electrons_at_fermi": 8.00046,
+  "pdos_atom_files": 2,
+  "relax_initial_max_force_ha_per_bohr": 0.00918819,
+  "relax_final_max_force_ha_per_bohr": 9.894e-05,
+  "initial_basis_error_bohr": 0.05996283515645341,
+  "final_basis_error_bohr": 1.6081599725025193e-05
+}

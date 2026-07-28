@@ -1,6 +1,6 @@
 IO.Title  BTO perfect
 IO.Coordinates    BTO_Ba_dz.in
-IO.FractionalCoordinates T 
+IO.FractionalAtomicCoords T
 IO.Iprint 0
 
 ## General Parameters
@@ -22,7 +22,7 @@ SC.KerkerPreCondition T
 ##Integration Grid
 Grid.GridCutoff 100
 
-## Finding Density Matrix 
+## Finding Density Matrix
 DM.SolutionMethod diagon
 Diag.MPMesh   T
 Diag.MPMeshX  1

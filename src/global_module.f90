@@ -182,7 +182,11 @@ module global_module
   integer, allocatable, dimension(:) :: id_glob_inv  ! gives global number for a CC atom
   integer, dimension(:), allocatable, target :: species_glob ! gives species 
   integer :: numprocs               ! number of processors
-  real(double), target :: rcellx,rcelly,rcellz  ! cell side lengths
+  real(double), target, dimension(3,3) :: lat_vec
+  real(double), target, dimension(3,3) :: lat_vec_inv
+  real(double), target, dimension(3,3) :: recip_lat_vec
+  real(double), target :: cell_vol
+  real(double), dimension(3), target :: cell_vec_len
   real(double), allocatable, dimension(:), target :: x_atom_cell ! position of atom in sim cell (CC)
   real(double), allocatable, dimension(:), target :: y_atom_cell
   real(double), allocatable, dimension(:), target :: z_atom_cell
@@ -433,6 +437,114 @@ module global_module
 
   ! Density matrix Lagrange multiplier for correct electron number (needed for forces and stress)
   real(double), dimension(2) :: mu_DMM ! Allow for spin
+
+contains
+
+  subroutine invert_3x3(mat, inv_mat, det)
+    real(double), intent(in) :: mat(3,3)
+    real(double), intent(out) :: inv_mat(3,3)
+    real(double), intent(out) :: det
+
+    det = mat(1,1)*(mat(2,2)*mat(3,3) - mat(2,3)*mat(3,2)) &
+        - mat(1,2)*(mat(2,1)*mat(3,3) - mat(2,3)*mat(3,1)) &
+        + mat(1,3)*(mat(2,1)*mat(3,2) - mat(2,2)*mat(3,1))
+
+    if (abs(det) < 1e-12) return
+
+    inv_mat(1,1) =  (mat(2,2)*mat(3,3) - mat(2,3)*mat(3,2)) / det
+    inv_mat(1,2) = -(mat(1,2)*mat(3,3) - mat(1,3)*mat(3,2)) / det
+    inv_mat(1,3) =  (mat(1,2)*mat(2,3) - mat(1,3)*mat(2,2)) / det
+
+    inv_mat(2,1) = -(mat(2,1)*mat(3,3) - mat(2,3)*mat(3,1)) / det
+    inv_mat(2,2) =  (mat(1,1)*mat(3,3) - mat(1,3)*mat(3,1)) / det
+    inv_mat(2,3) = -(mat(1,1)*mat(2,3) - mat(1,3)*mat(2,1)) / det
+
+    inv_mat(3,1) =  (mat(2,1)*mat(3,2) - mat(2,2)*mat(3,1)) / det
+    inv_mat(3,2) = -(mat(1,1)*mat(3,2) - mat(1,2)*mat(3,1)) / det
+    inv_mat(3,3) =  (mat(1,1)*mat(2,2) - mat(1,2)*mat(2,1)) / det
+  end subroutine invert_3x3
+
+  subroutine wrap_into_cell(x, y, z)
+    real(double), intent(inout) :: x, y, z
+    real(double), dimension(3) :: r, f
+    r(1) = x
+    r(2) = y
+    r(3) = z
+    f = matmul(lat_vec_inv, r)
+    ! Map coordinates to [0, 1) instead of [-0.5, 0.5)
+    f = f - floor(f)
+    r = matmul(lat_vec, f)
+    x = r(1)
+    y = r(2)
+    z = r(3)
+  end subroutine wrap_into_cell
+
+  subroutine mic_coords(xi, yi, zi, xj, yj, zj)
+    real(double), intent(in) :: xi, yi, zi
+    real(double), intent(inout) :: xj, yj, zj
+    real(double), dimension(3) :: r
+    r(1) = xj - xi
+    r(2) = yj - yi
+    r(3) = zj - zi
+    ! mic_coords computes a distance vector, so it MUST use mic_vector ([-0.5, 0.5))
+    call mic_vector(r)
+    xj = xi + r(1)
+    yj = yi + r(2)
+    zj = zi + r(3)
+  end subroutine mic_coords
+
+  subroutine mic_vector(r)
+    real(double), dimension(3), intent(inout) :: r
+    real(double), dimension(3) :: f
+    f = matmul(lat_vec_inv, r)
+    f = f - anint(f)
+    r = matmul(lat_vec, f)
+  end subroutine mic_vector
+
+  subroutine fractional_recip_to_cart(k)
+    ! lat_vec stores direct lattice vectors as columns.  For fractional
+    ! reciprocal coordinates q, k = 2*pi*A^{-T}*q.
+    real(double), dimension(3), intent(inout) :: k
+    k = two*pi*matmul(transpose(lat_vec_inv), k)
+  end subroutine fractional_recip_to_cart
+
+  subroutine cart_recip_to_fractional(k)
+    ! Inverse of fractional_recip_to_cart: q = A^T*k/(2*pi).
+    real(double), dimension(3), intent(inout) :: k
+    k = matmul(transpose(lat_vec), k)/(two*pi)
+  end subroutine cart_recip_to_fractional
+
+  subroutine lattice_grid_block_origin(ibx, iby, ibz, nbx, nby, nbz, x, y, z)
+    ! Cartesian origin of a real-space integration-grid block.  The lattice
+    ! vectors are stored as columns of lat_vec, so a block displacement is a
+    ! fractional lattice displacement, not a displacement along Cartesian axes.
+    integer, intent(in) :: ibx, iby, ibz, nbx, nby, nbz
+    real(double), intent(out) :: x, y, z
+    real(double) :: fx, fy, fz
+
+    fx = real(ibx, double)/real(nbx, double)
+    fy = real(iby, double)/real(nby, double)
+    fz = real(ibz, double)/real(nbz, double)
+    x = fx*lat_vec(1,1) + fy*lat_vec(1,2) + fz*lat_vec(1,3)
+    y = fx*lat_vec(2,1) + fy*lat_vec(2,2) + fz*lat_vec(2,3)
+    z = fx*lat_vec(3,1) + fy*lat_vec(3,2) + fz*lat_vec(3,3)
+  end subroutine lattice_grid_block_origin
+
+  subroutine lattice_grid_point_offset(ix, iy, iz, nbx, nby, nbz, &
+       nx_block, ny_block, nz_block, dx, dy, dz)
+    ! Cartesian offset of a point within a real-space integration-grid block.
+    integer, intent(in) :: ix, iy, iz, nbx, nby, nbz
+    integer, intent(in) :: nx_block, ny_block, nz_block
+    real(double), intent(out) :: dx, dy, dz
+    real(double) :: fx, fy, fz
+
+    fx = real(ix - 1, double)/real(nbx*nx_block, double)
+    fy = real(iy - 1, double)/real(nby*ny_block, double)
+    fz = real(iz - 1, double)/real(nbz*nz_block, double)
+    dx = fx*lat_vec(1,1) + fy*lat_vec(1,2) + fz*lat_vec(1,3)
+    dy = fx*lat_vec(2,1) + fy*lat_vec(2,2) + fz*lat_vec(2,3)
+    dz = fx*lat_vec(3,1) + fy*lat_vec(3,2) + fz*lat_vec(3,3)
+  end subroutine lattice_grid_point_offset
 
 end module global_module
 !!***

@@ -1,0 +1,37 @@
+# Generated CONQUEST and post-processing runs
+band_pdos_results/
+bands/
+bands_hcp/
+band_workflow/
+band_graphene_workflow/
+cell_relax_smoke/
+cell_relax_symmetric_strain/
+cell_relax_results*/
+diagnostics/
+force_probe/
+relax/
+relax_atoms_cell/
+relax_smoke/
+run_bands/
+run_scf/
+scf/
+
+# Top-level scratch output from exploratory runs
+*.log
+*.out
+Conquest_out
+Conquest_warnings
+InfoGlobal*
+Kmatrix*
+Process*WF.dat
+Atom*DOS*.dat
+BandStructure.dat
+DOS.dat
+chden.*
+coord_next.dat
+eigenvalues.dat
+fort.*
+hilbert_make_blk.dat
+make_prt.dat
+.DS_Store
+a.out

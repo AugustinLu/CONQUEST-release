@@ -18,13 +18,12 @@ module atom_dispenser
 
   use datatypes
   use group_module, ONLY: parts
-  use global_module, ONLY: flag_fractional_atomic_coords,rcellx,rcelly,rcellz, &
+  use global_module, ONLY: flag_fractional_atomic_coords,cell_vec_len, &
+                           lat_vec,lat_vec_inv, &
                            flag_MDdebug,shift_in_bohr,Iprint_MD
   use GenComms, ONLY: cq_abort
 
   implicit none
-
-  logical, parameter :: flag_ortho = .true.
 
 !!***
 
@@ -67,8 +66,7 @@ contains
     use io_module, ONLY: get_file_name
     use global_module, ONLY: numprocs
     use cover_module, ONLY: BCS_parts
-    use dimens, ONLY: r_super_x,r_super_y,r_super_z
-
+    use dimens, ONLY: n_grid_x
     implicit none
 
     ! passed variables
@@ -81,6 +79,7 @@ contains
     real(double) :: plen_x, plen_y, plen_z, px_max, px_min, py_max, py_min, &
                     pz_max, pz_min
     real(double) :: x_eps, y_eps, z_eps, eps
+    real(double) :: cart(3), frac(3), eps_frac(3)
     logical :: flag_px, flag_py, flag_pz
     ! db
     integer :: lun, stat, ind_part2
@@ -105,27 +104,23 @@ contains
 !   endif
     !TM  Eps should be considered with Cartesian (bohr) units
     eps = shift_in_bohr
-    x_eps = x + eps
-    y_eps = y + eps
-    z_eps = z + eps
-    if (flag_ortho) then ! if the system is orthorhombic.
-      ! Calculate the partition lengths.
-      plen_x = rcellx/real(parts%ngcellx,double)
-      plen_y = rcelly/real(parts%ngcelly,double)
-      plen_z = rcellz/real(parts%ngcellz,double)
-      !x_eps = x_eps - floor(x_eps)
-      !y_eps = y_eps - floor(y_eps)
-      !z_eps = z_eps - floor(z_eps)
-      px = floor(x_eps/plen_x) + 1
-      py = floor(y_eps/plen_y) + 1
-      pz = floor(z_eps/plen_z) + 1
-    else ! if NOT orthorhombic.
-      call cq_abort('ERROR in atom2part: flag_ortho ')
-      ! You need to consider alpha, beta and gamma, but leave it for now.
-      plen_x = rcellx/real(parts%ngcellx,double)
-      plen_y = rcelly/real(parts%ngcelly,double)
-      plen_z = rcellz/real(parts%ngcellz,double)
-    endif
+    cart = (/x,y,z/)
+    frac = matmul(lat_vec_inv,cart)
+    ! Use a positive tolerance in each fractional coordinate.  The norm
+    ! of the corresponding reciprocal covector converts the historical
+    ! Cartesian shift_in_bohr tolerance without assuming orthogonality.
+    eps_frac(1) = eps*sqrt(sum(lat_vec_inv(1,:)**2))
+    eps_frac(2) = eps*sqrt(sum(lat_vec_inv(2,:)**2))
+    eps_frac(3) = eps*sqrt(sum(lat_vec_inv(3,:)**2))
+    px = floor((frac(1)+eps_frac(1))*real(parts%ngcellx,double)) + 1
+    py = floor((frac(2)+eps_frac(2))*real(parts%ngcelly,double)) + 1
+    pz = floor((frac(3)+eps_frac(3))*real(parts%ngcellz,double)) + 1
+    x_eps = frac(1)+eps_frac(1)
+    y_eps = frac(2)+eps_frac(2)
+    z_eps = frac(3)+eps_frac(3)
+    plen_x = one/real(parts%ngcellx,double)
+    plen_y = one/real(parts%ngcelly,double)
+    plen_z = one/real(parts%ngcellz,double)
 
     ! DB
     ind_part  = (px-1) * (parts%ngcelly*parts%ngcellz) + (py-1) * parts%ngcellz + pz
@@ -134,7 +129,7 @@ contains
     if (flag_MDdebug) then
       write (lun, '(a,1x,i8)') "## Globel atom ID: ", atom_id
       write (lun, '(a,1x,l5,1x,f15.10)') "Fractional? / eps: ", flag_fractional_atomic_coords, eps
-      write (lun, '(a,1x,3f15.10)') "cell lengths: ", rcellx, rcelly, rcellz
+      write (lun, '(a,1x,3f15.10)') "cell lengths: ", cell_vec_len
       !write (lun, '(a,1x,3i8)') "# of parts: ", parts%ngcellx, parts%ngcelly, parts%ngcellz
       write (lun, '(a,1x,3f15.10)') "Partition lengths: ", plen_x, plen_y, plen_z
       write (lun, '(a,1x,6f15.10)') "x,y,z; x,y,z_eps: ", x, y, z, x_eps, y_eps, z_eps
@@ -184,8 +179,7 @@ contains
     use GenComms, ONLY: gcopy,inode,ionode
     use global_module, ONLY: ni_in_cell,x_atom_cell,y_atom_cell,z_atom_cell, &
                              atom_coord, min_layer
-    use dimens, ONLY: r_super_x,r_super_y,r_super_z
-    ! DB
+    use dimens, ONLY: n_grid_x    ! DB
     use input_module, ONLY: io_assign,io_close
     use global_module, ONLY: io_lun,id_glob,numprocs
 
@@ -199,7 +193,8 @@ contains
     integer :: stat_alloc
     real(double) :: px_min,px_max,py_min,py_max,pz_min,pz_max, &
                     plen_x,plen_y,plen_z,cellx,celly,cellz
-    real(double) :: x_eps,y_eps,z_eps,eps,x,y,z 
+    real(double) :: x_eps,y_eps,z_eps,eps,x,y,z
+    real(double) :: cart(3),frac(3),eps_frac(3)
     logical :: flag_px,flag_py,flag_pz
 
     ! DB
@@ -226,19 +221,22 @@ contains
     endif
     !! ---------------- DEBUG ------------------ !!
 
-    cellx = r_super_x
-    celly = r_super_y
-    cellz = r_super_z
+    cellx = cell_vec_len(1)
+    celly = cell_vec_len(2)
+    cellz = cell_vec_len(3)
     ! Firstly, we need to wrap coordinates sutisfying p.b.c.
     ! Then, we need to shift the atoms by eps before deciding the
     ! partition and updating parts.
     ! TM eps should be considered for Cartesian (bohr) units
     eps = shift_in_bohr
-    if (flag_ortho) then
-      ! Calculate the partition lengths
-      plen_x = rcellx/real(parts%ngcellx,double)
-      plen_y = rcelly/real(parts%ngcelly,double)
-      plen_z = rcellz/real(parts%ngcellz,double)
+    ! Calculate fractional partition widths and a positive fractional
+    ! boundary tolerance for the general Bravais lattice.
+      plen_x = one/real(parts%ngcellx,double)
+      plen_y = one/real(parts%ngcelly,double)
+      plen_z = one/real(parts%ngcellz,double)
+      eps_frac(1) = eps*sqrt(sum(lat_vec_inv(1,:)**2))
+      eps_frac(2) = eps*sqrt(sum(lat_vec_inv(2,:)**2))
+      eps_frac(3) = eps*sqrt(sum(lat_vec_inv(3,:)**2))
       if (flag_MDdebug .AND. inode.EQ.ionode) &
         write (lun,*) "plen_x,y,z:", plen_x,plen_y,plen_z !DB
       ! Get the partition (sim-cell gp (CC)) to which each atom belongs.
@@ -246,12 +244,13 @@ contains
       do n_atom = 1, ni_in_cell
         ! Wrap coordinates.
         ! NOTE: We cannot use xyz_atom_cell since they depend on parts labelling.
-        atom_coord(1,n_atom) = atom_coord(1,n_atom) - floor((atom_coord(1,n_atom)+eps)/cellx)*cellx
-        atom_coord(2,n_atom) = atom_coord(2,n_atom) - floor((atom_coord(2,n_atom)+eps)/celly)*celly
-        atom_coord(3,n_atom) = atom_coord(3,n_atom) - floor((atom_coord(3,n_atom)+eps)/cellz)*cellz
-        x_eps = atom_coord(1,n_atom)+eps
-        y_eps = atom_coord(2,n_atom)+eps
-        z_eps = atom_coord(3,n_atom)+eps
+        cart = atom_coord(:,n_atom)
+        frac = matmul(lat_vec_inv,cart)
+        frac = frac-floor(frac+eps_frac)
+        atom_coord(:,n_atom) = matmul(lat_vec,frac)
+        x_eps = frac(1)+eps_frac(1)
+        y_eps = frac(2)+eps_frac(2)
+        z_eps = frac(3)+eps_frac(3)
 
         !! -------------- DEBUG --------------- !!
         if (flag_MDdebug .AND. inode.EQ.ionode) then
@@ -289,9 +288,6 @@ contains
         if (flag_MDdebug .AND. inode.EQ.ionode) &
           write (lun,*) "px,py,pz, ind_part:", px,py,pz,ind_part(n_atom) !DB
       enddo  !(n_atom, ni_in_cell)	
-    else
-      call cq_abort('Error: flag_ortho ')
-    endif  !(flag_ortho)
     if ((.NOT. flag_px) .OR. (.NOT. flag_py) .OR. (.NOT. flag_pz)) &
       call cq_abort('Error: Fail in finding partitions: allatom2part')
 

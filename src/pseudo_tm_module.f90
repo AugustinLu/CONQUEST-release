@@ -458,11 +458,12 @@ contains
 
     use datatypes
     use numbers
-    use global_module, only: rcellx,rcelly,rcellz,id_glob, ni_in_cell, &
+    use global_module, only: cell_vec_len,id_glob, ni_in_cell, &
                              iprint_pseudo, species_glob, nlpf,        &
                              flag_basis_set, blips,                    &
                              IPRINT_TIME_THRES3, flag_analytic_blip_int, &
-                             flag_neutral_atom, dens
+                             flag_neutral_atom, dens,                  &
+                             lattice_grid_block_origin
     use species_module, only: species, nlpf_species, n_species, type_species
     !  At present, these arrays are dummy arguments.
     use block_module, only : nx_in_block,ny_in_block,nz_in_block, &
@@ -537,9 +538,9 @@ contains
     end if
 
 
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz
 
     !  This subroutine assumes Troullier-Martin's pseudopotential.
     ! For Siesta-styly, the local part of the pseudopotentials is made by the
@@ -560,9 +561,12 @@ contains
     ! whose distances from the grid point are within the cutoff. 
     the_species = 1
     do iblock = 1, domain%groups_on_node ! primary set of blocks
-       xblock=(domain%idisp_primx(iblock)+domain%nx_origin-1)*dcellx_block
-       yblock=(domain%idisp_primy(iblock)+domain%ny_origin-1)*dcelly_block
-       zblock=(domain%idisp_primz(iblock)+domain%nz_origin-1)*dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(iblock)+domain%nx_origin-1, &
+            domain%idisp_primy(iblock)+domain%ny_origin-1, &
+            domain%idisp_primz(iblock)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
        if(.NOT.flag_neutral_atom_projector) then
        if(naba_atoms_of_blocks(pseudo_neighbour)%no_of_part(iblock) > 0) then ! if there are naba atoms
           iatom=0
@@ -971,9 +975,10 @@ contains
     use datatypes
     use numbers
     use dimens, only: grid_point_volume, n_my_grid_points
-    use global_module, only: rcellx,rcelly,rcellz,id_glob, iprint_pseudo, &
+    use global_module, only: cell_vec_len,id_glob, iprint_pseudo, &
          species_glob, nlpf,ni_in_cell, flag_neutral_atom, dens, &
-         flag_full_stress, flag_stress, flag_atomic_stress, atomic_stress, min_layer
+         flag_full_stress, flag_stress, flag_atomic_stress, atomic_stress, min_layer, &
+         lattice_grid_block_origin
     use block_module, only : n_pts_in_block
     use group_module, only : blocks, parts
     use primary_module, only: domain
@@ -1036,9 +1041,9 @@ contains
     loc_HF_stress = zero
     loc_G_stress = zero
 
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz
 
     ! get Hartree potential
     call start_timer(tmr_std_allocation)
@@ -1075,9 +1080,12 @@ contains
 
     ! now loop over grid points and accumulate HF part of the force
     do iblock = 1, domain%groups_on_node ! primary set of blocks
-       xblock=(domain%idisp_primx(iblock)+domain%nx_origin-1)*dcellx_block
-       yblock=(domain%idisp_primy(iblock)+domain%ny_origin-1)*dcelly_block
-       zblock=(domain%idisp_primz(iblock)+domain%nz_origin-1)*dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(iblock)+domain%nx_origin-1, &
+            domain%idisp_primy(iblock)+domain%ny_origin-1, &
+            domain%idisp_primz(iblock)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
        if(naba_atoms_of_blocks(pseudo_neighbour)%no_of_part(iblock) > 0) then ! if there are naba atoms
           iatom=0
           do ipart=1,naba_atoms_of_blocks(pseudo_neighbour)%no_of_part(iblock)
@@ -1455,7 +1463,8 @@ contains
     use datatypes
     use GenComms, only: inode,ionode
     use numbers
-    use global_module, only: rcellx,rcelly,rcellz,id_glob,ni_in_cell,iprint_pseudo, species_glob, nlpf
+    use global_module, only: cell_vec_len,id_glob,ni_in_cell,iprint_pseudo, species_glob, nlpf, &
+         lattice_grid_block_origin
     use species_module, only: species, nlpf_species
     !  At present, these arrays are dummy arguments.
     use block_module, only : nx_in_block,ny_in_block,nz_in_block, &
@@ -1501,16 +1510,19 @@ contains
     call start_timer(tmr_std_pseudopot)
     gridfunctions(dpseudofns)%griddata = zero
 
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz
 
     no_of_ib_ia = 0
 
     do iblock = 1, domain%groups_on_node ! primary set of blocks
-       xblock=(domain%idisp_primx(iblock)+domain%nx_origin-1)*dcellx_block
-       yblock=(domain%idisp_primy(iblock)+domain%ny_origin-1)*dcelly_block
-       zblock=(domain%idisp_primz(iblock)+domain%nz_origin-1)*dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(iblock)+domain%nx_origin-1, &
+            domain%idisp_primy(iblock)+domain%ny_origin-1, &
+            domain%idisp_primz(iblock)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
        if(naba_atoms_of_blocks(nlpf)%no_of_part(iblock) > 0) then ! if there are naba atoms
           iatom=0
           do ipart=1,naba_atoms_of_blocks(nlpf)%no_of_part(iblock)
@@ -3128,7 +3140,7 @@ contains
        npoint, ip_store, r_store, x_store, y_store, z_store) 
 
     use numbers
-    use global_module, only: rcellx,rcelly,rcellz
+    use global_module, only: cell_vec_len, lattice_grid_point_offset
     use group_module,  only: blocks
     use block_module,  only: nx_in_block,ny_in_block,nz_in_block, &
          n_pts_in_block
@@ -3152,9 +3164,9 @@ contains
 
 
     rcut2 = rcut* rcut
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
 
     ipoint=0
     npoint=0
@@ -3163,9 +3175,9 @@ contains
           do ix=1,nx_in_block
              ipoint=ipoint+1
 
-             dx=dcellx_grid*(ix-1)
-             dy=dcelly_grid*(iy-1)
-             dz=dcellz_grid*(iz-1)
+             call lattice_grid_point_offset(ix, iy, iz, &
+                  blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+                  nx_in_block, ny_in_block, nz_in_block, dx, dy, dz)
 
              rx=xblock+dx-xatom
              ry=yblock+dy-yatom

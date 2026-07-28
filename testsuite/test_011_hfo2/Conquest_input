@@ -1,0 +1,32 @@
+IO.Title HfO2 Monoclinic Test
+IO.Coordinates coords.dat
+IO.FractionalAtomicCoords T
+IO.Iprint 2
+
+## General Parameters
+General.NumberOfSpecies      2
+General.DifferentFunctional  T
+General.FunctionalType       101
+General.PAOFromFiles         T
+
+## Moving Atoms
+AtomMove.TypeOfRun static
+
+## Basis Sets
+Basis.BasisSet PAOs
+
+## Energy Minimisation
+minE.SelfConsistent T
+minE.SCTolerance    1.0e-5
+
+## Integration Grid
+Grid.GridCutoff 80
+
+## Finding Density Matrix
+DM.SolutionMethod diagon
+
+## Atomic Information
+%block ChemicalSpeciesLabel
+1 178.4900 Hf HfCQ.ion
+2 15.9994  O  OCQ.ion
+%endblock

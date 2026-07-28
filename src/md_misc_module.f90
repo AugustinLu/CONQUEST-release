@@ -81,7 +81,7 @@ contains
          read_md_checkpoint, read_md_temperature, flag_variable_temperature
     use GenComms,       only: inode, ionode, gcopy, cq_warn
     use memory_module,  only: reg_alloc_mem, type_dbl
-    use global_module,  only: rcellx, rcelly, rcellz, temp_ion, ni_in_cell, &
+    use global_module,  only: cell_vec_len, temp_ion, ni_in_cell, &
          flag_MDcontinue, flag_read_velocity, &
          flag_MDdebug, iprint_MD, flag_atomic_stress, &
          atomic_stress, area_moveatoms, &
@@ -225,9 +225,9 @@ contains
     if (.not. present(second_call)) then
        ! Initialise the model only once per run
        lattice_vec = zero
-       lattice_vec(1,1) = rcellx
-       lattice_vec(2,2) = rcelly
-       lattice_vec(3,3) = rcellz
+       lattice_vec(1,1) = cell_vec_len(1)
+       lattice_vec(2,2) = cell_vec_len(2)
+       lattice_vec(3,3) = cell_vec_len(3)
        call mdl%init_model(md_ensemble, MDtimestep, thermo, baro)
     end if
     mdl%ion_kinetic_energy = ion_ke

@@ -58,7 +58,7 @@ contains
    ! Module usage
    use datatypes
    use numbers, ONLY: zero
-   use global_module, ONLY: atom_coord,rcellx,rcelly,rcellz
+   use global_module, ONLY: atom_coord, mic_coords
    use auxiliary_types, ONLY: group_aux
    use GenComms, ONLY: cq_abort
 
@@ -155,30 +155,15 @@ contains
          rx2 = rx*rx
          ry2 = ry*ry
          rz2 = rz*rz
-         ! X
-         if (rx2 .GT. cutoff2) then
-           if (rx.GT.zero) then
-             x(atom+1) = x(atom+1) - rcellx
-           elseif (rx.LT.zero) then
-             x(atom+1) = x(atom+1) + rcellx
-           endif
-         endif
-         ! Y
-         if (ry2 .GT. cutoff2) then
-           if (ry.GT.zero) then
-             y(atom+1) = y(atom+1) - rcelly
-           elseif (ry.LT.zero) then
-             y(atom+1) = y(atom+1) + rcelly
-           endif
-         endif
-         ! Z
-         if (rz2 .GT. cutoff2) then
-           if (rz.GT.zero) then
-             z(atom+1) = z(atom+1) - rcellz
-           elseif (rz.LT.zero) then
-             z(atom+1) = z(atom+1) + rcellz
-           endif
-         endif
+         ! Use mic_coords to handle periodic boundary conditions for x(atom+1), y(atom+1), z(atom+1)
+         ! such that they are the nearest image to x(1), y(1), z(1).
+         ! Only do this if the distance is greater than cutoff.
+         ! Actually, mic_coords unconditionally applies the minimum image convention.
+         ! But to preserve exactly the existing optimization (only check if outside cutoff),
+         ! we can just wrap it in the cutoff check.
+         if (rx2+ry2+rz2 > cutoff2) then
+            call mic_coords(x(1), y(1), z(1), x(atom+1), y(atom+1), z(atom+1))
+         end if
          ! Calculate and store fixed lengths dij2 and interatomic distances vec_rji
          ! NOTE: Cannot reuse rx2,ry2 and rz2 b/c some of x,y,z may be wrapped back
          dij2(ibeg_dij2(l)+atom-1) = (x(atom+1)-x(1))*(x(atom+1)-x(1)) + &
@@ -291,8 +276,8 @@ contains
     use datatypes
     use numbers, ONLY: zero,half,one
     use global_module, ONLY: ni_in_cell,id_glob_inv,x_atom_cell,y_atom_cell,z_atom_cell, &
-                             rcellx,rcelly,rcellz,flag_LmatrixReuse,atom_coord_diff    , &
-                             id_glob,iprint_MD,io_lun
+                             flag_LmatrixReuse,atom_coord_diff    , &
+                             mic_coords, io_lun,iprint_MD, id_glob
     use auxiliary_types, ONLY: group_aux
     use GenComms, ONLY: cq_abort,myid
     use species_module, ONLY: species,mass
@@ -383,33 +368,12 @@ contains
           y_ji_old = yj_old - yi_old
           z_ji_old = zj_old - zi_old
           ! Wrap "j" in/out if necessary
-          ! X
-          if (x_ji_old*x_ji_old .GT. cutoff2) then
-            if (x_ji_old.GT.zero) then
-              xj_old = xac_lc_j(bond) - rcellx
-            elseif (x_ji_old.LT.zero) then
-              xj_old = xac_lc_j(bond) + rcellx
-            endif
-            x_ji_old = xj_old - xi_old
-          endif
-          ! Y
-          if (y_ji_old*y_ji_old .GT. cutoff2) then
-            if (y_ji_old.GT.zero) then
-              yj_old = yac_lc_j(bond) - rcelly
-            elseif (y_ji_old.LT.zero) then
-              yj_old = yac_lc_j(bond) + rcelly
-            endif
-            y_ji_old = yj_old - yi_old
-          endif
-          ! Z
-          if (z_ji_old*z_ji_old .GT. cutoff2) then
-            if (z_ji_old.GT.zero) then
-              zj_old = zac_lc_j(bond) - rcellz
-            elseif (z_ji_old.LT.zero) then
-              zj_old = zac_lc_j(bond) + rcellz
-            endif
-            z_ji_old = zj_old - zi_old
-          endif
+          if (x_ji_old*x_ji_old + y_ji_old*y_ji_old + z_ji_old*z_ji_old > cutoff2) then
+             call mic_coords(xi_old, yi_old, zi_old, xj_old, yj_old, zj_old)
+             x_ji_old = xj_old - xi_old
+             y_ji_old = yj_old - yi_old
+             z_ji_old = zj_old - zi_old
+          end if
           ! Calculates gamma
           numerator = x_ji_old*x_ji_old + y_ji_old*y_ji_old + z_ji_old*z_ji_old - &
                       dij2(ibeg_dij2(l)+bond-1)
@@ -533,7 +497,7 @@ contains
     use datatypes
     use numbers, ONLY: zero,half,one
     use global_module, ONLY: ni_in_cell,id_glob_inv,x_atom_cell,y_atom_cell,z_atom_cell   , &
-                             flag_LmatrixReuse,atom_coord_diff,io_lun,rcellx,rcelly,rcellz, &
+                             flag_LmatrixReuse,atom_coord_diff,io_lun, mic_coords, &
                              id_glob,iprint_MD
     use auxiliary_types, ONLY: group_aux
     use species_module, ONLY: species,mass
@@ -611,33 +575,12 @@ contains
           y_ji_old = yj_old - yi_old
           z_ji_old = zj_old - zi_old
           ! Wrap "j" in/out if necessary
-          ! X
-          if (x_ji_old*x_ji_old .GT. cutoff2) then
-            if (x_ji_old.GT.zero) then
-              xj_old = xac_lc_j(OHbond) - rcellx
-            elseif (x_ji_old.LT.zero) then
-              xj_old = xac_lc_j(OHbond) + rcellx
-            endif
-            x_ji_old = xj_old - xi_old
-          endif
-          ! Y
-          if (y_ji_old*y_ji_old .GT. cutoff2) then
-            if (y_ji_old.GT.zero) then
-              yj_old = yac_lc_j(OHbond) - rcelly
-            elseif (y_ji_old.LT.zero) then
-              yj_old = yac_lc_j(OHbond) + rcelly
-            endif
-            y_ji_old = yj_old - yi_old
-          endif
-          ! Z
-          if (z_ji_old*z_ji_old .GT. cutoff2) then
-            if (z_ji_old.GT.zero) then
-              zj_old = zac_lc_j(OHbond) - rcellz
-            elseif (z_ji_old.LT.zero) then
-              zj_old = zac_lc_j(OHbond) + rcellz
-            endif
-            z_ji_old = zj_old - zi_old
-          endif
+          if (x_ji_old*x_ji_old + y_ji_old*y_ji_old + z_ji_old*z_ji_old > cutoff2) then
+             call mic_coords(xi_old, yi_old, zi_old, xj_old, yj_old, zj_old)
+             x_ji_old = xj_old - xi_old
+             y_ji_old = yj_old - yi_old
+             z_ji_old = zj_old - zi_old
+          end if
           ! Calculates gamma
           numerator = x_ji_old*x_ji_old + y_ji_old*y_ji_old + z_ji_old*z_ji_old - &
                       dij2(ibeg_dij2(l)+OHbond-1)
@@ -689,33 +632,12 @@ contains
         y_ji_old = yj_old - yi_old
         z_ji_old = zj_old - zi_old
         ! Wrap "H2" in/out if necessary
-        ! X
-        if (x_ji_old*x_ji_old .GT. cutoff2) then
-          if (x_ji_old.GT.zero) then
-            xj_old = xac_lc_j(2) - rcellx
-          elseif (x_ji_old.LT.zero) then
-            xj_old = xac_lc_j(2) + rcellx
-          endif
-          x_ji_old = xj_old - xi_old
-        endif
-        ! Y
-        if (y_ji_old*y_ji_old .GT. cutoff2) then
-          if (y_ji_old.GT.zero) then
-            yj_old = yac_lc_j(2) - rcelly
-          elseif (y_ji_old.LT.zero) then
-            yj_old = yac_lc_j(2) + rcelly
-          endif
-          y_ji_old = yj_old - yi_old
-        endif
-        ! Z
-        if (z_ji_old*z_ji_old .GT. cutoff2) then
-          if (z_ji_old.GT.zero) then
-            zj_old = zac_lc_j(2) - rcellz
-          elseif (y_ji_old.LT.zero) then
-            zj_old = zac_lc_j(2) + rcellz
-          endif
-          z_ji_old = zj_old - zi_old
-        endif
+        if (x_ji_old*x_ji_old + y_ji_old*y_ji_old + z_ji_old*z_ji_old > cutoff2) then
+           call mic_coords(xi_old, yi_old, zi_old, xj_old, yj_old, zj_old)
+           x_ji_old = xj_old - xi_old
+           y_ji_old = yj_old - yi_old
+           z_ji_old = zj_old - zi_old
+        end if
         ! Calculates gamma
         numerator = x_ji_old*x_ji_old + y_ji_old*y_ji_old + z_ji_old*z_ji_old - &
                     dij2(ibeg_dij2(l)+2)

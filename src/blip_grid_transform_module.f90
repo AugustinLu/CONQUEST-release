@@ -179,7 +179,7 @@ contains
 
     use datatypes
     use numbers
-    use global_module,   ONLY: rcellx,rcelly,rcellz, area_basis
+    use global_module,   ONLY: cell_vec_len, area_basis
     use group_module,    ONLY: blocks
     use primary_module,  ONLY: bundle
     use cover_module,    ONLY: BCS_blocks
@@ -238,9 +238,9 @@ contains
     nblkz=nz_in_block
 
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
 
     nxmin_grid=(naba_blocks_of_atoms%nxmin(iprim)-1)*nblkx  
     nxmax_grid= naba_blocks_of_atoms%nxmax(iprim)*nblkx-1
@@ -305,8 +305,8 @@ contains
        if(imax < -blip_info(spec)%BlipArraySize) imax=-blip_info(spec)%BlipArraySize
 
        !OLD dx = rionxi*n_grid_x
-       !OLD dx = (- dx + anint(dx))*x_grid*r_super_x
-       !OLD dxx = x * r_super_x * x_grid
+       !OLD dx = (- dx + anint(dx))*x_grid*cell_vec_len(1)
+       !OLD dxx = x * cell_vec_len(1) * x_grid
        !NEW dx+dxx=dxxx
        ! I (TM) think the following expresseion is enough for imin, 
        ! but the difference of the efficiency is small.
@@ -389,7 +389,7 @@ contains
 
     DO z = nzmin_grid, nzmax_grid
        iz_grid=z-nzmin_grid+1
-       !dzz = z * r_super_z * z_grid
+       !dzz = z * cell_vec_len(3) * z_grid
        dzzz=z*dcellz_grid-bundle%zprim(iprim)
        imin_for_z(iz_grid) = MAX(-blip_info(spec)%BlipArraySize,&
             int((dzzz-blip_info(spec)%BlipWidth*half)*rec_sgs))
@@ -799,7 +799,7 @@ contains
 
     use datatypes
     use numbers
-    use global_module,   ONLY: rcellx,rcelly,rcellz, area_basis
+    use global_module,   ONLY: cell_vec_len, area_basis
     use group_module,    ONLY: blocks
     use primary_module,  ONLY: bundle
     use cover_module,    ONLY: BCS_blocks
@@ -856,9 +856,9 @@ contains
     nblky=ny_in_block
     nblkz=nz_in_block
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
 
     nxmin_grid=(naba_blocks_of_atoms%nxmin(iprim)-1)*nblkx  
     nxmax_grid= naba_blocks_of_atoms%nxmax(iprim)*nblkx-1
@@ -919,8 +919,8 @@ contains
        imax = MIN( blip_info(spec)%BlipArraySize,int((dxxx+blip_info(spec)%BlipWidth*half)*rec_sgs))
 
        !OLD dx = rionxi*n_grid_x
-       !OLD dx = (- dx + anint(dx))*x_grid*r_super_x
-       !OLD dxx = x * r_super_x * x_grid
+       !OLD dx = (- dx + anint(dx))*x_grid*cell_vec_len(1)
+       !OLD dxx = x * cell_vec_len(1) * x_grid
        !NEW dx+dxx=dxxx
        ! I (TM) think the following expresseion is enough for imin, 
        ! but the difference of the efficiency is small.
@@ -976,7 +976,7 @@ contains
 
     DO y = nymin_grid, nymax_grid
        iy_grid=y-nymin_grid+1
-       !dyy = y * r_super_y * y_grid
+       !dyy = y * cell_vec_len(2) * y_grid
        dyyy=y*dcelly_grid-bundle%yprim(iprim)
        imin = MAX(-blip_info(spec)%BlipArraySize,int((dyyy-blip_info(spec)%BlipWidth*half)*rec_sgs))
        imax = MIN( blip_info(spec)%BlipArraySize,int((dyyy+blip_info(spec)%BlipWidth*half)*rec_sgs))
@@ -1026,7 +1026,7 @@ contains
 
     DO z = nzmin_grid, nzmax_grid
        iz_grid=z-nzmin_grid+1
-       !dzz = z * r_super_z * z_grid
+       !dzz = z * cell_vec_len(3) * z_grid
        dzzz=z*dcellz_grid-bundle%zprim(iprim)
        imin_for_z(iz_grid) = MAX(-blip_info(spec)%BlipArraySize,&
             int((dzzz-blip_info(spec)%BlipWidth*half)*rec_sgs))
@@ -1257,7 +1257,7 @@ contains
 
     use datatypes
     use numbers
-    use global_module,   ONLY: rcellx,rcelly,rcellz, area_basis
+    use global_module,   ONLY: cell_vec_len, area_basis
     use group_module,    ONLY: blocks
     use primary_module,  ONLY: bundle
     use cover_module,    ONLY: BCS_blocks
@@ -1314,9 +1314,9 @@ contains
     nblky=ny_in_block
     nblkz=nz_in_block
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
 
     nxmin_grid=(naba_blocks_of_atoms%nxmin(iprim)-1)*nblkx  
     nxmax_grid= naba_blocks_of_atoms%nxmax(iprim)*nblkx-1
@@ -1733,7 +1733,7 @@ contains
     ! modules
     use datatypes
     use numbers
-    use global_module,       ONLY:rcellx,rcelly,rcellz, area_basis
+    use global_module,       ONLY:cell_vec_len, area_basis
     use group_module,        ONLY:blocks
     use primary_module,      ONLY:bundle
     use cover_module,        ONLY:BCS_blocks
@@ -1816,9 +1816,9 @@ contains
     nblky=ny_in_block
     nblkz=nz_in_block
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
 
     nxmin_grid=(naba_blocks_of_atoms%nxmin(iprim)-1)*nblkx
     nxmax_grid= naba_blocks_of_atoms%nxmax(iprim)*nblkx-1
@@ -2378,7 +2378,7 @@ contains
 
     use datatypes
     use numbers
-    use global_module,       ONLY:rcellx,rcelly,rcellz, area_basis
+    use global_module,       ONLY:cell_vec_len, area_basis
     use group_module,        ONLY:blocks
     use primary_module,      ONLY:bundle
     use cover_module,        ONLY:BCS_blocks
@@ -2455,9 +2455,9 @@ contains
     nblky=ny_in_block
     nblkz=nz_in_block
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx; dcellx_grid=dcellx_block/nblkx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly; dcelly_grid=dcelly_block/nblky
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz; dcellz_grid=dcellz_block/nblkz
 
     nxmin_grid=(naba_blocks_of_atoms%nxmin(iprim)-1)*nblkx
     nxmax_grid= naba_blocks_of_atoms%nxmax(iprim)*nblkx-1

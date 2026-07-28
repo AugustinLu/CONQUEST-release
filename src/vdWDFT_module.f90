@@ -2166,7 +2166,7 @@ contains
     use datatypes
     use numbers
     use dimens
-    use global_module, only: nspin, spin_factor,       &
+    use global_module, only: nspin, spin_factor, cell_vec_len, &
                              IPRINT_TIME_THRES2
     use maxima_module, only: maxngrid
     use XC,     only: build_gradient,           &
@@ -2229,11 +2229,11 @@ contains
     ! work out kcut, this should be less or equal to Nyquist critical
     ! frequency, fc = 2*pi/2*dr = pi/dr, dr is the real-space grid
     ! spacing. Also cell in conquest is orthorhombic
-    fc(1) = pi / (r_super_x / n_grid_x)
-    fc(2) = pi / (r_super_y / n_grid_y)
-    fc(3) = pi / (r_super_z / n_grid_z)
+    fc(1) = pi / (cell_vec_len(1) / n_grid_x)
+    fc(2) = pi / (cell_vec_len(2) / n_grid_y)
+    fc(3) = pi / (cell_vec_len(3) / n_grid_z)
     kcut = minval(fc)
-    d3k = one / (r_super_x * r_super_y * r_super_z)
+    d3k = one / (cell_vec_len(1) * cell_vec_len(2) * cell_vec_len(3))
 
     ! set kcut
     call start_timer(tmr_set_kcut, WITH_LEVEL)
@@ -2497,9 +2497,9 @@ contains
 
 !     ! work out kcut
 !     ! cell in conquest is always orthorhombic
-!     reciprocal(1) = (two * pi / r_super_x) * n_grid_x
-!     reciprocal(2) = (two * pi / r_super_y) * n_grid_y
-!     reciprocal(3) = (two * pi / r_super_z) * n_grid_z
+!     reciprocal(1) = (two * pi / cell_vec_len(1)) * n_grid_x
+!     reciprocal(2) = (two * pi / cell_vec_len(2)) * n_grid_y
+!     reciprocal(3) = (two * pi / cell_vec_len(3)) * n_grid_z
 !     kcut = half * minval(reciprocal)
 
 !     print *, 'LT_debug: kcut_set = ', kcut_set, kcut

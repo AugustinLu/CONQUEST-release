@@ -8,8 +8,8 @@
 ! ------------------------------------------------------------------------------
 
 !!****h* Conquest/io_module
-!!  NAME 
-!!   io_module -- governs input and output of atom positions, types, 
+!!  NAME
+!!   io_module -- governs input and output of atom positions, types,
 !!     hopping and matrix writing
 !!  PURPOSE
 !!   Locate all input and output (bar comment writing) in one place so
@@ -19,9 +19,9 @@
 !!   group_module, matrix_module, species_module
 !!  AUTHOR
 !!    D.R.Bowler
-!!  CREATION DATE   
+!!  CREATION DATE
 !!   25/01/00 by D.R.Bowler
-!!  MODIFICATION HISTORY 
+!!  MODIFICATION HISTORY
 !!   02/03/00 by DRB
 !!    Changed the unit chosen to write out C-matrix
 !!   12/04/00 by DRB
@@ -29,7 +29,7 @@
 !!   18->19/04/00 by DRB
 !!    Implementing the new generic group_set and primary_set types
 !!   1/05/00 by DRB
-!!    Incorporation into Conquest - removed the parameters read in 
+!!    Incorporation into Conquest - removed the parameters read in
 !!    from stdin, and left it with reading make_prt.dat
 !!   04/05/01 by DRB
 !!    Used the ParaDens tidied output to improve readability
@@ -40,7 +40,7 @@
 !!   24/06/2002 dave
 !!    Changed read_atoms to use fdf io_assign routines (not raw
 !!    open/close)
-!!   14:00, 04/02/2003 drb 
+!!   14:00, 04/02/2003 drb
 !!    Added dump/grab routines for charge, matrices, blips, local and
 !!    non-local pseudos for force checking
 !!   16:43, 2003/04/15 dave
@@ -49,9 +49,9 @@
 !!    Further changes based on TM's work: now use atom_coord instead
 !!    of various x_atom etc variables Changes also to mapping and
 !!    numbering
-!!   13:30, 22/09/2003 drb 
+!!   13:30, 22/09/2003 drb
 !!    Added constrained atoms
-!!   10:09, 13/02/2006 drb 
+!!   10:09, 13/02/2006 drb
 !!    Removed all explicit references to data_ variables and rewrote
 !!    in terms of new matrix routines
 !!   11:40, 10/11/2006 Veronika
@@ -81,6 +81,7 @@
 module io_module
 
   use datatypes,              only: double
+    use global_module, ONLY: cell_vec_len
   use numbers,                only: zero
   use global_module,          only: io_lun
   use GenComms,               only: cq_abort, gcopy
@@ -91,14 +92,14 @@ module io_module
 
   implicit none
 
-  logical           :: pdb_format, append_coords, pdb_output 
+  logical           :: pdb_format, append_coords, pdb_output
   character(len=1)  :: pdb_altloc
   character(len=80) :: pdb_template
 
-  !Maximum of wallclock time (in seconds): See subroutine 'check_stop' 2018.Jan.17 TM 
+  !Maximum of wallclock time (in seconds): See subroutine 'check_stop' 2018.Jan.17 TM
   real(double)      :: time_max =zero
   integer :: atom_output_threshold
-   
+
   !Name and Format of  MatrixFile used in store_matrix
   logical          :: flag_MatrixFile_RankFromZero  ! Starting from 0 in ##### (*matrix2.i**.p#####)
   logical          :: flag_MatrixFile_BinaryFormat  ! Binary or Ascii
@@ -106,10 +107,10 @@ module io_module
   logical          :: flag_MatrixFile_BinaryFormat_Dump ! Binary or Ascii for writing
   ! flag_MatrixFile_BinaryFormat_Dump is set as flag_MatrixFile_BinaryFormat_Grab in the beginning,
   !  then, if we get a signal to finalise CONQUEST by calling "check_stop", it is set ast
-  !  flag_MatrixFile_BinaryFormat_Dump_END.  
+  !  flag_MatrixFile_BinaryFormat_Dump_END.
   !   (during the job, we need to keep the format of the file, prepared in the last job.)
   logical          :: flag_MatrixFile_BinaryFormat_Dump_END ! set from Conquest_input
-  
+
   ! System signature
   ! Moved here from read_and_write so that it can be used for extended XYZ output
   ! Moved here from initial_read_module to slove the dependence problem
@@ -123,18 +124,18 @@ contains
   ! --------------------------------------------------------------------
   ! Subroutine read_atomic_positions
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/read_atomic_positions *
   !!
-  !!  NAME 
+  !!  NAME
   !!   read_atomic_positions
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Reads positions, species and constraint type for atoms
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
   !!   datatypes, dimens, GenComms, global_module, species_module
   !!  AUTHOR
@@ -144,20 +145,20 @@ contains
   !!  MODIFICATION HISTORY
   !!   16:46, 2003/06/09 tm
   !!    id_glob_inv, atom_coord, species_glob is added.
-  !!    and labelling in make_prt.dat is changed 
-  !!   13:31, 22/09/2003 drb 
+  !!    and labelling in make_prt.dat is changed
+  !!   13:31, 22/09/2003 drb
   !!    Added reading of flags to constrain atom movement in three directions
   !!   2006/10/09 08:21 dave
   !!    Tidying up output
   !!   20/11/2006 Veronika
   !!    Corrected reading of constraints from pdb file
-  !!   15:05, 27/04/2007 drb 
+  !!   15:05, 27/04/2007 drb
   !!    Check to ensure right number of species added
   !!   2007/06/28, 21:37 mt + drb
   !!    Added coordinate wrapping to non-pdb coordinates.
   !!   2007/10/11 Veronika
   !!    Added coordinate wrapping to pdb coordinates
-  !!    Added coordinate wrapping for coordinates outside 
+  !!    Added coordinate wrapping for coordinates outside
   !!    the [-1*cell parameter; 2*cell parameter] range
   !!   2013/07/01 M.Arita & T.Miyazaki
   !!    Added shift_in_bohr when wrapping atoms and allocation of atom_coord_diff
@@ -170,7 +171,7 @@ contains
   !!   2019/04/04 14:17 dave
   !!    Correct bug in wrapping with non-fractional coordinates and Angstroms
   !!   2020/07/27 tsuyoshi
-  !!    Added atom_vels  
+  !!    Added atom_vels
   !!   2020/10/07 tsuyoshi
   !!    Removed allocation of atom_vels (moved to "control")
   !!   2022/12/09 16:52 dave
@@ -180,14 +181,15 @@ contains
   subroutine read_atomic_positions(filename)
 
     use datatypes
-    use dimens,         only: r_super_x, r_super_y, r_super_z, volume
+    use dimens,         only:  volume, r_super_vec
     use global_module,  only: x_atom_cell, y_atom_cell, z_atom_cell, &
                               ni_in_cell, numprocs,                  &
-                              flag_fractional_atomic_coords, rcellx, &
-                              rcelly, rcellz, id_glob, iprint_init,  &
+                              flag_fractional_atomic_coords, id_glob, iprint_init,  &
+                              cell_vec_len, lat_vec_inv, cell_vol, &
                               id_glob_inv, atom_coord, species_glob, &
                               flag_move_atom, area_init, shift_in_bohr, &
-                              runtype,atom_coord_diff,id_glob_old,id_glob_inv_old
+                              runtype,atom_coord_diff,id_glob_old,id_glob_inv_old, &
+                              lat_vec, recip_lat_vec, invert_3x3, wrap_into_cell
     use species_module, only: species, species_label, n_species
     use GenComms,       only: inode, ionode, cq_abort, cq_warn
     use memory_module,  only: reg_alloc_mem, type_dbl, type_int
@@ -239,7 +241,7 @@ first:    do
              if (ios < 0) exit first
              select case (pdb_line(1:6))
              case ('ATOM  ','HETATM')
-                if (lgt( pdb_line(17:17),' ')) then 
+                if (lgt( pdb_line(17:17),' ')) then
                    ! File with alternate locations and no
                    ! General.PdbAltLoc specified?
                    !
@@ -321,7 +323,7 @@ second:   do
                           RD_ERR ) &
                            call cq_abort('The constraints on atom(s) &
                                           &have not been set. Check the pdb file.')
-                      if (num_move_atom > 7) & 
+                      if (num_move_atom > 7) &
                            call cq_abort('Out of range value for &
                                           &flag_move_atom. Check the pdb file.')
                       if (num_move_atom >= 4) then
@@ -369,7 +371,7 @@ second:   do
                    if (num_move_atom_real - (real(num_move_atom)) > RD_ERR ) &
                         call cq_abort('The constraints on atom(s) &
                                        &have not been set. Check the pdb file.')
-                   if (num_move_atom > 7) & 
+                   if (num_move_atom > 7) &
                         call cq_abort('Out of range value for &
                                        &flag_move_atom. Check the pdb file.')
                    if (num_move_atom >= 4) then
@@ -388,64 +390,54 @@ second:   do
                 end if
              case ('CRYST1')
                 read (pdb_line,'(6x,3f9.3,3f7.2,15x)') &
-                     r_super_x, r_super_y, r_super_z, angle
-                r_super_x = AngToBohr * r_super_x
-                r_super_y = AngToBohr * r_super_y
-                r_super_z = AngToBohr * r_super_z
-                ! The following write statement is also in
-                ! initial_read_module, but I think it's better to have
-                ! it (also) here, because then the cell size will be
-                ! printed together with the coordinates
-                !write(io_lun,4) r_super_x, r_super_y, r_super_z
+                     cell_vec_len, angle
+                cell_vec_len(1) = AngToBohr * cell_vec_len(1)
+                cell_vec_len(2) = AngToBohr * cell_vec_len(2)
+                cell_vec_len(3) = AngToBohr * cell_vec_len(3)
+                ! Initialize r_super_vec and lat_vec as orthogonal
+                r_super_vec = 0.0d0
+                r_super_vec(1,1) = cell_vec_len(1)
+                r_super_vec(2,2) = cell_vec_len(2)
+                r_super_vec(3,3) = cell_vec_len(3)
+                lat_vec = r_super_vec
+                !write(io_lun,4) cell_vec_len
 !4               format(/10x,'The simulation box has the following dimensions',/, &
 !                       10x,'a = ',f9.5,' b = ',f9.5,' c = ',f9.5,' a.u.')
              end select
           end do second
           ! Wrap coordinates
-          cell(1) = r_super_x
-          cell(2) = r_super_y
-          cell(3) = r_super_z
+          call invert_3x3(lat_vec, lat_vec_inv, cell_vol)
           do i = 1, ni_in_cell
-             do j = 1, 3
-                ! Introduce shift_in_bohr: (small shift for fractional coordinates may 
-                ! cause a problem for very large systems.)
-                !
-                ! Originally, 'if'-statement in the next line was active, but since we need 
-                ! a common and strict rule to treat the atoms on the boundary of the unit cell, 
-                ! we need to do this wrapping with shift_in_bohr for all cases. 
-                !
-                ! Thus, I have commented out the next line.   23/Jul/2014 TM 
-                !  (coordinate of the atoms on the boundary of the unit cell must be 0.000*** not 0.999***.)
-                !
-                !if ((atom_coord(j,i) < zero) .or. (atom_coord(j,i) > cell(j))) &
-                   atom_coord(j,i) = &
-                      atom_coord(j,i) - floor((atom_coord(j,i)+shift_in_bohr)/cell(j)) * cell(j)
-             end do
+             call wrap_into_cell(atom_coord(1,i), atom_coord(2,i), atom_coord(3,i))
           end do
           call io_close(lun)
        else ! Read normal coordinate file
           if(iprint_init>2) write(io_lun,'(10x,a40,a20)') 'Entering read_atomic_positions; reading ', filename
           call io_assign(lun)
           open(unit=lun,file=filename,status='old')
-          ! Read supercell vector - for now it must be orthorhombic so
-          ! we use x and y as dummy variables
-          read(lun,*) r_super_x, x, y
-          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_warn('read_atomic_positions', &
-               'Non-orthorhombic simulation cells are not supported by CONQUEST')
-          read(lun,*) x,r_super_y, y
-          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_warn('read_atomic_positions', &
-               'Non-orthorhombic simulation cells are not supported by CONQUEST')
-          read(lun,*) x,y,r_super_z
-          if(abs(x)>RD_ERR.OR.abs(y)>RD_ERR) call cq_warn('read_atomic_positions', &
-               'Non-orthorhombic simulation cells are not supported by CONQUEST')
+          ! Read supercell vector (full 3x3 matrix)
+          read(lun,*) r_super_vec(1,1), r_super_vec(1,2), r_super_vec(1,3)
+          read(lun,*) r_super_vec(2,1), r_super_vec(2,2), r_super_vec(2,3)
+          read(lun,*) r_super_vec(3,1), r_super_vec(3,2), r_super_vec(3,3)
           read(lun,*) ni_in_cell
          !2010.06.25 TM (Angstrom Units in coords file, but not pdb)
           if(dist_units == ang) then
-            r_super_x = r_super_x*AngToBohr
-            r_super_y = r_super_y*AngToBohr
-            r_super_z = r_super_z*AngToBohr
+            r_super_vec = r_super_vec*AngToBohr
           endif
          !2010.06.25 TM (Angstrom Units in coords file, but not pdb)
+
+          ! Coordinate files contain one direct lattice vector per row, while
+          ! the generalized-cell implementation stores lattice vectors as
+          ! columns so that r_cart = matmul(lat_vec, r_fractional).
+          r_super_vec = transpose(r_super_vec)
+
+          ! Compute the lengths (just diagonal lengths or magnitudes for output/legacy)
+          cell_vec_len(1) = sqrt(sum(r_super_vec(:,1)**2))
+          cell_vec_len(2) = sqrt(sum(r_super_vec(:,2)**2))
+          cell_vec_len(3) = sqrt(sum(r_super_vec(:,3)**2))
+          ! Set lat_vec (since we read it here)
+          lat_vec = r_super_vec
+          call invert_3x3(lat_vec, lat_vec_inv, cell_vol)
 
           allocate(flag_move_atom(3,ni_in_cell),atom_coord(3,ni_in_cell),&
                    species_glob(ni_in_cell),STAT=stat)
@@ -464,9 +456,9 @@ second:   do
                                &in input file: ", species_glob(i), n_species)
              end if
              if(flag_fractional_atomic_coords) then
-                atom_coord(1,i) = x*r_super_x
-                atom_coord(2,i) = y*r_super_y
-                atom_coord(3,i) = z*r_super_z
+                atom_coord(1,i) = x*r_super_vec(1,1) + y*r_super_vec(1,2) + z*r_super_vec(1,3)
+                atom_coord(2,i) = x*r_super_vec(2,1) + y*r_super_vec(2,2) + z*r_super_vec(2,3)
+                atom_coord(3,i) = x*r_super_vec(3,1) + y*r_super_vec(3,2) + z*r_super_vec(3,3)
                 ! Simple check for Cartesian coordinates
                 if(abs(x)>two .and. abs(y)>two .and. abs(z)>two) n_wrong_coords = n_wrong_coords + 1
              else
@@ -481,24 +473,7 @@ second:   do
                 if(abs(x)<one .and. abs(y)<one .and. abs(z)<one) n_wrong_coords = n_wrong_coords + 1
              end if
              ! Wrap coordinates
-             cell(1) = r_super_x
-             cell(2) = r_super_y
-             cell(3) = r_super_z
-             do j = 1, 3
-                ! Introduce shift_in_bohr: (small shift for fractional coordinates may
-                ! cause a problem for very large systems.)
-                !
-                ! Originally, 'if'-statement in the next line was active, but since we need
-                ! a common and strict rule to treat the atoms on the boundary of the unit cell, 
-                ! we need to do this wrapping with shift_in_bohr for all cases. 
-                !
-                ! Thus, I have commented out the next line.   23/Jul/2014 TM   
-                !  (coordinate of the atoms on the boundary of the unit cell must be 0.000*** not 0.999***.)
-                !
-                !if ((atom_coord(j,i) < zero) .or. (atom_coord(j,i) > cell(j))) &
-                   atom_coord(j,i) = &
-                      atom_coord(j,i) - floor((atom_coord(j,i)+shift_in_bohr)/cell(j)) * cell(j)
-             end do
+             call wrap_into_cell(atom_coord(1,i), atom_coord(2,i), atom_coord(3,i))
              flag_move_atom(1,i) = movex
              flag_move_atom(2,i) = movey
              flag_move_atom(3,i) = movez
@@ -516,7 +491,7 @@ second:   do
        ! Check for sensible number of processes
        if(ni_in_cell<numprocs) call cq_abort("We must have at least one atom per process: ",ni_in_cell,numprocs)
     end if
-    volume = r_super_x*r_super_y*r_super_z
+    if(inode==ionode) volume = abs(cell_vol)
     if((iprint_init>0) .or. (iprint_init==0.AND.ni_in_cell<atom_output_threshold)) &
          call print_atomic_positions
     call gcopy(ni_in_cell)
@@ -528,16 +503,26 @@ second:   do
              x_atom_cell(ni_in_cell), y_atom_cell(ni_in_cell),&
              z_atom_cell(ni_in_cell),species(ni_in_cell),STAT=stat)
     if(stat/=0) call cq_abort("Failure to allocate coordinates(2): ",ni_in_cell)
-    call gcopy(r_super_x)
-    call gcopy(r_super_y)
-    call gcopy(r_super_z)
+    call gcopy(cell_vec_len(1))
+    call gcopy(cell_vec_len(2))
+    call gcopy(cell_vec_len(3))
+    call gcopy(r_super_vec, 3, 3)
+    call gcopy(lat_vec, 3, 3)
     call gcopy(species_glob,ni_in_cell)
     call gcopy(atom_coord, 3, ni_in_cell)
     call gcopy(flag_move_atom, 3, ni_in_cell)
-    rcellx = r_super_x
-    rcelly = r_super_y
-    rcellz = r_super_z
-    volume = r_super_x*r_super_y*r_super_z
+    ! Compute the inverse matrix and cell volume
+    call invert_3x3(lat_vec, lat_vec_inv, cell_vol)
+    cell_vol = abs(cell_vol)
+    ! Compute lengths of cell vectors
+    cell_vec_len(1) = sqrt(sum(lat_vec(:,1)**2))
+    cell_vec_len(2) = sqrt(sum(lat_vec(:,2)**2))
+    cell_vec_len(3) = sqrt(sum(lat_vec(:,3)**2))
+    ! We don't really use 2*pi reciprocal vectors right now, but if we do:
+    ! Reciprocal basis without 2*pi, stored as columns.
+    recip_lat_vec = transpose(lat_vec_inv)
+
+    volume = cell_vol
     allocate(atom_coord_diff(3,ni_in_cell), STAT=stat)
     if (stat.NE.0) call cq_abort('Error allocating atom_coord_diff: ', 3, ni_in_cell)
     allocate(id_glob_old(ni_in_cell),id_glob_inv_old(ni_in_cell), STAT=stat)
@@ -556,22 +541,22 @@ second:   do
   end subroutine read_atomic_positions
   !!***
 
-  
+
   ! --------------------------------------------------------------------
   ! Subroutine write_atomic_positions
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/write_atomic_positions *
   !!
-  !!  NAME 
+  !!  NAME
   !!   write_atomic_positions
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   writes positions, species and constraint type for atoms
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
   !!   datatypes, dimens, GenComms, global_module, species_module
   !!  AUTHOR
@@ -591,13 +576,14 @@ second:   do
 
     use datatypes
     use numbers,        only: zero
-    use dimens,         only: r_super_x, r_super_y, r_super_z
+    use dimens,         only:
     use global_module,  only: x_atom_cell, y_atom_cell, z_atom_cell,   &
                               ni_in_cell,                              &
-                              flag_fractional_atomic_coords, rcellx,   &
-                              rcelly, rcellz, iprint_init, atom_coord, &
+                              flag_fractional_atomic_coords,           &
+                              iprint_init, atom_coord,                 &
                               species_glob, flag_move_atom, area_init, &
-                              IPRINT_TIME_THRES3, min_layer
+                              IPRINT_TIME_THRES3, min_layer, cell_vec_len, &
+                              lat_vec, lat_vec_inv
     use species_module, only: species, species_label
     use GenComms,       only: inode, ionode, cq_abort
     use units,          only: BohrToAng
@@ -660,9 +646,9 @@ second:   do
                 write (lun,'(a)') pdb_line
               endif
             case ('CRYST1')
-              coords(1) = BohrToAng * r_super_x
-              coords(2) = BohrToAng * r_super_y
-              coords(3) = BohrToAng * r_super_z
+              coords(1) = BohrToAng * cell_vec_len(1)
+              coords(2) = BohrToAng * cell_vec_len(2)
+              coords(3) = BohrToAng * cell_vec_len(3)
               ! Once we get to non-orthorhombic cells the line below has to be updated
               write (lun,'(a6,3f9.3,3f7.2,a)') pdb_line(1:6), coords(:), &
                     90.0, 90.0, 90.0, pdb_line(56:80)
@@ -681,15 +667,16 @@ second:   do
           else
              open(unit=lun,file=filename)
           end if
-          ! Read supercell vector - for now it must be orthorhombic so we use x and y as dummy variables
-          write(lun,fmt='(3f25.17)') r_super_x, zero, zero
-          write(lun,fmt='(3f25.17)') zero, r_super_y, zero
-          write(lun,fmt='(3f25.17)') zero, zero, r_super_z
+          ! Coordinate-file convention: one direct lattice vector per row.
+          write(lun,fmt='(3f25.17)') lat_vec(1,1), lat_vec(2,1), lat_vec(3,1)
+          write(lun,fmt='(3f25.17)') lat_vec(1,2), lat_vec(2,2), lat_vec(3,2)
+          write(lun,fmt='(3f25.17)') lat_vec(1,3), lat_vec(2,3), lat_vec(3,3)
           write(lun,fmt='(i8)') ni_in_cell
           do i=1,ni_in_cell
              if(flag_fractional_atomic_coords) then
-                write(lun,fmt='(3f25.17,i6,3L3)') atom_coord(1,i)/r_super_x,atom_coord(2,i)/r_super_y,&
-                     atom_coord(3,i)/r_super_z, species_glob(i),flag_move_atom(1,i),flag_move_atom(2,i), &
+                coords = matmul(lat_vec_inv, atom_coord(:,i))
+                write(lun,fmt='(3f25.17,i6,3L3)') coords(1), coords(2), coords(3), &
+                     species_glob(i),flag_move_atom(1,i),flag_move_atom(2,i), &
                      flag_move_atom(3,i)
              else
                 write(lun,fmt='(3f25.17,i6,3L3)') atom_coord(1,i),atom_coord(2,i),atom_coord(3,i), &
@@ -708,10 +695,10 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine read_mult
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/read_mult *
   !!
-  !!  NAME 
+  !!  NAME
   !!   read_mult -- reads in data for multiplications
   !!  USAGE
   !!   read_mult(Processor id, partition data structure)
@@ -726,7 +713,7 @@ second:   do
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !! 
+  !!
   !!  MODIFICATION HISTORY
   !!   21/06/2001 dave
   !!    Added cq_abort and gcopy
@@ -736,9 +723,9 @@ second:   do
   !!    Swapped the original create_sfc_partitions with the new
   !!    sfc_partitions_to_processors from sfc_partitions_module
   !!   2013/08/20 M.Arita
-  !!    Correct the if-statement 
+  !!    Correct the if-statement
   !!   2017/08/29 jack baker & dave
-  !!    Removed r_super_x references (redundant)
+  !!    Removed cell_vec_len(1) references (redundant)
   !!  SOURCE
   !!
   subroutine read_mult(myid,parts,part_file)
@@ -849,7 +836,7 @@ second:   do
 !****lat<$
     call stop_backtrace(t=backtrace_timer,who='read_mult')
 !****lat>$
-    
+
     return
   end subroutine read_mult
   !!***
@@ -857,16 +844,16 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine read_partitions
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/read_partitions *
   !!
-  !!  NAME 
+  !!  NAME
   !!   read_atoms -- reads in partition data
   !!  USAGE
   !!   read_partitions(Partition data structure, number of processors)
   !!  PURPOSE
-  !!   Reads in all data associated with partitions  
-  !!   (numbers within partition) on master processor and distributes to 
+  !!   Reads in all data associated with partitions
+  !!   (numbers within partition) on master processor and distributes to
   !!     all other processors
   !!  INPUTS
   !!   type(group_set) :: parts - partition data structure
@@ -916,7 +903,7 @@ second:   do
 
 !****lat<$
     call start_backtrace(t=backtrace_timer,who='read_partitions',where=1,level=4)
-!****lat>$  
+!****lat>$
 
     if(iprint_init>2.AND.myid==0) write(io_lun,fmt='(4x,a)') 'Entering read_partitions'
     call io_assign(lun)
@@ -1097,16 +1084,16 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine read_blocks
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/read_blocks *
   !!
-  !!  NAME 
+  !!  NAME
   !!   read_atoms -- reads in block data
   !!  USAGE
   !!   read_blocks(Block data structure, number of processors)
   !!  PURPOSE
-  !!   Reads in all data associated with blocks  
-  !!   (numbers within block) on master processor and distributes to 
+  !!   Reads in all data associated with blocks
+  !!   (numbers within block) on master processor and distributes to
   !!     all other processors
   !!  INPUTS
   !!   type(group_set) :: blocks - block data structure
@@ -1116,7 +1103,7 @@ second:   do
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   12:03, 15/11/2004 dave 
+  !!   12:03, 15/11/2004 dave
   !!  MODIFICATION HISTORY
   !!   2008/09/11 08:09 dave
   !!    Rewritten to do I/O on one processor only
@@ -1189,7 +1176,7 @@ second:   do
        maxblocks = 0
        do nnd=1,nnode
           ! First node number, blocks and starting pointer
-          read(lun,*) nnd1,ntmp1,ntmp2 
+          read(lun,*) nnd1,ntmp1,ntmp2
           if(nnd1/=nnd) call cq_abort('read_blocks: node label wrong ',nnd1,nnd)
           ! Check for correct numbers of blocks
           if(ntmp1<0) call cq_abort('read_blocks: too many blocks on proc ', nmyblocks)
@@ -1314,24 +1301,24 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine dump_charge
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/dump_charge *
   !!
-  !!  NAME 
+  !!  NAME
   !!   dump_charge
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Dumps the charge density
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   10:58, 15/10/2002 drb 
+  !!   10:58, 15/10/2002 drb
   !!  MODIFICATION HISTORY
   !!   2011/04/13 L.Tong
   !!     Added optional flag controlling whether to dump total charge
@@ -1403,7 +1390,7 @@ second:   do
   !! RETURN VALUE
   !! AUTHOR
   !!   David Bowler
-  !! CREATION DATE 
+  !! CREATION DATE
   !!   2015/07/02 08:22 dave
   !! MODIFICATION HISTORY
   !!   2015/07/02 08:23 dave
@@ -1422,7 +1409,7 @@ second:   do
     integer :: size, inode
     real(double), dimension(size) :: density
     character(len=*) :: stub
-    integer :: spin 
+    integer :: spin
     real(double), optional :: energy
     real(double), optional, dimension(3) :: kp
     integer, optional :: num_kpts
@@ -1470,7 +1457,7 @@ second:   do
   !! RETURN VALUE
   !! AUTHOR
   !!   David Bowler
-  !! CREATION DATE 
+  !! CREATION DATE
   !!   2015/07/09 08:16
   !! MODIFICATION HISTORY
   !! SOURCE
@@ -1478,7 +1465,7 @@ second:   do
   subroutine write_eigenvalues(eval,n_evals,nkp,nspin,kk,wtk,Ef)
 
     use datatypes
-    
+
     implicit none
 
     ! Passed variables
@@ -1490,7 +1477,7 @@ second:   do
 
     ! Local variables
     integer :: lun,sp,kp,ev
-    
+
     call io_assign (lun)
     open (unit = lun, file = 'eigenvalues.dat')
     write(lun,fmt='("#  ",i7," eigenvalues ",i6," kpoints")') n_evals, nkp
@@ -1525,7 +1512,7 @@ second:   do
   !! RETURN VALUE
   !! AUTHOR
   !!   David Bowler/Lionel Truflandier
-  !! CREATION DATE 
+  !! CREATION DATE
   !!   2022/10/29 16:00
   !! MODIFICATION HISTORY
   !! SOURCE
@@ -1560,7 +1547,7 @@ second:   do
     !end do
     !11  call io_close(io)
     !print*, nlines
-    
+
     open(io,file=file, status='old', action='readwrite', iostat=stat, position='rewind')
     if (stat .ne. 0) call cq_abort('ASE/eigenvalues error opening file !')
     !
@@ -1571,11 +1558,11 @@ second:   do
     !if ( nspin == 2 ) then
     !   counter = nkp*3 + nspin*nkp + nspin*nkp*(n_evals/3) + 1
     !   if ( mod(n_evals,3) > 0 ) counter = counter + nspin*nkp
-    
+
     !else
     !   counter = nkp*3 + nkp*(n_evals/3) + 1
     !   if ( mod(n_evals,3) > 0 ) counter = counter + nkp
-       
+
     !end if
 
     !if ( nlines > skip_lines ) then
@@ -1596,16 +1583,16 @@ second:   do
           if (nspin == 2) &
                write (io, '(10x,"For spin = ",i1)') spin
           do j = 1, n_evals, 3
-             
+
              if (j == n_evals) then
                 write (io, 8) eval(j,i,spin), occ(j,i,spin)
 
                 bandE(spin) = bandE(spin) + eval(j,i,spin) * occ(j,i,spin)
-                
+
              else if (j == n_evals - 1) then
                 write (io, 9) eval(j,i,spin), occ(j,i,spin), &
                      eval(j+1,i,spin), occ(j+1,i,spin)
-                
+
                 bandE(spin) = bandE(spin) + eval(j,i,spin) * occ(j,i,spin) + &
                      eval(j+1,i,spin) * occ(j+1,i,spin)
 
@@ -1613,7 +1600,7 @@ second:   do
                 write (io, 10) eval(j,i,spin), occ(j,i,spin), &
                      eval(j+1,i,spin), occ(j+1,i,spin), &
                      eval(j+2,i,spin), occ(j+2,i,spin)
-                
+
                 bandE(spin) = bandE(spin) + eval(j,i,spin) * occ(j,i,spin) + &
                      eval(j+1,i,spin) * occ(j+1,i,spin) + &
                      eval(j+2,i,spin) * occ(j+2,i,spin)
@@ -1641,19 +1628,19 @@ second:   do
     end do
     !
     close(io)
-    !    
+    !
 4   format(10x,'Sum of eigenvalues: ',f18.11,' ',a2)
 7   format(10x,'Eigenvalues and occupancies for k-point ',i6,' : ',3f12.5)
 8   format(10x,f15.7,x,f8.5,2x)
 9   format(10x,f15.7,x,f8.5,2x,f15.7,x,f8.5,2x)
 10  format(10x,f15.7,x,f8.5,2x,f15.7,x,f8.5,2x,f15.7,x,f8.5)
 13  format(10x,'Fermi energy for spin = ',i1,' is ',f18.11,' ',a2)
-    
+
     return
 
   end subroutine write_eigenvalues_format_ase
   !!***
-  
+
   !!****f* io_module/dump_DOS
   !! PURPOSE
   !! INPUTS
@@ -1661,7 +1648,7 @@ second:   do
   !! RETURN VALUE
   !! AUTHOR
   !!   David Bowler
-  !! CREATION DATE 
+  !! CREATION DATE
   !!   2015/07/02 10:46
   !! MODIFICATION HISTORY
   !! SOURCE
@@ -1711,7 +1698,7 @@ second:   do
   end subroutine dump_DOS
   !!***
 
-  
+
   !!****f* io_module/dump_projected_DOS
   !! PURPOSE
   !! INPUTS
@@ -1719,7 +1706,7 @@ second:   do
   !! RETURN VALUE
   !! AUTHOR
   !!   David Bowler
-  !! CREATION DATE 
+  !! CREATION DATE
   !!   2015/07/02 17:21
   !! MODIFICATION HISTORY
   !!   2017/11/09 16:00 nakata
@@ -1790,7 +1777,7 @@ second:   do
              if(flag_pDOS_lm) then
                 tmp_col = 0
                 do i=1,Nangmom
-                   tmp_col = tmp_col + 2*i-1  ! Because i is l+1 
+                   tmp_col = tmp_col + 2*i-1  ! Because i is l+1
                 end do
                 write(fmt_DOS,*) tmp_col+2 ! NB this is number of columns in format
                 fmt_DOS = '('//trim(adjustl(fmt_DOS))//'f17.10)'
@@ -1817,7 +1804,7 @@ second:   do
              if(flag_pDOS_lm) then
                 tmp_col = 0
                 do i=1,Nangmom
-                   tmp_col = tmp_col + 2*i-1  ! Because i is l+1 
+                   tmp_col = tmp_col + 2*i-1  ! Because i is l+1
                 end do
                 write(fmt_DOS,*) tmp_col*2+3
                 fmt_DOS = '('//trim(adjustl(fmt_DOS))//'f17.10)'
@@ -1848,18 +1835,18 @@ second:   do
   end subroutine dump_projected_DOS
   !!***
 
-  
+
 
   ! --------------------------------------------------------------------
   ! Subroutine grab_charge
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/grab_charge *
   !!
-  !!  NAME 
+  !!  NAME
   !!   grab_charge
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Grabs the charge density (dumped by dump_charge)
   !!   - Note that this subroutine simply graps the list data from a
@@ -1867,13 +1854,13 @@ second:   do
   !!     the data should be done after the call and outside of this
   !!     subroutine.
   !!  INPUTS
-  !! 
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   10:58, 15/10/2002 drb 
+  !!   10:58, 15/10/2002 drb
   !!  MODIFICATION HISTORY
   !!   2011/11/27 L.Tong
   !!   - Added spin polarisation
@@ -1937,24 +1924,24 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine dump_matrix
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/dump_matrix *
   !!
-  !!  NAME 
+  !!  NAME
   !!   dump_matrix
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Dumps a matrix
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   16:12, 15/10/2002 drb 
+  !!   16:12, 15/10/2002 drb
   !!  MODIFICATION HISTORY
   !!
   !!  SOURCE
@@ -2018,24 +2005,24 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine grab_matrix
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/grab_matrix *
   !!
-  !!  NAME 
+  !!  NAME
   !!   grab_matrix
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Grabs a matrix (dumped by dump_matrix)
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   16:12, 15/10/2002 drb 
+  !!   16:12, 15/10/2002 drb
   !!  MODIFICATION HISTORY
   !!   2010/11/30 15:39 dave
   !!    Fixed formatting mismatch between dump_matrix and grab_matrix
@@ -2081,24 +2068,24 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine dump_blips
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/dump_blips *
   !!
-  !!  NAME 
+  !!  NAME
   !!   dump_blips
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Dumps a blips
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   16:12, 15/10/2002 drb 
+  !!   16:12, 15/10/2002 drb
   !!  MODIFICATION HISTORY
   !!   2013/03/06 17:10 dave
   !!   - file name length increased
@@ -2139,24 +2126,24 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine grab_blips
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/grab_blips *
   !!
-  !!  NAME 
+  !!  NAME
   !!   grab_blips
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Grabs a blips (dumped by dump_blips)
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   16:12, 15/10/2002 drb 
+  !!   16:12, 15/10/2002 drb
   !!  MODIFICATION HISTORY
   !!   2013/03/06 17:10 dave
   !!   - file name length increased
@@ -2198,24 +2185,24 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine dump_locps
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/dump_locps *
   !!
-  !!  NAME 
+  !!  NAME
   !!   dump_locps
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Dumps the local pseudo
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   10:58, 15/10/2002 drb 
+  !!   10:58, 15/10/2002 drb
   !!  MODIFICATION HISTORY
   !!   2008/04/02  M. Todorovic
   !!     Added stub name into function
@@ -2256,24 +2243,24 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine grab_locps
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/grab_locps *
   !!
-  !!  NAME 
+  !!  NAME
   !!   grab_locps
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Grabs the locps (dumped by dump_locps)
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   10:58, 15/10/2002 drb 
+  !!   10:58, 15/10/2002 drb
   !!  MODIFICATION HISTORY
   !!   2008/04/02  M. Todorovic
   !!     Added stub name into function
@@ -2315,24 +2302,24 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine dump_projs
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/dump_projs *
   !!
-  !!  NAME 
+  !!  NAME
   !!   dump_projs
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Dumps the projectors
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   10:58, 15/10/2002 drb 
+  !!   10:58, 15/10/2002 drb
   !!  MODIFICATION HISTORY
   !!   2013/03/06 17:10 dave
   !!   - file name length increased
@@ -2370,24 +2357,24 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine grab_projs
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/grab_projs *
   !!
-  !!  NAME 
+  !!  NAME
   !!   grab_projs
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Grabs the charge projs (dumped by dump_projs)
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   10:58, 15/10/2002 drb 
+  !!   10:58, 15/10/2002 drb
   !!  MODIFICATION HISTORY
   !!   2013/03/06 17:10 dave
   !!   - file name length increased
@@ -2425,24 +2412,24 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine dump_blip_coeffs
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/dump_blip_coeffs *
   !!
-  !!  NAME 
+  !!  NAME
   !!   dump_blip_coeffs
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Dumps a blip_coeffs
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   16:12, 15/10/2002 drb 
+  !!   16:12, 15/10/2002 drb
   !!  MODIFICATION HISTORY
   !!   2006/07/18 08:19 dave
   !!    Changed to use new data storage
@@ -2479,24 +2466,24 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine grab_blip_coeffs
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/grab_blip_coeffs *
   !!
-  !!  NAME 
+  !!  NAME
   !!   grab_blip_coeffs
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Grabs a blip_coeffs (dumped by dump_blip_coeffs)
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !!   16:12, 15/10/2002 drb 
+  !!   16:12, 15/10/2002 drb
   !!  MODIFICATION HISTORY
   !!   2006/07/18 08:19 dave
   !!    Changed to use new data storage
@@ -2530,20 +2517,20 @@ second:   do
   end subroutine grab_blip_coeffs
   !!***
 
-  
+
   ! --------------------------------------------------------------------
   ! Subroutine write_matrix
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/write_matrix *
   !!
-  !!  NAME 
+  !!  NAME
   !!   write_matrix -- Writes out a matrix
   !!  USAGE
   !!   write_matrix(nnode,myid,cmat,c,parts,prim,set,
   !!     ndim1,ndim2,mx_dim1,mx_dim2,plus)
   !!  PURPOSE
-  !!   Writes out elements of a matrix, sorted by global number of 
+  !!   Writes out elements of a matrix, sorted by global number of
   !!     atoms and neighbours, and calculates periodic supercell offset
   !!  INPUTS
   !!   integer :: nnode, myid, plus
@@ -2552,13 +2539,13 @@ second:   do
   !!   type(primary_set) :: prim
   !!   type(cover_set)   :: set
   !!   type(matrix), dimension(:) :: cmat
-  !!   real(double) :: c(:,:,:)                    
+  !!   real(double) :: c(:,:,:)
   !!  USES
   !!   datatypes, global_module, basic_types, matrix_module
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !! 
+  !!
   !!  MODIFICATION HISTORY
   !!   2006/02/22 11:49 dave
   !!    Completely updated to new matrix style
@@ -2649,21 +2636,21 @@ second:   do
 
   !!****f* io_module/banner *
   !!
-  !!  NAME 
+  !!  NAME
   !!   banner
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Writes out an initial banner
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
-  !! 
+  !!
   !!  MODIFICATION HISTORY
   !!   21/06/2001 dave
   !!    Added ROBODoc header
@@ -2703,7 +2690,7 @@ second:   do
 
   !!****f* io_module/write_positions *
   !!
-  !!  NAME 
+  !!  NAME
   !!   write_positions - output atom positions
   !!  USAGE
   !!   write_positions(partition structure)
@@ -2713,7 +2700,7 @@ second:   do
   !!  INPUTS
   !!   type(group_set) :: parts
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -2722,16 +2709,16 @@ second:   do
   !!   19/10/2001 dave
   !!    Added io_assign call (from fdf) for safer file access
   !!    and changed all file numbers to lun. Comment added 22/02/2002 drb
-  !!   11:39, 18/03/2003 drb 
+  !!   11:39, 18/03/2003 drb
   !!    Took from ParaDens into Conquest
-  !!   13:20, 18/03/2003 drb 
+  !!   13:20, 18/03/2003 drb
   !!    Added integer argument to allow multiple outputs
   !!  SOURCE
   !!
   subroutine write_positions(num,parts)
 
     use basic_types, only: group_set
-    use global_module, only: rcellx, rcelly, rcellz, ni_in_cell, &
+    use global_module, only: lat_vec, ni_in_cell, &
          x_atom_cell, y_atom_cell, z_atom_cell, numprocs, id_glob
     use species_module, only: species
 
@@ -2754,7 +2741,7 @@ second:   do
     end if
     call io_assign(lun)
     open(unit=lun,file=filename)
-    write(lun,1) rcellx,rcelly,rcellz
+    write(lun,1) lat_vec(1,1), lat_vec(2,2), lat_vec(3,3) ! Just diag for backward compat in pdb for now
     write(lun,2) ni_in_cell
     write(lun,3) parts%ngcellx,parts%ngcelly,parts%ngcellz
     write(lun,2) numprocs
@@ -2790,27 +2777,27 @@ second:   do
 
   !!****f* io_module/write_xsf *
   !!
-  !!  NAME 
+  !!  NAME
   !!   write_xsf
   !!  PURPOSE
   !!   Writes atomic positions to a .xsf file, viewable using VMD
   !!  INPUTS
   !!   type(group_set) :: parts
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2017/10/26
   !!  MODIFICATION HISTORY
-  !!   
+  !!
   !!  SOURCE
   !!
   subroutine write_xsf(filename, step)
 
     use datatypes
     use numbers,        only: zero
-    use dimens,         only: r_super_x, r_super_y, r_super_z
+    use dimens,         only:
     use global_module,  only: ni_in_cell, iprint_init, atom_coord, &
                               species_glob
     use species_module, only: species_label
@@ -2837,9 +2824,9 @@ second:   do
       end if
       write(lun,'(a)') "CRYSTAL"
       write(lun,'("PRIMVEC   ",i8)') step
-      write(lun,fmt='(3f14.8)') r_super_x*BohrToAng, zero, zero
-      write(lun,fmt='(3f14.8)') zero, r_super_y*BohrToAng, zero
-      write(lun,fmt='(3f14.8)') zero, zero, r_super_z*BohrToAng
+      write(lun,fmt='(3f14.8)') cell_vec_len(1)*BohrToAng, zero, zero
+      write(lun,fmt='(3f14.8)') zero, cell_vec_len(2)*BohrToAng, zero
+      write(lun,fmt='(3f14.8)') zero, zero, cell_vec_len(3)*BohrToAng
       write(lun,'("PRIMCOORD ",i8)') step
       write(lun,fmt='(2i8)') ni_in_cell, 1
       do i=1,ni_in_cell
@@ -2854,19 +2841,19 @@ second:   do
 
   !!****f* io_module/write_extxyz *
   !!
-  !!  NAME 
+  !!  NAME
   !!   write_extxyz
   !!  PURPOSE
-  !!   Writes atomic positions, including atomic forces, lattice vectors, 
-  !!  energy, system signature, etc. to an extended format .xyz file   
+  !!   Writes atomic positions, including atomic forces, lattice vectors,
+  !!  energy, system signature, etc. to an extended format .xyz file
   !!  which can be directly recognized by Python Library named ASE.
   !!  The units are Angstrom, eV and eV/Angstrom for distance, energy and
   !!  forces.
-  !!  
+  !!
   !!  INPUTS
-  !!  
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   Jianbo Lin
   !!  CREATION DATE
@@ -2881,7 +2868,7 @@ second:   do
     use datatypes
     use timer_module
     use numbers,        only: zero
-    use dimens,         only: r_super_x, r_super_y, r_super_z
+    use dimens,         only:
     use global_module,  only: ni_in_cell, iprint_init, atom_coord, &
                               species_glob
     use species_module, only: species_label
@@ -2918,26 +2905,26 @@ second:   do
       dist_conv_loc = BohrToAng
       for_conv_loc = en_conv_loc/dist_conv_loc
       write(lun,'(i0)') ni_in_cell
-	  
+
       ! Transfer space to underbar in the titles
       titles_xyz = TRIM(titles)
       title_length = len(TRIM(titles))
       do i=1, title_length
-        if (titles_xyz(i:i) == ' ') titles_xyz(i:i) = '_' 
+        if (titles_xyz(i:i) == ' ') titles_xyz(i:i) = '_'
       end do
       ! Add information about system signature
       comment = 'config_type='//TRIM(titles_xyz)
 
       ! Add information about lattice and energy
-      write(vec_a,fmt='(3f15.8)') r_super_x*BohrToAng, zero, zero
-      write(vec_b,fmt='(3f15.8)') zero, r_super_y*BohrToAng, zero
-      write(vec_c,fmt='(3f15.8)') zero, zero, r_super_z*BohrToAng
+      write(vec_a,fmt='(3f15.8)') cell_vec_len(1)*BohrToAng, zero, zero
+      write(vec_b,fmt='(3f15.8)') zero, cell_vec_len(2)*BohrToAng, zero
+      write(vec_c,fmt='(3f15.8)') zero, zero, cell_vec_len(3)*BohrToAng
       comment=TRIM(comment)//' Lattice="'//ADJUSTL(vec_a)//ADJUSTL(vec_b)//TRIM(ADJUSTL(vec_c))//'" '
       comment=TRIM(comment)//' Properties=species:S:1:pos:R:3:forces:R:3 potential_energy='
       write(energy_str,'(f0.8)') energy0 * en_conv_loc
       comment = TRIM(comment)//TRIM(energy_str)//' pbc="T T T" '
 
-      volume = r_super_x*r_super_y*r_super_z*BohrToAng**3
+      volume = cell_vec_len(1)*cell_vec_len(2)*cell_vec_len(3)*BohrToAng**3
 
       ! Convert each row to string
       write(stress_str(1:45), '(3f15.8)') stress_tensor(1,1)*HaToeV/volume,&
@@ -2966,27 +2953,27 @@ second:   do
 
   !!****f* io_module/write_xyz *
   !!
-  !!  NAME 
+  !!  NAME
   !!   write_xyz
   !!  PURPOSE
   !!   Writes atomic positions to a .xyz file
   !!  INPUTS
-  !!   
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   Zamaan Raza
   !!  CREATION DATE
   !!   2019/02/13
   !!  MODIFICATION HISTORY
-  !!   
+  !!
   !!  SOURCE
   !!
   subroutine write_xyz(filename, comment)
 
     use datatypes
     use numbers,        only: zero
-    use dimens,         only: r_super_x, r_super_y, r_super_z
+    use dimens,         only:
     use global_module,  only: ni_in_cell, iprint_init, atom_coord, &
                               species_glob
     use species_module, only: species_label
@@ -3043,7 +3030,7 @@ second:   do
   !    end if
   !    return
   !  end subroutine force_buffers
-  
+
   !!****f* io_module/get_file_name *
   !!
   !!  NAME
@@ -3051,8 +3038,8 @@ second:   do
   !!  USAGE
   !!   get_file_name(fileroot,numprocs,inode,filename)
   !!  PURPOSE
-  !!   Returns a file name with proper formating, including 
-  !!   node identification number an zero padding to reflect 
+  !!   Returns a file name with proper formating, including
+  !!   node identification number an zero padding to reflect
   !!   the total number of processes. It appends a dot after the root
   !!  INPUTS
   !!   character(lem=*) :: fileroot  ! The root of the filename, e.g. chden
@@ -3114,9 +3101,9 @@ second:   do
   !!  USAGE
   !!   get_file_name_2rank(fileroot,filename,step,inode)
   !!  PURPOSE
-  !!   Returns a file name with the number of step, and inode (optional) 
-  !!   At present, we assume 6 digits for each number, though it can be 
-  !!   easily changed by changing the line 
+  !!   Returns a file name with the number of step, and inode (optional)
+  !!   At present, we assume 6 digits for each number, though it can be
+  !!   easily changed by changing the line
   !!  INPUTS
   !!   character(lem=*) :: fileroot  ! The root of the filename, e.g. chden
   !!   integer :: step               ! MD step or some index
@@ -3161,7 +3148,7 @@ second:   do
      write (num_inode,'(i6.6)') inode
      filename = TRIM (filename)//'.p'//num_inode
     endif
- 
+
    return
   end subroutine get_file_name_2rank
   !!***
@@ -3276,8 +3263,8 @@ second:   do
   !!
   subroutine print_atomic_positions
 
-    use global_module, only: atom_coord, iprint_MD, ni_in_cell, species_glob
-    use dimens,         only: r_super_x, r_super_y, r_super_z, atomicnum, volume
+    use global_module, only: atom_coord, iprint_MD, ni_in_cell, species_glob, cell_vec_len
+    use dimens,         only: atomicnum, volume
     use GenComms, only: inode, ionode
     use units, only: dist_conv, d_units, dist_units, BohrToAng, bohr
     use periodic_table, only: pte
@@ -3289,8 +3276,8 @@ second:   do
 
     if(inode==ionode) then
        write(io_lun,fmt='(/4x,"Simulation cell dimensions: ",f10.4,a3," x ",f10.4,a3," x ",f10.4,a3)') &
-            r_super_x*dist_conv, d_units(dist_units), r_super_y*dist_conv, d_units(dist_units), &
-            r_super_z*dist_conv, d_units(dist_units)
+            cell_vec_len(1)*dist_conv, d_units(dist_units), cell_vec_len(2)*dist_conv, d_units(dist_units), &
+            cell_vec_len(3)*dist_conv, d_units(dist_units)
        write(io_lun,fmt='(/4x,"Simulation cell volume:     ",f10.4,a3,a3)') &
             volume*dist_conv*dist_conv*dist_conv, d_units(dist_units),'**3'
        if(flag_coords_xyz) then
@@ -3316,18 +3303,18 @@ second:   do
        end if
     end if
     return
-    
+
   end subroutine print_atomic_positions
   !!***
-  
+
   !!****f* io_module/write_velocity *
   !!
   !!  NAME
-  !!   write_velocity - prints out velocities of the atoms 
+  !!   write_velocity - prints out velocities of the atoms
   !!  USAGE
-  !!   write_velocity 
+  !!   write_velocity
   !!  PURPOSE
-  !!   
+  !!
   !!  INPUTS
   !!   character(len=*) :: filename  ! The formatted filename
   !!   real(double) :: velocity(1:3, ni_in_cell)
@@ -3356,7 +3343,7 @@ second:   do
     character(len=50),intent(in) :: filename
 
     ! Local variables
-    integer :: id_global, ni 
+    integer :: id_global, ni
     integer :: lun
 
     if(inode == ionode) then
@@ -3384,9 +3371,9 @@ second:   do
   !!   read_velocity - reads velocities of the atoms from the file, and
   !!                  send them to all processors
   !!  USAGE
-  !!   read_velocity 
+  !!   read_velocity
   !!  PURPOSE
-  !!   
+  !!
   !!  INPUTS
   !!   character(len=*) :: filename  ! The formatted filename
   !!  OUTPUTS
@@ -3438,23 +3425,23 @@ second:   do
 
   !!****f* io_module/read_fire *
   !!
-  !!  NAME 
+  !!  NAME
   !!   read_fire
   !!  USAGE
-  !!   
+  !!
   !!  PURPOSE
   !!   Reads parameters for FIRE on I/O process and distributes
   !!  INPUTS
-  !!   
-  !!   
+  !!
+  !!
   !!  USES
-  !!   
+  !!
   !!  AUTHOR
   !!   D. R. Bowler
   !!  CREATION DATE
   !!   2015/06/19
   !!  MODIFICATION HISTORY
-  !!    
+  !!
   !!  SOURCE
   !!
   subroutine read_fire(fire_N, fire_N2, fire_P0, MDtimestep, fire_alpha)
@@ -3498,29 +3485,29 @@ second:   do
     call gcopy(fire_P0)
     call gcopy(MDtimestep)
     return
-    
+
   end subroutine read_fire
   !!***
-  
+
   !!****f* io_module/write_fire *
   !!
-  !!  NAME 
+  !!  NAME
   !!   write_fire
   !!  USAGE
-  !!   
+  !!
   !!  PURPOSE
-  !!   Writes parameters for FIRE on I/O process 
+  !!   Writes parameters for FIRE on I/O process
   !!  INPUTS
-  !!   
-  !!   
+  !!
+  !!
   !!  USES
-  !!   
+  !!
   !!  AUTHOR
   !!   D. R. Bowler
   !!  CREATION DATE
   !!   2015/06/19
   !!  MODIFICATION HISTORY
-  !!    
+  !!
   !!  SOURCE
   !!
   subroutine write_fire(fire_N, fire_N2, fire_P0, MDtimestep, fire_alpha)
@@ -3542,23 +3529,23 @@ second:   do
        call io_close(lun)
     end if
     return
-    
+
   end subroutine write_fire
   !!***
-  
+
   !!****f* io_module/check_stop *
   !!
-  !!  NAME 
+  !!  NAME
   !!   check_stop
   !!  USAGE
-  !!   
+  !!
   !!  PURPOSE
   !!   Checks for a CQ.stop file for user-requested stop
   !!  INPUTS
   !!   logical :: flag_userstop
-  !!   
+  !!
   !!  USES
-  !!   
+  !!
   !!  AUTHOR
   !!   D. R. Bowler
   !!  CREATION DATE
@@ -3569,7 +3556,7 @@ second:   do
   !!   2018/01/17 TM
   !!    Introduced the control by Elapsed time & Iteration number in CQ.stop
   !!  SOURCE
-  !!  
+  !!
   subroutine check_stop(flag_userstop,iter)
 
     use datatypes, only: double
@@ -3618,10 +3605,10 @@ second:   do
      present_time = mtime()/1000.e0_double
      if(present_time > time_max) flag_userstop=.true.
     endif
-  
+
     ! Set flag_MatrixFile_BinaryFormat_Dump
      if(flag_userstop) &
-      flag_MatrixFile_BinaryFormat_Dump = flag_MatrixFile_BinaryFormat_Dump_END 
+      flag_MatrixFile_BinaryFormat_Dump = flag_MatrixFile_BinaryFormat_Dump_END
       !then, if we call dump_matrix2, the format of the file should be changed.
       !      2019/Nov/13 tsuyoshi
 
@@ -3643,18 +3630,18 @@ second:   do
   ! --------------------------------------------------------------------
   ! Subroutine write_output_ase
   ! --------------------------------------------------------------------
-  
+
   !!****f* io_module/write_output_ase *
   !!
-  !!  NAME 
+  !!  NAME
   !!   read_atomic_positions
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Reads positions, species and constraint type for atoms
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
   !!   datatypes, dimens, GenComms, global_module, species_module
   !!  AUTHOR
@@ -3664,20 +3651,20 @@ second:   do
   !!  MODIFICATION HISTORY
   !!   16:46, 2003/06/09 tm
   !!    id_glob_inv, atom_coord, species_glob is added.
-  !!    and labelling in make_prt.dat is changed 
-  !!   13:31, 22/09/2003 drb 
+  !!    and labelling in make_prt.dat is changed
+  !!   13:31, 22/09/2003 drb
   !!    Added reading of flags to constrain atom movement in three directions
   !!   2006/10/09 08:21 dave
   !!    Tidying up output
   !!   20/11/2006 Veronika
   !!    Corrected reading of constraints from pdb file
-  !!   15:05, 27/04/2007 drb 
+  !!   15:05, 27/04/2007 drb
   !!    Check to ensure right number of species added
   !!   2007/06/28, 21:37 mt + drb
   !!    Added coordinate wrapping to non-pdb coordinates.
   !!   2007/10/11 Veronika
   !!    Added coordinate wrapping to pdb coordinates
-  !!    Added coordinate wrapping for coordinates outside 
+  !!    Added coordinate wrapping for coordinates outside
   !!    the [-1*cell parameter; 2*cell parameter] range
   !!   2013/07/01 M.Arita & T.Miyazaki
   !!    Added shift_in_bohr when wrapping atoms and allocation of atom_coord_diff
@@ -3690,10 +3677,9 @@ second:   do
   !!   2019/04/04 14:17 dave
   !!    Correct bug in wrapping with non-fractional coordinates and Angstroms
   !!   2020/07/27 tsuyoshi
-  !!    Added atom_vels  
+  !!    Added atom_vels
   !!   2020/10/07 tsuyoshi
   !!    Removed allocation of atom_vels (moved to "control")
   !!  SOURCE
   !!
 end module io_module
-

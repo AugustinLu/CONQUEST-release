@@ -28,7 +28,7 @@ module md_model
   use global_module,    only: ni_in_cell, io_lun, atom_coord, &
                               atom_vels, species_glob, iprint_MD, &
                               flag_MDcontinue, flag_MDdebug, x_atom_cell, &
-                              y_atom_cell, z_atom_cell, rcellx, rcelly, rcellz
+                              y_atom_cell, z_atom_cell, cell_vec_len
   use rng,              only: type_rng
 
   implicit none
@@ -166,9 +166,9 @@ contains
     mdl%ensemble = ensemble
     mdl%timestep = timestep
     mdl%species       => species_glob
-    mdl%lat_a         => rcellx
-    mdl%lat_b         => rcelly
-    mdl%lat_c         => rcellz
+    mdl%lat_a         => cell_vec_len(1)
+    mdl%lat_b         => cell_vec_len(2)
+    mdl%lat_c         => cell_vec_len(3)
     mdl%pos_x         => x_atom_cell
     mdl%pos_y         => y_atom_cell
     mdl%pos_z         => z_atom_cell

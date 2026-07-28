@@ -26,6 +26,7 @@
 module DFT_D2
 
   use datatypes
+  use global_module, only: lat_vec
   use energy, only: disp_energy
 
   implicit none
@@ -70,7 +71,7 @@ contains
     use cover_module, ONLY: D2_CS, make_CS
     use datatypes
     use units
-    use dimens, ONLY: atomicnum, r_dft_d2, r_super_x, r_super_y, r_super_z
+    use dimens, ONLY: atomicnum, r_dft_d2
     use GenComms, ONLY: cq_abort, gcopy, inode, ionode, gsum, &
          my_barrier
     use group_module, ONLY: parts
@@ -109,15 +110,9 @@ contains
     allocate ( neighbour_part(D2_CS%ng_cover), STAT=stat )
     if (stat .NE. 0) call cq_abort("Eror allocating neighbour_list: ", D2_CS%ng_cover)
 
-    real_cell_vec(1, 1) = r_super_x
-    real_cell_vec(1, 2) = zero
-    real_cell_vec(1, 3) = zero
-    real_cell_vec(2, 1) = zero
-    real_cell_vec(2, 2) = r_super_y
-    real_cell_vec(2, 3) = zero
-    real_cell_vec(3, 1) = zero
-    real_cell_vec(3, 2) = zero
-    real_cell_vec(3, 3) = r_super_z
+    ! partition_distance stores the three lattice vectors as rows, whereas
+    ! CONQUEST's canonical lat_vec stores them as columns.
+    real_cell_vec = transpose(lat_vec)
 
     ! primitive translation vectors for partitions
     do i = 1, 3

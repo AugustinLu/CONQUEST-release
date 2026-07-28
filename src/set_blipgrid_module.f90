@@ -11,7 +11,7 @@
 !!  NAME
 !!   set_blipgrid_module
 !!  PURPOSE
-!!   Sets up the relationships between the integration grid and the atoms - in 
+!!   Sets up the relationships between the integration grid and the atoms - in
 !!   particular (and historically) between the blips on atoms and the integration grid
 !!  USES
 !!
@@ -20,7 +20,7 @@
 !!  CREATION DATE
 !!   Mid-2000
 !!  MODIFICATION HISTORY
-!!   12:03, 25/09/2002 mjg & drb 
+!!   12:03, 25/09/2002 mjg & drb
 !!    Added headers, and created neighbour lists for atomic densities
 !!   08:19, 2003/06/11 dave
 !!    Added ROBOdoc headers to about half routines and TM's debug and tidy statements
@@ -57,7 +57,7 @@ module set_blipgrid_module
 
   implicit none
 
-  ! Definition 
+  ! Definition
   integer, parameter    :: mx_func_BtoG=4
   !integer, parameter    :: supp=1
   !integer, parameter    :: proj=2
@@ -78,10 +78,10 @@ contains
 
 !!****f* set_blipgrid_module/set_blipgrid *
 !!
-!!  NAME 
+!!  NAME
 !!   set_blipgrid
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!    main subroutine in this module
 !!    set_blipgrid
@@ -96,12 +96,12 @@ contains
 !!              |-- send_array_BtoG
 !!              |-- recv_array_BtoG
 !!              |-- make_table
-!! 
+!!
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   T.Miyazaki
 !!  CREATION DATE
@@ -109,7 +109,7 @@ contains
 !!  MODIFICATION HISTORY
 !!   8/9/2000 TM
 !!    I added subroutines in make_table_BtoG.f90
-!!   12:16, 25/09/2002 mjg & drb 
+!!   12:16, 25/09/2002 mjg & drb
 !!    Added use atomic_density to get rcut_dens
 !!   2006/07/06 08:27 dave
 !!    Various changes including use of cq_abort
@@ -138,14 +138,15 @@ contains
     use primary_module,ONLY: bundle, domain
     use cover_module,  ONLY: DCS_parts
     use atomic_density, ONLY: rcut_dens
-    use GenComms, ONLY: cq_abort, cq_warn
+    use GenComms, ONLY: cq_abort, cq_warn, integer_gmax
     use functions_on_grid, ONLY: gridsize
     use block_module, ONLY: n_pts_in_block, nx_in_block,ny_in_block,nz_in_block
     use blip, ONLY: blip_info
     use species_module, ONLY: n_species
     !use pseudopotential_common
-    use dimens, ONLY: n_grid_x, n_grid_y, n_grid_z, r_super_x, r_super_y, r_super_z
-    
+    use dimens, ONLY: n_grid_x, n_grid_y, n_grid_z
+    use global_module, ONLY: cell_vec_len
+
     implicit none
     integer,intent(in)      ::myid
     real(double),intent(in), dimension(n_species) ::rcut_atomf,rcut_proj
@@ -195,9 +196,9 @@ contains
     call get_naba_BCSblk(rcut_atomf,naba_blocks_of_atoms,comm_naba_blocks_of_atoms)
     ! Calculate likely extents
     do spec = 1,n_species
-       xextent = int((rcut_atomf(spec)*n_grid_x/r_super_x)+0.5)
-       yextent = int((rcut_atomf(spec)*n_grid_y/r_super_y)+0.5)
-       zextent = int((rcut_atomf(spec)*n_grid_z/r_super_z)+0.5)
+       xextent = int((rcut_atomf(spec)*n_grid_x/cell_vec_len(1))+0.5)
+       yextent = int((rcut_atomf(spec)*n_grid_y/cell_vec_len(2))+0.5)
+       zextent = int((rcut_atomf(spec)*n_grid_z/cell_vec_len(3))+0.5)
        blip_info(spec)%Extent = MAX(xextent,MAX(yextent,zextent))
     end do
     do iprim=1,bundle%n_prim
@@ -209,11 +210,11 @@ contains
           max_naba_blk=naba_blocks_of_atoms%no_naba_blk(iprim)
        endif
        ! Calculate extent
-       nxmin_grid=(naba_blocks_of_atoms%nxmin(iprim)-1)*nx_in_block  
+       nxmin_grid=(naba_blocks_of_atoms%nxmin(iprim)-1)*nx_in_block
        nxmax_grid= naba_blocks_of_atoms%nxmax(iprim)*nx_in_block-1
-       nymin_grid=(naba_blocks_of_atoms%nymin(iprim)-1)*ny_in_block  
+       nymin_grid=(naba_blocks_of_atoms%nymin(iprim)-1)*ny_in_block
        nymax_grid= naba_blocks_of_atoms%nymax(iprim)*ny_in_block-1
-       nzmin_grid=(naba_blocks_of_atoms%nzmin(iprim)-1)*nz_in_block  
+       nzmin_grid=(naba_blocks_of_atoms%nzmin(iprim)-1)*nz_in_block
        nzmax_grid= naba_blocks_of_atoms%nzmax(iprim)*nz_in_block-1
        if(iprim==1) then
           xextent=(nxmax_grid-nxmin_grid+1)/2
@@ -228,6 +229,11 @@ contains
        spec = bundle%species(iprim)
        blip_info(spec)%Extent = max(thisextent,blip_info(spec)%Extent)
     enddo
+    ! A receive buffer/table may contain the neighbour blocks generated on
+    ! another MPI rank.  Use the global BCS maximum, rather than the local
+    ! DCS estimate, when sizing the pair dimension below.  The two cover
+    ! constructions can differ by boundary-rounding for a skewed cell.
+    call integer_gmax(max_naba_blk)
     !make lists of neighbour and halo atoms of primary blocks
     ! for atomic functions and projector functions
     call get_naba_DCSprt(rcut_atomf,naba_atoms_of_blocks(atomf),halo_atoms_of_blocks(atomf))
@@ -249,7 +255,8 @@ contains
 
     !prepare for receiving
     call make_sendinfo_BtoG_max(myid,naba_atoms_of_blocks(atomf),max_send_node,max_sent_pairs,max_recv_call)
-    call alloc_comm_in_BtoG2(comm_naba_blocks_of_atoms,max_send_node, max_sent_pairs,max_recv_call)
+    call alloc_comm_in_BtoG2(comm_naba_blocks_of_atoms,max_send_node, &
+         max(max_sent_pairs,max_naba_blk),max_recv_call)
     call make_sendinfo_BtoG(myid,naba_atoms_of_blocks(atomf),comm_naba_blocks_of_atoms)
     !making tables showing where to put sent BtoG transformed atomic func. (SF or PAOs)
     ! Now make_table_BtoG is in <make_table_BtoG.f90>.
@@ -261,10 +268,10 @@ contains
 
 !!****f* set_blipgrid_module/get_naba_BCSblk *
 !!
-!!  NAME 
+!!  NAME
 !!   get_naba_BCSblk
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   finds neighbour blocks for each of my primary atoms
 !!   from my BCS_blk covering sets
@@ -276,22 +283,22 @@ contains
 !!          call distsq_blk_atom
 !!         if(neighbour) then
 !!           makes naba_blk (type : naba_blk_of_atm) including the pair's offset
-!!            and  some parts (information of sending of BtoG transforms) 
+!!            and  some parts (information of sending of BtoG transforms)
 !!                  of comm_naba_blocks_of_atoms(type: comm_in_BtoG)
 !!         endif
 !!       enddo
 !!      enddo
 !!     enddo
-!! 
+!!
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   T.Miyazaki
 !!  CREATION DATE
-!! 
+!!
 !!  MODIFICATION HISTORY
 !!   2006/07/06 08:28 dave
 !!    Added cq_abort
@@ -306,12 +313,15 @@ contains
     use group_module,   ONLY: blocks,parts
     use primary_module, ONLY: bundle
     use cover_module,   ONLY: BCS_blocks,DCS_parts
-    use global_module,  ONLY: rcellx,rcelly,rcellz,numprocs
+    use global_module,  ONLY: lat_vec, cell_vec_len,numprocs
     use block_module,   ONLY: nx_in_block,ny_in_block,nz_in_block
     use GenComms, ONLY: cq_abort, myid
     use species_module, ONLY: n_species
 
     implicit none
+    real(double) :: ex1, ey1, ez1, ex2, ey2, ez2, ex3, ey3, ez3, block_cx, block_cy, block_cz
+    integer :: nqx, nqy, nqz
+    real(double) :: shift_x, shift_y, shift_z, xatom_eff, yatom_eff, zatom_eff
 
     !Dummy Arguments
     real(double),intent(in),dimension(n_species) :: rcut
@@ -322,6 +332,8 @@ contains
     real(double),dimension(n_species) :: rcutsq
     real(double) :: dcellx_block,dcelly_block,dcellz_block
     real(double) :: dcellx_grid,dcelly_grid,dcellz_grid ! 4/Aug/2000 TM
+    real(double) :: dcellx_block_v(3), dcelly_block_v(3), dcellz_block_v(3)
+    real(double) :: dcellx_grid_v(3), dcelly_grid_v(3), dcellz_grid_v(3)
     real(double) :: xmin_p,ymin_p,zmin_p
     real(double) :: xmin,xmax,ymin,ymax,zmin,zmax
     real(double) :: xatom,yatom,zatom,distsq
@@ -337,21 +349,29 @@ contains
     do ni = 1,n_species
        rcutsq(ni)=rcut(ni)*rcut(ni)
     end do
-    inp=0 
-    naba_blk%no_naba_blk=0 
+    inp=0
+    naba_blk%no_naba_blk=0
     comm_naba_blocks_of_atoms%no_recv_node=0
     comm_naba_blocks_of_atoms%no_naba_blk=0
 
     ncoverz=BCS_blocks%ncoverz
     ncoveryz=BCS_blocks%ncovery*BCS_blocks%ncoverz
 
-    dcellx_part=rcellx/parts%ngcellx ; dcellx_block=rcellx/blocks%ngcellx
-    dcelly_part=rcelly/parts%ngcelly ; dcelly_block=rcelly/blocks%ngcelly
-    dcellz_part=rcellz/parts%ngcellz ; dcellz_block=rcellz/blocks%ngcellz
+    dcellx_part=cell_vec_len(1)/parts%ngcellx ; dcellx_block=cell_vec_len(1)/blocks%ngcellx
+    dcelly_part=cell_vec_len(2)/parts%ngcelly ; dcelly_block=cell_vec_len(2)/blocks%ngcelly
+    dcellz_part=cell_vec_len(3)/parts%ngcellz ; dcellz_block=cell_vec_len(3)/blocks%ngcellz
 
     dcellx_grid=dcellx_block/nx_in_block
     dcelly_grid=dcelly_block/ny_in_block
     dcellz_grid=dcellz_block/nz_in_block
+
+    dcellx_block_v(:) = lat_vec(:,1)/blocks%ngcellx
+    dcelly_block_v(:) = lat_vec(:,2)/blocks%ngcelly
+    dcellz_block_v(:) = lat_vec(:,3)/blocks%ngcellz
+
+    dcellx_grid_v(:) = dcellx_block_v(:)/nx_in_block
+    dcelly_grid_v(:) = dcelly_block_v(:)/ny_in_block
+    dcellz_grid_v(:) = dcellz_block_v(:)/nz_in_block
 
     !- CHECK BCS_blocks ---
     !  write(io_lun,*) ' ng_cover of BCS_blocks ',&
@@ -401,17 +421,38 @@ contains
                 ny=ny-BCS_blocks%nspanly+BCS_blocks%ny_origin
                 nz=nz-BCS_blocks%nspanlz+BCS_blocks%nz_origin
 
-                !(xmin,ymin,zmin) is the l.h.s. corner of the block
-                !   -dcellx_grid etc. is added 4/8/2000 T M
-                xmin= dcellx_block*(nx-1)
-                xmax= xmin+ dcellx_block -dcellx_grid
-                ymin= dcelly_block*(ny-1)
-                ymax= ymin+ dcelly_block -dcelly_grid
-                zmin= dcellz_block*(nz-1)
-                zmax= zmin+ dcellz_block -dcellz_grid
+                ! Compute nqx exactly as in cover_module.f90
+                !(xmin,ymin,zmin) is the l.h.s. corner of the UN-SHIFTED block
+                block_cx = (nx-1)*dcellx_block_v(1) + (ny-1)*dcelly_block_v(1) + (nz-1)*dcellz_block_v(1)
+                block_cy = (nx-1)*dcellx_block_v(2) + (ny-1)*dcelly_block_v(2) + (nz-1)*dcellz_block_v(2)
+                block_cz = (nx-1)*dcellx_block_v(3) + (ny-1)*dcelly_block_v(3) + (nz-1)*dcellz_block_v(3)
+
+                xatom_eff = xatom
+                yatom_eff = yatom
+                zatom_eff = zatom
+
+                ex1 = dcellx_block_v(1) - dcellx_grid_v(1)
+                ey1 = dcellx_block_v(2) - dcellx_grid_v(2)
+                ez1 = dcellx_block_v(3) - dcellx_grid_v(3)
+
+                ex2 = dcelly_block_v(1) - dcelly_grid_v(1)
+                ey2 = dcelly_block_v(2) - dcelly_grid_v(2)
+                ez2 = dcelly_block_v(3) - dcelly_grid_v(3)
+
+                ex3 = dcellz_block_v(1) - dcellz_grid_v(1)
+                ey3 = dcellz_block_v(2) - dcellz_grid_v(2)
+                ez3 = dcellz_block_v(3) - dcellz_grid_v(3)
+
+                ! Compute AABB for the block bounding volume
+                xmin = block_cx + min(0.0_double, ex1) + min(0.0_double, ex2) + min(0.0_double, ex3)
+                xmax = block_cx + max(0.0_double, ex1) + max(0.0_double, ex2) + max(0.0_double, ex3)
+                ymin = block_cy + min(0.0_double, ey1) + min(0.0_double, ey2) + min(0.0_double, ey3)
+                ymax = block_cy + max(0.0_double, ey1) + max(0.0_double, ey2) + max(0.0_double, ey3)
+                zmin = block_cz + min(0.0_double, ez1) + min(0.0_double, ez2) + min(0.0_double, ez3)
+                zmax = block_cz + max(0.0_double, ez1) + max(0.0_double, ez2) + max(0.0_double, ez3)
 
                 call distsq_blk_atom&
-                     (xatom,yatom,zatom,xmin,xmax,ymin,ymax,zmin,zmax,distsq)
+                     (xatom_eff,yatom_eff,zatom_eff,xmin,xmax,ymin,ymax,zmin,zmax,distsq)
 
                 ! if(distsq < rcutsq) then  ! If it is a neighbour block,...
                 ! if(distsq < rcutsq+very_small) then  ! If it is a neighbour block,...
@@ -440,10 +481,10 @@ contains
                    !checking whether this node is new or not
                     flag_new=.false.
                     if(comm_naba_blocks_of_atoms%no_recv_node(inp) == 0) then
-                             flag_new=.true. 
+                             flag_new=.true.
                     elseif(nnd_rem /= &
                         comm_naba_blocks_of_atoms%list_recv_node(comm_naba_blocks_of_atoms%no_recv_node(inp),inp) )  then
-                             flag_new=.true. 
+                             flag_new=.true.
                     endif
                    !if new
                    if(flag_new) then
@@ -469,6 +510,10 @@ contains
                       ierror=ierror+1
                    endif
 
+                   xmin= dcellx_block*(nx-1)
+                   ymin= dcelly_block*(ny-1)
+                   zmin= dcellz_block*(nz-1)
+
                    nx=anint((xmin-xmin_p+very_small)/dcellx_part)
                    ny=anint((ymin-ymin_p+very_small)/dcelly_part)
                    nz=anint((zmin-zmin_p+very_small)/dcellz_part)
@@ -477,13 +522,13 @@ contains
                    nz=nz+ncoverz_add
 
                    if(ierror == 0) then
-                      !offset from the primary partition to the partition  
+                      !offset from the primary partition to the partition
                       ! which includes l.h.s. of the covering block.
                       ! It is calculated by using the remote node's ncovers.
                       naba_blk%offset_naba_blk(naba_blk%no_naba_blk(inp),inp)= &
                            (nx-1)*ncoveryz_rem+(ny-1)*ncoverz_rem+nz
                       !CC label in a sim. cell. It will be sent.
-                      naba_blk%send_naba_blk  (naba_blk%no_naba_blk(inp),inp)=ind_block 
+                      naba_blk%send_naba_blk  (naba_blk%no_naba_blk(inp),inp)=ind_block
                       !CC label in a cov. set.  It will be used in BtoG transform.
                       naba_blk%list_naba_blk  (naba_blk%no_naba_blk(inp),inp)=BCS_blocks%lab_cover(iblock)
                    endif ! (ierror=0)
@@ -520,17 +565,17 @@ contains
 
 !!****f* set_blipgrid_module/get_naba_BCSblk_max *
 !!
-!!  NAME 
+!!  NAME
 !!   get_naba_BCSblk_max
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   Finds maxima for BCSblk
-!! 
+!!
 !!  INPUTS
-!! 
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   T.Miyazaki/D.R.Bowler
 !!  CREATION DATE
@@ -550,12 +595,14 @@ contains
     use group_module,   ONLY: blocks,parts
     use primary_module, ONLY: bundle
     use cover_module,   ONLY: BCS_blocks,DCS_parts
-    use global_module,  ONLY: rcellx,rcelly,rcellz,numprocs
+    use global_module,  ONLY: lat_vec, cell_vec_len,numprocs
     use block_module,   ONLY: nx_in_block,ny_in_block,nz_in_block
     use GenComms, ONLY: cq_abort
     use species_module, ONLY: n_species
 
     implicit none
+    real(double) :: ex1, ey1, ez1, ex2, ey2, ez2, ex3, ey3, ez3, block_cx, block_cy, block_cz
+
 
     !Dummy Arguments
     real(double),intent(in),dimension(n_species) :: rcut
@@ -566,6 +613,8 @@ contains
     real(double) :: dcellx_part,dcelly_part,dcellz_part
     real(double) :: dcellx_block,dcelly_block,dcellz_block
     real(double) :: dcellx_grid,dcelly_grid,dcellz_grid ! 4/Aug/2000 TM
+    real(double) :: dcellx_block_v(3), dcelly_block_v(3), dcellz_block_v(3)
+    real(double) :: dcellx_grid_v(3), dcelly_grid_v(3), dcellz_grid_v(3)
     real(double) :: xmin_p,ymin_p,zmin_p
     real(double) :: xmin,xmax,ymin,ymax,zmin,zmax
     real(double) :: xatom,yatom,zatom,distsq
@@ -577,19 +626,27 @@ contains
     do ii=1,n_species
        rcutsq(ii)=rcut(ii)*rcut(ii)
     end do
-    inp=0 
+    inp=0
     max_naba_blocks_of_atoms = 0
     max_recv_node_BtoG = 0
     ncoverz=BCS_blocks%ncoverz
     ncoveryz=BCS_blocks%ncovery*BCS_blocks%ncoverz
 
-    dcellx_part=rcellx/parts%ngcellx ; dcellx_block=rcellx/blocks%ngcellx
-    dcelly_part=rcelly/parts%ngcelly ; dcelly_block=rcelly/blocks%ngcelly
-    dcellz_part=rcellz/parts%ngcellz ; dcellz_block=rcellz/blocks%ngcellz
+    dcellx_part=cell_vec_len(1)/parts%ngcellx ; dcellx_block=cell_vec_len(1)/blocks%ngcellx
+    dcelly_part=cell_vec_len(2)/parts%ngcelly ; dcelly_block=cell_vec_len(2)/blocks%ngcelly
+    dcellz_part=cell_vec_len(3)/parts%ngcellz ; dcellz_block=cell_vec_len(3)/blocks%ngcellz
 
     dcellx_grid=dcellx_block/nx_in_block
     dcelly_grid=dcelly_block/ny_in_block
     dcellz_grid=dcellz_block/nz_in_block
+
+    dcellx_block_v(:) = lat_vec(:,1)/blocks%ngcellx
+    dcelly_block_v(:) = lat_vec(:,2)/blocks%ngcelly
+    dcellz_block_v(:) = lat_vec(:,3)/blocks%ngcellz
+
+    dcellx_grid_v(:) = dcellx_block_v(:)/nx_in_block
+    dcelly_grid_v(:) = dcelly_block_v(:)/ny_in_block
+    dcellz_grid_v(:) = dcellz_block_v(:)/nz_in_block
 
     do np=1,bundle%groups_on_node  ! primary partitions in bundle
        if(bundle%nm_nodgroup(np) > 0) then  ! Are there atoms?
@@ -618,12 +675,29 @@ contains
 
                 !(xmin,ymin,zmin) is the l.h.s. corner of the block
                 !   -dcellx_grid etc. is added 4/8/2000 T M
-                xmin= dcellx_block*(nx-1)
-                xmax= xmin+ dcellx_block -dcellx_grid
-                ymin= dcelly_block*(ny-1)
-                ymax= ymin+ dcelly_block -dcelly_grid
-                zmin= dcellz_block*(nz-1)
-                zmax= zmin+ dcellz_block -dcellz_grid
+                block_cx = (nx-1)*dcellx_block_v(1) + (ny-1)*dcelly_block_v(1) + (nz-1)*dcellz_block_v(1)
+                block_cy = (nx-1)*dcellx_block_v(2) + (ny-1)*dcelly_block_v(2) + (nz-1)*dcellz_block_v(2)
+                block_cz = (nx-1)*dcellx_block_v(3) + (ny-1)*dcelly_block_v(3) + (nz-1)*dcellz_block_v(3)
+
+                ex1 = dcellx_block_v(1) - dcellx_grid_v(1)
+                ey1 = dcellx_block_v(2) - dcellx_grid_v(2)
+                ez1 = dcellx_block_v(3) - dcellx_grid_v(3)
+
+                ex2 = dcelly_block_v(1) - dcelly_grid_v(1)
+                ey2 = dcelly_block_v(2) - dcelly_grid_v(2)
+                ez2 = dcelly_block_v(3) - dcelly_grid_v(3)
+
+                ex3 = dcellz_block_v(1) - dcellz_grid_v(1)
+                ey3 = dcellz_block_v(2) - dcellz_grid_v(2)
+                ez3 = dcellz_block_v(3) - dcellz_grid_v(3)
+
+                ! Compute AABB for the block bounding volume
+                xmin = block_cx + min(0.0_double, ex1) + min(0.0_double, ex2) + min(0.0_double, ex3)
+                xmax = block_cx + max(0.0_double, ex1) + max(0.0_double, ex2) + max(0.0_double, ex3)
+                ymin = block_cy + min(0.0_double, ey1) + min(0.0_double, ey2) + min(0.0_double, ey3)
+                ymax = block_cy + max(0.0_double, ey1) + max(0.0_double, ey2) + max(0.0_double, ey3)
+                zmin = block_cz + min(0.0_double, ez1) + min(0.0_double, ez2) + min(0.0_double, ez3)
+                zmax = block_cz + max(0.0_double, ez1) + max(0.0_double, ez2) + max(0.0_double, ez3)
                 call distsq_blk_atom&
                      (xatom,yatom,zatom,xmin,xmax,ymin,ymax,zmin,zmax,distsq)
                 if(distsq < rcutsq(spec)-RD_ERR) then  ! If it is a neighbour block,...
@@ -637,11 +711,11 @@ contains
                    !checking whether this node is new or not
                    flag_new=.false.
                    if(no_recv_node == 0) then
-                      flag_new=.true. 
+                      flag_new=.true.
                    else
                       flag_new = .true.
                       do ii = 1,no_recv_node
-                         if(nnd_rem==list_recv_node(ii) ) flag_new=.false. 
+                         if(nnd_rem==list_recv_node(ii) ) flag_new=.false.
                       end do
                    endif
                    !if new
@@ -656,17 +730,17 @@ contains
           enddo ! ni (atoms in the primary sets of partitions)
        endif ! Are there atoms ?
     enddo ! np (primary sets of partitions)
-    
+
     return
   end subroutine get_naba_BCSblk_max
 !!***
 
 !!****f* set_blipgrid_module/distsq_blk_atom *
 !!
-!!  NAME 
+!!  NAME
 !!   distsq_blk_atom
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   sbrt distsq_blk_atom
 !!    calculates the square of distance between an atom and a block
@@ -674,16 +748,16 @@ contains
 !!    the minimum and maximum of three direction
 !!  (xmin,xmax),(ymin,ymax),(zmin,zmax)
 !!    coordinate of atom (xatom,yatom,zatom)
-!! 
+!!
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   T.Miyazaki
 !!  CREATION DATE
-!! 
+!!
 !!  MODIFICATION HISTORY
 !!
 !!  SOURCE
@@ -726,6 +800,7 @@ contains
     endif
 
     distsq=dx*dx+dy*dy+dz*dz
+    distsq=anint(distsq*1.0d10)*1.0d-10
 
     return
 
@@ -734,24 +809,24 @@ contains
 
 !!****f* set_blipgrid_module/get_naba_DCSprt *
 !!
-!!  NAME 
+!!  NAME
 !!   get_naba_DCSprt
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   finds neighbour atoms of primary blocks
 !!   from DCS_prt covering sets
 !!   and makes the list of halo atoms
-!! 
+!!
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   T.Miyazaki
 !!  CREATION DATE
-!! 
+!!
 !!  MODIFICATION HISTORY
 !!   2006/07/06 08:27 dave
 !!    Changed to use cq_abort
@@ -761,7 +836,7 @@ contains
 
     use datatypes
     use numbers,        ONLY: RD_ERR
-    use global_module,  ONLY: rcellx,rcelly,rcellz,numprocs, id_glob, species_glob, sf, nlpf, paof
+    use global_module,  ONLY: lat_vec, cell_vec_len,numprocs, id_glob, species_glob, sf, nlpf, paof
     use species_module, ONLY: nsf_species, nlpf_species, npao_species, n_species
     use group_module,   ONLY: parts,blocks
     use primary_module, ONLY: domain
@@ -770,6 +845,8 @@ contains
     use GenComms, ONLY: cq_abort
 
     implicit none
+    real(double) :: ex1, ey1, ez1, ex2, ey2, ez2, ex3, ey3, ez3, block_cx, block_cy, block_cz
+
 
     real(double),intent(in), dimension(n_species) :: rcut
     type(naba_atm_of_blk),intent(inout) :: naba_set
@@ -778,7 +855,10 @@ contains
     real(double) :: xatom,yatom,zatom,distsq
     real(double), dimension(n_species) :: rcutsq
     real(double) :: dcellx_block,dcelly_block,dcellz_block
-    real(double) :: dcellx_grid ,dcelly_grid ,dcellz_grid 
+    real(double) :: dcellx_grid ,dcelly_grid ,dcellz_grid
+    real(double) :: dcellx_block_v(3), dcelly_block_v(3), dcellz_block_v(3)
+    real(double) :: dcellx_grid_v(3), dcelly_grid_v(3), dcellz_grid_v(3)
+    integer      :: nx, ny, nz
     integer      :: ia,icover,iprim_blk,np,jpart,ni,nnd_old,nnd_rem
     integer      :: ind_part, iorb_alp_i_iblk, iorb_alp_i, norb, spec
     integer      :: irc,ierr
@@ -787,19 +867,29 @@ contains
     do ia = 1,n_species
        rcutsq(ia)=rcut(ia)*rcut(ia)
     end do
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz
 
     dcellx_grid=dcellx_block/nx_in_block
     dcelly_grid=dcelly_block/ny_in_block
     dcellz_grid=dcellz_block/nz_in_block
 
+    dcellx_block_v(:) = lat_vec(:,1)/blocks%ngcellx
+    dcelly_block_v(:) = lat_vec(:,2)/blocks%ngcelly
+    dcellz_block_v(:) = lat_vec(:,3)/blocks%ngcellz
+
+    dcellx_grid_v(:) = dcellx_block_v(:)/nx_in_block
+    dcelly_grid_v(:) = dcelly_block_v(:)/ny_in_block
+    dcellz_grid_v(:) = dcellz_block_v(:)/nz_in_block
+
     naba_set%no_of_part=0
-    naba_set%no_of_atom=0 
-    naba_set%ibegin_part(1,1:domain%groups_on_node)=1
+    naba_set%no_of_atom=0
+    if (naba_set%mx_part > 0) then
+       naba_set%ibegin_part(1,1:domain%groups_on_node)=1
+    end if
     naba_set%no_atom_on_part=0
-    
+
     halo_set%ihalo(:)=0
 
     !TM VARNSF : START
@@ -813,12 +903,33 @@ contains
 
     do iprim_blk=1,domain%groups_on_node  ! primary blocks of domain
        !(xmin,ymin,zmin) is the l.h.s. corner of the block
-       xmin=(domain%idisp_primx(iprim_blk)+domain%nx_origin-1)*dcellx_block
-       ymin=(domain%idisp_primy(iprim_blk)+domain%ny_origin-1)*dcelly_block
-       zmin=(domain%idisp_primz(iprim_blk)+domain%nz_origin-1)*dcellz_block
-       xmax= xmin+dcellx_block-dcellx_grid
-       ymax= ymin+dcelly_block-dcelly_grid
-       zmax= zmin+dcellz_block-dcellz_grid
+       nx = domain%idisp_primx(iprim_blk)+domain%nx_origin
+       ny = domain%idisp_primy(iprim_blk)+domain%ny_origin
+       nz = domain%idisp_primz(iprim_blk)+domain%nz_origin
+
+       block_cx = (nx-1)*dcellx_block_v(1) + (ny-1)*dcelly_block_v(1) + (nz-1)*dcellz_block_v(1)
+       block_cy = (nx-1)*dcellx_block_v(2) + (ny-1)*dcelly_block_v(2) + (nz-1)*dcellz_block_v(2)
+       block_cz = (nx-1)*dcellx_block_v(3) + (ny-1)*dcelly_block_v(3) + (nz-1)*dcellz_block_v(3)
+
+       ex1 = dcellx_block_v(1) - dcellx_grid_v(1)
+       ey1 = dcellx_block_v(2) - dcellx_grid_v(2)
+       ez1 = dcellx_block_v(3) - dcellx_grid_v(3)
+
+       ex2 = dcelly_block_v(1) - dcelly_grid_v(1)
+       ey2 = dcelly_block_v(2) - dcelly_grid_v(2)
+       ez2 = dcelly_block_v(3) - dcelly_grid_v(3)
+
+       ex3 = dcellz_block_v(1) - dcellz_grid_v(1)
+       ey3 = dcellz_block_v(2) - dcellz_grid_v(2)
+       ez3 = dcellz_block_v(3) - dcellz_grid_v(3)
+
+       ! Compute AABB for the block bounding volume
+       xmin = block_cx + min(0.0_double, ex1) + min(0.0_double, ex2) + min(0.0_double, ex3)
+       xmax = block_cx + max(0.0_double, ex1) + max(0.0_double, ex2) + max(0.0_double, ex3)
+       ymin = block_cy + min(0.0_double, ey1) + min(0.0_double, ey2) + min(0.0_double, ey3)
+       ymax = block_cy + max(0.0_double, ey1) + max(0.0_double, ey2) + max(0.0_double, ey3)
+       zmin = block_cz + min(0.0_double, ez1) + min(0.0_double, ez2) + min(0.0_double, ez3)
+       zmax = block_cz + max(0.0_double, ez1) + max(0.0_double, ez2) + max(0.0_double, ez3)
 
        ia=0                  ! counter of naba atoms for each prim block
        icover=0              ! counter of covering atoms
@@ -845,14 +956,14 @@ contains
                 call distsq_blk_atom &
                      (xatom,yatom,zatom,xmin,xmax,ymin,ymax,zmin,zmax,distsq)
                 spec = species_glob( id_glob( parts%icell_beg(DCS_parts%lab_cell(np)) +ni-1 ))
-                if(distsq<rcutsq(spec)-RD_ERR) then
+                if(distsq<rcutsq(spec)+RD_ERR) then
                 !if(distsq < rcutsq) then  ! have found a naba atom
                    ia=ia+1             ! seq. no. of naba atoms for iprim_blk
                    halo_set%ihalo(icover)=1     ! icover-th atom is a halo atom
 
                    !TM VARNSF : START
                    naba_set%ibeg_orb_atom(ia,iprim_blk)=iorb_alp_i + 1
-                   
+
                    !np in DCS => np_in_sim_cell (through lab_cell)
                    !(np_in_sim_cell, ni) => global_id
                    !norb <= global_id
@@ -868,14 +979,14 @@ contains
                    end select
                    iorb_alp_i_iblk = iorb_alp_i_iblk+ norb
                    iorb_alp_i =     iorb_alp_i + norb
-                   
+
                    !TM VARNSF : END
                    if(jpart > naba_set%mx_part) call cq_abort('ERROR: mx_part in get_naba_DCSprt',jpart,naba_set%mx_part)
                    if(ia > naba_set%mx_atom) call cq_abort('ERROR: mx_atom in get_naba_DCSprt',ia,naba_set%mx_atom)
                    naba_set%no_atom_on_part(jpart,iprim_blk)=&
                         naba_set%no_atom_on_part(jpart,iprim_blk)+1
                    naba_set%list_atom(ia,iprim_blk)=ni ! partition seq. label of atom
-                   naba_set%list_atom_by_halo(ia,iprim_blk)=icover 
+                   naba_set%list_atom_by_halo(ia,iprim_blk)=icover
                    !Now in cov. set seq. label -> will be changed to halo seq. label
                 endif  ! (distq < rcutsq)
              enddo !  ni (atoms in one of DCS partitions)
@@ -931,7 +1042,7 @@ contains
                 halo_set%ihalo(icover)=halo_set%no_of_atom
                 !TM VARNSF : START
                 !SHOULD WE PREPARE # OF ORBITALS for HALO ATOMS?  YES. and we need to know the
-                !type of functions. 
+                !type of functions.
                 !   It is possible because now I add a member (function_type) in the derived type of
                 !   naba_atm_of_blk and halo_set%naba_atm points to naba_atm_of_blk.
                 !   itype_func=halo_set%naba_atm%function_type
@@ -959,7 +1070,7 @@ contains
              if(halo_set%no_of_part > halo_set%mx_part) call cq_abort('ERROR in halo_set%mx_part in get_nabaDCSpart',&
                   halo_set%no_of_part,halo_set%mx_part)
              !list of halo parts (NOPG in DCS_parts)
-             halo_set%list_of_part(halo_set%no_of_part)=np 
+             halo_set%list_of_part(halo_set%no_of_part)=np
              ind_part=DCS_parts%lab_cell(np)
              nnd_rem=parts%i_cc2node(ind_part)
              if(nnd_rem > numprocs) call cq_abort(' ERROR in nnd_rem from halo_part ', nnd_rem)
@@ -993,16 +1104,16 @@ contains
 
 !!****f* set_blipgrid_module/get_naba_DCSprt_max *
 !!
-!!  NAME 
+!!  NAME
 !!   get_naba_DCSprt_max
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   Get maxima for DCSprt
 !!  INPUTS
-!! 
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   T.Miyazaki/D.R.Bowler
 !!  CREATION DATE
@@ -1016,7 +1127,7 @@ contains
 
     use datatypes
     use numbers,        ONLY: RD_ERR
-    use global_module,  ONLY: rcellx,rcelly,rcellz,numprocs, id_glob, species_glob, sf, nlpf, paof
+    use global_module,  ONLY: lat_vec, cell_vec_len,numprocs, id_glob, species_glob, sf, nlpf, paof
     use species_module, ONLY: nsf_species, nlpf_species, npao_species, n_species
     use group_module,   ONLY: parts,blocks
     use primary_module, ONLY: domain
@@ -1025,6 +1136,8 @@ contains
     use GenComms, ONLY: cq_abort
 
     implicit none
+    real(double) :: ex1, ey1, ez1, ex2, ey2, ez2, ex3, ey3, ez3, block_cx, block_cy, block_cz
+
 
     ! Passed variables
     real(double),intent(in),dimension(n_species) :: rcut
@@ -1035,7 +1148,10 @@ contains
     real(double) :: xatom,yatom,zatom,distsq
     real(double), dimension(n_species) :: rcutsq
     real(double) :: dcellx_block,dcelly_block,dcellz_block
-    real(double) :: dcellx_grid ,dcelly_grid ,dcellz_grid 
+    real(double) :: dcellx_grid ,dcelly_grid ,dcellz_grid
+    real(double) :: dcellx_block_v(3), dcelly_block_v(3), dcellz_block_v(3)
+    real(double) :: dcellx_grid_v(3), dcelly_grid_v(3), dcellz_grid_v(3)
+    integer      :: nx, ny, nz
     integer      :: ia,icover,iprim_blk,np,jpart,ni,nnd_old,nnd_rem
     integer      :: ind_part, iorb_alp_i_iblk, iorb_alp_i, norb, spec
     integer      :: irc,ierr, no_of_part
@@ -1049,13 +1165,21 @@ contains
     allocate(ihalo(DCS_parts%mx_mcover),STAT=ierr)
     if(ierr/=0) call cq_abort("Error allocating icover in getDCSprtmax: ",DCS_parts%mx_mcover,ierr)
     call stop_timer(tmr_std_allocation)
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz
 
     dcellx_grid=dcellx_block/nx_in_block
     dcelly_grid=dcelly_block/ny_in_block
     dcellz_grid=dcellz_block/nz_in_block
+
+    dcellx_block_v(:) = lat_vec(:,1)/blocks%ngcellx
+    dcelly_block_v(:) = lat_vec(:,2)/blocks%ngcelly
+    dcellz_block_v(:) = lat_vec(:,3)/blocks%ngcellz
+
+    dcellx_grid_v(:) = dcellx_block_v(:)/nx_in_block
+    dcelly_grid_v(:) = dcelly_block_v(:)/ny_in_block
+    dcellz_grid_v(:) = dcellz_block_v(:)/nz_in_block
 
     iorb_alp_i_iblk = 0
     !TM VARNSF : END
@@ -1065,12 +1189,33 @@ contains
     ihalo = 0
     do iprim_blk=1,domain%groups_on_node  ! primary blocks of domain
        !(xmin,ymin,zmin) is the l.h.s. corner of the block
-       xmin=(domain%idisp_primx(iprim_blk)+domain%nx_origin-1)*dcellx_block
-       ymin=(domain%idisp_primy(iprim_blk)+domain%ny_origin-1)*dcelly_block
-       zmin=(domain%idisp_primz(iprim_blk)+domain%nz_origin-1)*dcellz_block
-       xmax= xmin+dcellx_block-dcellx_grid
-       ymax= ymin+dcelly_block-dcelly_grid
-       zmax= zmin+dcellz_block-dcellz_grid
+       nx = domain%idisp_primx(iprim_blk)+domain%nx_origin
+       ny = domain%idisp_primy(iprim_blk)+domain%ny_origin
+       nz = domain%idisp_primz(iprim_blk)+domain%nz_origin
+
+       block_cx = (nx-1)*dcellx_block_v(1) + (ny-1)*dcelly_block_v(1) + (nz-1)*dcellz_block_v(1)
+       block_cy = (nx-1)*dcellx_block_v(2) + (ny-1)*dcelly_block_v(2) + (nz-1)*dcellz_block_v(2)
+       block_cz = (nx-1)*dcellx_block_v(3) + (ny-1)*dcelly_block_v(3) + (nz-1)*dcellz_block_v(3)
+
+       ex1 = dcellx_block_v(1) - dcellx_grid_v(1)
+       ey1 = dcellx_block_v(2) - dcellx_grid_v(2)
+       ez1 = dcellx_block_v(3) - dcellx_grid_v(3)
+
+       ex2 = dcelly_block_v(1) - dcelly_grid_v(1)
+       ey2 = dcelly_block_v(2) - dcelly_grid_v(2)
+       ez2 = dcelly_block_v(3) - dcelly_grid_v(3)
+
+       ex3 = dcellz_block_v(1) - dcellz_grid_v(1)
+       ey3 = dcellz_block_v(2) - dcellz_grid_v(2)
+       ez3 = dcellz_block_v(3) - dcellz_grid_v(3)
+
+       ! Compute AABB for the block bounding volume
+       xmin = block_cx + min(0.0_double, ex1) + min(0.0_double, ex2) + min(0.0_double, ex3)
+       xmax = block_cx + max(0.0_double, ex1) + max(0.0_double, ex2) + max(0.0_double, ex3)
+       ymin = block_cy + min(0.0_double, ey1) + min(0.0_double, ey2) + min(0.0_double, ey3)
+       ymax = block_cy + max(0.0_double, ey1) + max(0.0_double, ey2) + max(0.0_double, ey3)
+       zmin = block_cz + min(0.0_double, ez1) + min(0.0_double, ez2) + min(0.0_double, ez3)
+       zmax = block_cz + max(0.0_double, ez1) + max(0.0_double, ez2) + max(0.0_double, ez3)
 
        ia=0                  ! counter of naba atoms for each prim block
        icover=0              ! counter of covering atoms
@@ -1093,13 +1238,13 @@ contains
                 call distsq_blk_atom(xatom,yatom,zatom,xmin,xmax,ymin,ymax,zmin,zmax,distsq)
                 spec = species_glob( id_glob( parts%icell_beg(DCS_parts%lab_cell(np)) +ni-1 ))
 
-                if(distsq < rcutsq(spec)-RD_ERR) then  ! have found a naba atom
-                   ia=ia+1          
+                if(distsq < rcutsq(spec)+RD_ERR) then  ! have found a naba atom
+                   ia=ia+1
                    atoms = .true.
                    ihalo(icover) = 1
                 endif  ! (distq < rcutsq)
              enddo !  ni (atoms in one of DCS partitions)
-             if(atoms) then 
+             if(atoms) then
                 no_of_part = jpart
              end if
           endif ! Are there atoms ?
@@ -1140,30 +1285,30 @@ contains
 
 !!****f* set_blipgrid_module/make_sendinfo_BtoG *
 !!
-!!  NAME 
+!!  NAME
 !!   make_sendinfo_BtoG
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   prepares information of receiving in Blip-Grid transforms
 !! = makes comm_naba_blocks_of_atoms from naba_atoms_of_blocks(supp)
-!! 
+!!
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   T.Miyazaki
 !!  CREATION DATE
-!! 
+!!
 !!  MODIFICATION HISTORY
 !!   08:18, 2003/06/11 dave
 !!    Added TM's debug statements
-!!   11:55, 12/11/2004 dave 
+!!   11:55, 12/11/2004 dave
 !!    Changed distribute_atom_module to atoms
 !!   2016/07/06 17:30 nakata
-!!    Renamed subroutine make_sendinfo_BG -> make_sendinfo_BtoG 
+!!    Renamed subroutine make_sendinfo_BG -> make_sendinfo_BtoG
 !!    Renamed comm_in_BG -> comm_in_BtoG and comBG -> comm_naba_blocks_of_atoms
 !!   2016/07/14 16:30 nakata
 !!    Renamed naba_supp -> naba_atm_set
@@ -1197,7 +1342,7 @@ contains
     !08/04/2003 T. Miyazaki
     integer, parameter :: iprint_debug = 10
     integer, parameter :: iprint_debug2 = 20
- 
+
     comm_naba_blocks_of_atoms%no_send_node(:)=0
     comm_naba_blocks_of_atoms%no_sent_pairs(:,:)=0
     comm_naba_blocks_of_atoms%list_send_node(:,:)=0
@@ -1209,7 +1354,7 @@ contains
              ind_part=DCS_parts%lab_cell(jpart)
              nnd_rem=parts%i_cc2node(ind_part)
 
-             if(naba_atm_set%no_atom_on_part(ipart,iprim_blk) < 1) then  
+             if(naba_atm_set%no_atom_on_part(ipart,iprim_blk) < 1) then
                 !!   check no_naba_atom
                 write(io_lun,*) 'no of atoms in the neighbour partition is 0 ???'
                 write(io_lun,*) ' ERROR in make_sendinfo_BtoG &
@@ -1227,7 +1372,7 @@ contains
 
                 !(check existed sending nodes for iprim_rem)
                 ifind=0
-                if(comm_naba_blocks_of_atoms%no_send_node(iprim_rem) > 0) then  
+                if(comm_naba_blocks_of_atoms%no_send_node(iprim_rem) > 0) then
                    do ii=1,comm_naba_blocks_of_atoms%no_send_node(iprim_rem)
                       ind_node=comm_naba_blocks_of_atoms%list_send_node(ii,iprim_rem)
                       if(nnd_rem == ind_node) then
@@ -1248,7 +1393,7 @@ contains
                    ! write(io_lun,*) 'B list_send_node', &
                    !  comm_naba_blocks_of_atoms%list_send_node(comm_naba_blocks_of_atoms%no_send_node(iprim_rem),iprim_rem), &
                    !         'no_sent_pairs for this node at present ', &
-                   !  comm_naba_blocks_of_atoms%no_sent_pairs(comm_naba_blocks_of_atoms%no_send_node(iprim_rem),iprim_rem) 
+                   !  comm_naba_blocks_of_atoms%no_sent_pairs(comm_naba_blocks_of_atoms%no_send_node(iprim_rem),iprim_rem)
 
                    comm_naba_blocks_of_atoms%list_send_node &
                         (comm_naba_blocks_of_atoms%no_send_node(iprim_rem),iprim_rem)=nnd_rem
@@ -1258,7 +1403,7 @@ contains
                    !write(io_lun,*) 'A list_send_node', &
                    !    comm_naba_blocks_of_atoms%list_send_node(comm_naba_blocks_of_atoms%no_send_node(iprim_rem),iprim_rem), &
                    !           'no_sent_pairs for this node at present ', &
-                   !    comm_naba_blocks_of_atoms%no_sent_pairs(comm_naba_blocks_of_atoms%no_send_node(iprim_rem),iprim_rem) 
+                   !    comm_naba_blocks_of_atoms%no_sent_pairs(comm_naba_blocks_of_atoms%no_send_node(iprim_rem),iprim_rem)
 
                 else                  ! (if the current sending node is existed )
                    comm_naba_blocks_of_atoms%no_sent_pairs(ifind,iprim_rem)= &
@@ -1294,7 +1439,7 @@ contains
 !%%!                call cq_abort('ERROR mx_pair in make_sendinfo_BtoG')
 !%%!             endif
 !%%!          enddo
-!%%!       endif !(comm_naba_blocks_of_atoms%no_send_node(iprim) > 0) 
+!%%!       endif !(comm_naba_blocks_of_atoms%no_send_node(iprim) > 0)
 !%%!    enddo
 !%%!    do iprim=1,comm_naba_blocks_of_atoms%mx_iprim
 !%%!       if(iprim==1) then
@@ -1322,7 +1467,7 @@ contains
 !%%!    ! To check mx_sent_pair_BtoG etc.
 !%%!    ierr = 0
 !%%!    if(mx_sent_pair > mx_sent_pair_BtoG) then
-!%%!       ierr = ierr + 1   
+!%%!       ierr = ierr + 1
 !%%!       write(io_lun,*) 'ERROR! mx_sent_pair_BtoG must be larger than ',&
 !%%!            mx_sent_pair,' present value = ', mx_sent_pair_BtoG
 !%%!    endif
@@ -1353,23 +1498,23 @@ contains
 !%%!       enddo
 !%%!    endif
 
-    return 
+    return
   end subroutine make_sendinfo_BtoG
 !!***
 
 !!****f* set_blipgrid_module/make_sendinfo_BtoG_max *
 !!
-!!  NAME 
+!!  NAME
 !!   make_sendinfo_BtoG_max
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   Finds maxima for comm_naba_blocks_of_atoms
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   T.Miyazaki/D.R.Bowler
 !!  CREATION DATE
@@ -1411,7 +1556,7 @@ contains
     integer :: mx_sent_pair,mx_send_node,mx_recv_node
     integer, allocatable, dimension(:) :: no_send_node
     integer, allocatable, dimension(:,:) :: list_send_node, no_sent_pairs
- 
+
     max_recv_call = 0
     max_send_node = 0
     max_sent_pairs = 0
@@ -1432,7 +1577,7 @@ contains
              jpart=naba_atm_set%list_part(ipart,iprim_blk)
              ind_part=DCS_parts%lab_cell(jpart)
              nnd_rem=parts%i_cc2node(ind_part)
-             if(naba_atm_set%no_atom_on_part(ipart,iprim_blk) < 1) then  
+             if(naba_atm_set%no_atom_on_part(ipart,iprim_blk) < 1) then
                 !!   check no_naba_atom
                 write(io_lun,*) 'no of atoms in the neighbour partition is 0 ???'
                 write(io_lun,*) ' ERROR in make_sendinfo_BtoG for iprim_blk,ipart,jpart = ' ,iprim_blk,ipart,jpart
@@ -1445,7 +1590,7 @@ contains
                 ia=id_glob(parts%icell_beg(ind_part)+ni-1) !global id
                 iprim_rem= atom_number_on_node(ia)
                 ifind=0
-                if(no_send_node(iprim_rem) > 0) then  
+                if(no_send_node(iprim_rem) > 0) then
                    do ii=1,no_send_node(iprim_rem)
                       ind_node=list_send_node(ii,iprim_rem)
                       if(nnd_rem == ind_node) then
@@ -1479,32 +1624,32 @@ contains
     deallocate(no_sent_pairs, list_send_node, no_send_node,STAT=ierr)
     if(ierr/=0) call cq_abort("Error deallocating no_sent_pairs in BtoGmax: ",bundle%mx_iprim,numprocs)
     call stop_timer(tmr_std_allocation)
-    return 
+    return
   end subroutine make_sendinfo_BtoG_max
 !!***
 
 !!****f* set_blipgrid_module/make_table_BtoG *
 !!
-!!  NAME 
+!!  NAME
 !!   make_table_BtoG
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   makes table showing where to put sent BtoG transformed functions
-!!   Its main task (done in subroutine make_table) is to calculate 
+!!   Its main task (done in subroutine make_table) is to calculate
 !!
 !!      comm_naba_blocks_of_atoms%table_blk (ipair,isend) : seq. no. of primary block
-!!      comm_naba_blocks_of_atoms%table_pair(ipair,isend) : seq. no. of naba atom for 
+!!      comm_naba_blocks_of_atoms%table_pair(ipair,isend) : seq. no. of naba atom for
 !!                                      the above primary block
 !!
 !!    Here, ipair is the seq. no. within each receive call and
 !!    isend is the seq. no. of my receiving calls.
-!! 
+!!
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   T. Miyazaki
 !!  CREATION DATE
@@ -1533,8 +1678,8 @@ contains
     !type(naba_blk_of_atm),intent(in) :: naba_blk
     !type(naba_atm_of_blk),intent(in) :: naba_atoms_of_blocks(supp)
     type(comm_in_BtoG),intent(inout)   :: comm_naba_blocks_of_atoms
-    !Local variables           
-    integer,parameter :: tag=1  
+    !Local variables
+    integer,parameter :: tag=1
     !integer,save :: iprim
     integer :: iprim, j
     integer :: ierr,irc,istart_myid
@@ -1543,7 +1688,7 @@ contains
     integer :: mx_send,mx_recv
     integer :: nsend_req(comm_naba_blocks_of_atoms%mx_recv_node)
     integer, dimension(MPI_STATUS_SIZE) :: mpi_stat
-    
+
     integer :: ii
     mynode=myid+1
     isend=0           ! index of receiving data from sending nodes
@@ -1596,7 +1741,7 @@ contains
     integer,intent(in)  :: iprim,mynode
     integer,intent(out) :: istart_myid
     integer,intent(out) :: nsend_req(comm_naba_blocks_of_atoms%mx_recv_node)
-    !Local variables -- 
+    !Local variables --
     integer :: nnodes,istart,inode,nnd,ibegin
     integer :: iend,nsize,send_size, tmpsize, stat
     integer :: ierr(comm_naba_blocks_of_atoms%mx_recv_node)
@@ -1611,7 +1756,7 @@ contains
           nsize =comm_naba_blocks_of_atoms%no_naba_blk(inode,iprim)
           tmpsize = tmpsize+2*nsize+1
        enddo
-       if(allocated(isend_array)) then 
+       if(allocated(isend_array)) then
           write(io_lun,*) mynode,' send_array alloc: ',size(isend_array)
           call cq_abort('Problem with send_array !')
        end if
@@ -1623,7 +1768,7 @@ contains
           nnd=comm_naba_blocks_of_atoms%list_recv_node(inode,iprim)
           if(inode == 1) then
              ibegin=1
-          else      
+          else
              ibegin=iend+1
           endif
           nsize =comm_naba_blocks_of_atoms%no_naba_blk(inode,iprim)
@@ -1651,9 +1796,9 @@ contains
   !-------------------------------------------------------------------
   !sbrt recv_array_BtoG
   !  Domain responsible node receives the data from sending nodes
-  ! and makes the table for storing the received blip-grid 
+  ! and makes the table for storing the received blip-grid
   ! transformed support functions. (See subroutine make_table)
-  ! 
+  !
   !  We have to call (make_table) from the do-loop
   ! in this subroutine to reuse the array irecv_array.
   !-------------------------------------------------------------------
@@ -1690,7 +1835,10 @@ contains
           !STRANGE AGAIN !! ----  FIXED
           if(inode > nnodes) call cq_abort('WARNING!!   in recv_array_BtoG', inode,nnodes)
           nnd_rem=comm_naba_blocks_of_atoms%list_send_node(inode,iprim)
-          recv_size=comm_naba_blocks_of_atoms%no_sent_pairs(inode,iprim)*2+1
+          ! no_sent_pairs is independently estimated from the receiver's
+          ! DCS list.  Allocate against the conservative global BCS maximum
+          ! so that a slightly larger message cannot be truncated.
+          recv_size=comm_naba_blocks_of_atoms%mx_pair*2+1
           call start_timer(tmr_std_allocation)
           allocate(irecv_array(recv_size),STAT=stat)
           if(stat/=0) call cq_abort("Error allocating irecv_array in recv_array_BtoG: ",recv_size)
@@ -1712,9 +1860,10 @@ contains
 
           endif
 
-          !Check npair between sending and receiving nodes
-          if(npair /= comm_naba_blocks_of_atoms%no_sent_pairs(inode,iprim)) call cq_abort('pair problem in recv_array_BtoG: ', &
-               npair,comm_naba_blocks_of_atoms%no_sent_pairs(inode,iprim))
+          ! The sender's BCS list is authoritative for this message.  The
+          ! receiver-side DCS count is an independently generated estimate
+          ! and can differ at geometric boundaries in a skewed cell.
+          comm_naba_blocks_of_atoms%no_sent_pairs(inode,iprim) = npair
           isend=isend+1
           if(isend > comm_naba_blocks_of_atoms%mx_recv_call) call cq_abort(' ERROR in recv_array_BtoG  : mx_recv_call,isend =',&
                   comm_naba_blocks_of_atoms%mx_recv_call,isend)
@@ -1744,7 +1893,7 @@ contains
 
     use datatypes
     use numbers,       ONLY:very_small
-    use global_module, ONLY:rcellx,rcelly,rcellz,x_atom_cell,y_atom_cell,z_atom_cell
+    use global_module, ONLY:lat_vec,cell_vec_len,x_atom_cell,y_atom_cell,z_atom_cell
     use group_module,  ONLY:parts,blocks
     use primary_module,ONLY:domain,bundle
     use cover_module,  ONLY:DCS_parts
@@ -1779,9 +1928,9 @@ contains
     ncoverz=2*DCS_parts%ncoverz+1
     ncoveryz=(2*DCS_parts%ncovery+1)*ncoverz
 
-    dcellx_part=rcellx/parts%ngcellx ; dcellx_block=rcellx/blocks%ngcellx
-    dcelly_part=rcelly/parts%ngcelly ; dcelly_block=rcelly/blocks%ngcelly
-    dcellz_part=rcellz/parts%ngcellz ; dcellz_block=rcellz/blocks%ngcellz
+    dcellx_part=cell_vec_len(1)/parts%ngcellx ; dcellx_block=cell_vec_len(1)/blocks%ngcellx
+    dcelly_part=cell_vec_len(2)/parts%ngcelly ; dcelly_block=cell_vec_len(2)/blocks%ngcelly
+    dcellz_part=cell_vec_len(3)/parts%ngcellz ; dcellz_block=cell_vec_len(3)/blocks%ngcellz
 
     if(npair < 1) call cq_abort('npair in make_table <1 ?? : npair = ',nnd_rem,iprim)
     do ipair=1,npair
@@ -1792,8 +1941,8 @@ contains
             call cq_abort('No block found in make_table: ',ipair,ifind_block)
        xmin=(domain%idisp_primx(ifind_block)+domain%nx_origin-1)*dcellx_block
        ymin=(domain%idisp_primy(ifind_block)+domain%ny_origin-1)*dcelly_block
-       zmin=(domain%idisp_primz(ifind_block)+domain%nz_origin-1)*dcellz_block 
-       ifind_part=0 
+       zmin=(domain%idisp_primz(ifind_block)+domain%nz_origin-1)*dcellz_block
+       ifind_part=0
 
        do ipart=1,naba_atoms_of_blocks(atomf)%no_of_part(ifind_block) !Loop over naba parts
           jpart=naba_atoms_of_blocks(atomf)%list_part(ipart,ifind_block) !NOPG in a cover
@@ -1805,9 +1954,9 @@ contains
           ymin_p= (nyp+DCS_parts%ny_origin-DCS_parts%nspanly-1)*dcelly_part
           zmin_p= (nzp+DCS_parts%nz_origin-DCS_parts%nspanlz-1)*dcellz_part
 
-          ! We must check carefully whether the following scheme 
+          ! We must check carefully whether the following scheme
           ! to calculate the offsets is consistent with the one used in
-          ! sending nodes (bundle responsible nodes) in subroutine 
+          ! sending nodes (bundle responsible nodes) in subroutine
           ! 'get_naba_BCSblk'.
           !  especially which (part or block) coordinates will be added by very_small.
 
@@ -1837,10 +1986,10 @@ contains
        do ii=ibegin,iend    ! find the pair (OLD: check global no. of atom)
           !               (NOW: check primary no. of atom)
           j=naba_atoms_of_blocks(atomf)%list_atom(ii,ifind_block) !part seq. no. of atom
-          ia1=id_glob(parts%icell_beg(ind_part)+j-1) 
+          ia1=id_glob(parts%icell_beg(ind_part)+j-1)
           iprim2=atom_number_on_node(ia1)
           !ia1: glob no. of j-th atm in (ind_part)
-          ia2=atoms_on_node(iprim,nnd_rem)           
+          ia2=atoms_on_node(iprim,nnd_rem)
 
           if(iprim /= atom_number_on_node(ia2)) &
                write(io_lun,*) ' ERROR: IPRIM in make_table! ',iprim, atom_number_on_node(ia2)
@@ -1858,7 +2007,7 @@ contains
        if(ifind_pair == 0) call cq_abort('Atom not found in make_table: ',ipair,nnd_rem)
        !table_BtoG_npair(isend)        =npair    !no of pair  (not necessary)
        ! isend: seq. no. of receiving <-iprim&comm_naba_blocks_of_atoms%no_send_node(iprim)
-       comm_naba_blocks_of_atoms%table_blk(ipair,isend) =ifind_block !shows prim block    
+       comm_naba_blocks_of_atoms%table_blk(ipair,isend) =ifind_block !shows prim block
        comm_naba_blocks_of_atoms%table_pair(ipair,isend)=ifind_pair  !shows pair(naba atom)
     enddo ! ipair in my domain
     return
@@ -1867,23 +2016,23 @@ contains
 
 !!****f* set_blipgrid_module/free_blipgrid *
 !!
-!!  NAME 
+!!  NAME
 !!   free_blipgrid
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   Frees memory
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   D.R.Bowler
 !!  CREATION DATE
 !!   08:06, 08/01/2003 dave
 !!  MODIFICATION HISTORY
-!!   11:53, 04/02/2003 drb 
+!!   11:53, 04/02/2003 drb
 !!    Bug fix - removed extraneous bracket
 !!   2008/05/16 ast
 !!    Added timer

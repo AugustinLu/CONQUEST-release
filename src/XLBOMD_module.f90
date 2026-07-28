@@ -400,7 +400,7 @@
       use GenComms, ONLY: myid
  !2019/Nov/13
       use numbers, ONLY: half, one, very_small
-      use global_module, ONLY: io_lun,ni_in_cell,atom_coord,atom_coord_diff,rcellx,rcelly,rcellz
+      use global_module, ONLY: io_lun,ni_in_cell,atom_coord,atom_coord_diff,cell_vec_len
       use GenComms, ONLY: ionode
       use store_matrix,ONLY: matrix_store_global, grab_InfoMatGlobal, set_atom_coord_diff
 

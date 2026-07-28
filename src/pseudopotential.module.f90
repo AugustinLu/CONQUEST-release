@@ -192,9 +192,11 @@ contains
     use datatypes
     use GenBlas, only: axpy
     use numbers
-    use global_module, only: rcellx,rcelly,rcellz,id_glob,ni_in_cell, &
+    use global_module, only: cell_vec_len,id_glob,ni_in_cell, &
                              species_glob, nlpf, flag_basis_set,      &
-                             blips, flag_analytic_blip_int
+                             blips, flag_analytic_blip_int,           &
+                             lattice_grid_block_origin,               &
+                             lattice_grid_point_offset
     use species_module, only: charge, species, nlpf_species
     !  At present, these arrays are dummy arguments.
     use block_module, only : nx_in_block, ny_in_block, nz_in_block, &
@@ -242,9 +244,9 @@ contains
     end if
 
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
 
     ! loop arround grid points in this domain, and for each
     ! point, get contributions to the short-range
@@ -256,9 +258,12 @@ contains
     no_of_ib_ia = 0
 
     do iblock = 1, domain%groups_on_node ! primary set of blocks
-       xblock=(domain%idisp_primx(iblock)+domain%nx_origin-1)*dcellx_block
-       yblock=(domain%idisp_primy(iblock)+domain%ny_origin-1)*dcelly_block
-       zblock=(domain%idisp_primz(iblock)+domain%nz_origin-1)*dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(iblock)+domain%nx_origin-1, &
+            domain%idisp_primy(iblock)+domain%ny_origin-1, &
+            domain%idisp_primz(iblock)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
        if(naba_atoms_of_blocks(nlpf)%no_of_part(iblock) > 0) then ! if there are naba atoms
           iatom=0
           do ipart=1,naba_atoms_of_blocks(nlpf)%no_of_part(iblock)
@@ -355,9 +360,9 @@ contains
                                call cq_abort('set_ps: igrid error ', &
                                     igrid, n_my_grid_points)
                             endif
-                            dx=dcellx_grid*(ix-1)
-                            dy=dcelly_grid*(iy-1)
-                            dz=dcellz_grid*(iz-1)
+                            call lattice_grid_point_offset(ix, iy, iz, &
+                                 blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+                                 nx_in_block, ny_in_block, nz_in_block, dx, dy, dz)
                             rx=xblock+dx-xatom
                             ry=yblock+dy-yatom
                             rz=zblock+dz-zatom
@@ -534,8 +539,10 @@ contains
     use datatypes
     use numbers
     use species_module, only: species, nlpf_species
-    use global_module,  only: rcellx,rcelly,rcellz,id_glob,ni_in_cell, &
-                              species_glob, nlpf
+    use global_module,  only: cell_vec_len,id_glob,ni_in_cell, &
+                              species_glob, nlpf,                     &
+                              lattice_grid_block_origin,              &
+                              lattice_grid_point_offset
     !  At present, these arrays are dummy arguments.
     use block_module,   only : nx_in_block,ny_in_block,nz_in_block,    &
                                n_pts_in_block
@@ -570,9 +577,9 @@ contains
     call start_timer(tmr_std_pseudopot)
     gridfunctions(dpseudofns)%griddata = zero
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
 
     ! loop arround grid points in this domain, and for each
     ! point, get contributions to the short-range
@@ -581,9 +588,12 @@ contains
     call my_barrier()
     no_of_ib_ia = 0
     do iblock = 1, domain%groups_on_node ! primary set of blocks
-       xblock=(domain%idisp_primx(iblock)+domain%nx_origin-1)*dcellx_block
-       yblock=(domain%idisp_primy(iblock)+domain%ny_origin-1)*dcelly_block
-       zblock=(domain%idisp_primz(iblock)+domain%nz_origin-1)*dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(iblock)+domain%nx_origin-1, &
+            domain%idisp_primy(iblock)+domain%ny_origin-1, &
+            domain%idisp_primz(iblock)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
        if(naba_atoms_of_blocks(nlpf)%no_of_part(iblock) > 0) then ! if there are naba atoms
           iatom=0
           do ipart=1,naba_atoms_of_blocks(nlpf)%no_of_part(iblock)
@@ -666,9 +676,9 @@ contains
                                   call cq_abort('pseudo_derivs: grid error ', &
                                        igrid, n_my_grid_points)
                                endif
-                               dx=dcellx_grid*(ix-1)
-                               dy=dcelly_grid*(iy-1)
-                               dz=dcellz_grid*(iz-1)
+                               call lattice_grid_point_offset(ix, iy, iz, &
+                                    blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+                                    nx_in_block, ny_in_block, nz_in_block, dx, dy, dz)
                                rx=xblock+dx-xatom
                                ry=yblock+dy-yatom
                                rz=zblock+dz-zatom

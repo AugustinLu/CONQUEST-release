@@ -22,19 +22,19 @@
 !!   08:55, 2003/02/05 dave
 !!    Created update_H to reproject blips, build S, reproject pseudos,
 !!    build n(r) and H
-!!   14:41, 26/02/2003 drb 
+!!   14:41, 26/02/2003 drb
 !!    Added n_atoms to safemin, gsum on check to updateIndices
-!!   15:57, 27/02/2003 drb & tm 
+!!   15:57, 27/02/2003 drb & tm
 !!    Sorted out charge densities in update_H
 !!   11:05, 2003/02/28 dave
 !!    Added deallocation call for tm pseudopotentials
-!!   10:25, 06/03/2003 drb 
+!!   10:25, 06/03/2003 drb
 !!    Corrected updating of tm pseudos
-!!   15:02, 12/03/2003 drb 
+!!   15:02, 12/03/2003 drb
 !!    Tidied use statements in updateIndices
-!!   13:27, 22/09/2003 drb 
+!!   13:27, 22/09/2003 drb
 !!    Added TM's changes to update positions in different arrays
-!!   10:09, 13/02/2006 drb 
+!!   10:09, 13/02/2006 drb
 !!    Removed all explicit references to data_ variables and rewrote
 !!    in terms of new
 !!    matrix routines
@@ -53,12 +53,12 @@
 !!   2018/09/07 tsuyoshi
 !!    introduced flag_debug_move_atoms for debugging
 !!   2019/02/28 zamaan
-!!    New subroutine safemin_full plus dependencies for cell optimisation by 
+!!    New subroutine safemin_full plus dependencies for cell optimisation by
 !!    minimising a single vector
 !!   2019/05/21 zamaan
 !!    Removed old RNG, replaced calls with new one from rng module
 !!   2019/11/18 tsuyoshi
-!!    Removed the places related to flag_MDold 
+!!    Removed the places related to flag_MDold
 !!  SOURCE
 !!
 module move_atoms
@@ -114,20 +114,20 @@ contains
   ! --------------------------------------------------------------------
   ! Subroutine finish_blipgrid
   ! --------------------------------------------------------------------
-  
+
   !!****f* move_atoms/finish_blipgrid *
   !!
-  !!  NAME 
+  !!  NAME
   !!   finish_blipgrid
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
-  !! 
+  !!
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -152,42 +152,42 @@ contains
   ! --------------------------------------------------------------------
   ! Subroutine velocityVerlet
   ! --------------------------------------------------------------------
-  
+
   !!****f* move_atoms/velocityVerlet *
   !!
-  !!  NAME 
+  !!  NAME
   !!   velocityVerlet
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Moves atoms according to forces using the velocity
   !!   Verlet algorithm.  If the quenchflag is set, then quench
   !!   the motion - when v.F<0, set v=0.
-  !! 
+  !!
   !!   The velocity Verlet algorithm is an adaption of the Verlet
-  !!   algorithm which allows calculation of the velocities in a 
+  !!   algorithm which allows calculation of the velocities in a
   !! "better" way - it's described in "Understanding Molecular
   !!   Simulation" by Frenkel and Smit (though in a rather confusing
   !!   way - see below) or "Computer Simulation of Liquids" by
   !!   Allen and Tildesley.  The formal algorithm (as given by both
-  !!   A&T and F&S) is as follows (remembering that we start with 
+  !!   A&T and F&S) is as follows (remembering that we start with
   !!   r(t) and v(t) and enter the routine with f(t) - a(t) = f(t)/m):
   !!
-  !!   r(t+dt) = r(t) + dt.v(t) + half.a(t).dt.dt 
+  !!   r(t+dt) = r(t) + dt.v(t) + half.a(t).dt.dt
   !!   v(t+dt) = v(t) + half.dt.(f(t+dt)+f(t))
   !!
   !!   This is not how it's implemented - instead (as described certainly
   !!   in A&T) we do:
-  !! 
+  !!
   !!   v(t) = v(t-dt/2) + half.dt.a(t)
   !! [Perform analysis and output requiring v(t)]
-  !!   r(t+dt) = r(t) + dt.v(t) + half.a(t).dt.dt 
+  !!   r(t+dt) = r(t) + dt.v(t) + half.a(t).dt.dt
   !!   v(t+dt/2) = v(t) + half.dt.a(t)
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -253,7 +253,7 @@ contains
 1   format(4x,'In velocityVerlet, timestep is ',f10.5/, &
            'Quench is ',l3)
     do atom = 1, ni_in_cell
-       speca = species(atom) 
+       speca = species(atom)
        massa = mass(speca)*fac
        gatom = id_glob(atom)
        flagx = flag_move_atom(1,gatom)
@@ -274,8 +274,8 @@ contains
        end if
        !Now, we assume forces are forced to be zero, when
        ! flagx, y or z is false. But, I(TM) think we should
-       ! have the followings, in the future. 
-       !  2020/Jul/28 TM activated the following three lines, 
+       ! have the followings, in the future.
+       !  2020/Jul/28 TM activated the following three lines,
        !   though this subroutine is not used now.
        if(.not.flagx) velocity(1,atom) = zero
        if(.not.flagy) velocity(2,atom) = zero
@@ -284,7 +284,7 @@ contains
     ! Maybe fiddle with KE
     KE = zero
     do atom = 1, ni_in_cell
-       speca = species(atom) 
+       speca = species(atom)
        massa = mass(speca)*fac
       do k = 1, 3
        KE = KE + half * massa * velocity(k,atom) * velocity(k,atom)
@@ -293,7 +293,7 @@ contains
     ! Update positions and velocities
     do atom = 1, ni_in_cell
        gatom = id_glob(atom)
-       speca = species(atom) 
+       speca = species(atom)
        massa = mass(speca) * fac
        flagx = flag_move_atom(1,gatom)
        flagy = flag_move_atom(2,gatom)
@@ -350,17 +350,17 @@ contains
 
 !!****f* move_atoms/safemin *
 !!
-!!  NAME 
+!!  NAME
 !!   safemin
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   Finds a minimum in energy given a search direction
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   D.R.Bowler
 !!  CREATION DATE
@@ -371,18 +371,18 @@ contains
 !!    get_E_and_F
 !!   08:57, 2003/02/05 dave
 !!    Sorted out arguments to pass to updateIndices
-!!   14:41, 26/02/2003 drb 
+!!   14:41, 26/02/2003 drb
 !!    Added n_atoms from atoms
-!!   08:50, 11/05/2005 dave 
+!!   08:50, 11/05/2005 dave
 !!    Added code to write out atomic positions during minimisation;
 !!    also added code to subtract off atomic densities for old atomic
 !!    positions and add it back on for new ones after atoms moved;
 !!    this is commented out as it's not been tested or checked
 !!    rigorously
-!!   09:51, 25/10/2005 drb 
+!!   09:51, 25/10/2005 drb
 !!    Added correction so that the present energy is passed to
 !!    get_E_and_F for blip minimisation loop
-!!   15:13, 27/04/2007 drb 
+!!   15:13, 27/04/2007 drb
 !!    Reworked minimiser to be more robust; added (but not
 !!    implemented) corrections to permit VERY SIMPLE charge density
 !!    prediction
@@ -421,8 +421,8 @@ contains
     use units
     use global_module,      only: iprint_MD, x_atom_cell, y_atom_cell,    &
                                   z_atom_cell,           &
-                                  atom_coord, ni_in_cell, rcellx, rcelly, &
-                                  rcellz, flag_self_consistent,           &
+                                  atom_coord, ni_in_cell, cell_vec_len, &
+                                  cell_vec_len, flag_self_consistent,           &
                                   flag_reset_dens_on_atom_move,           &
                                   IPRINT_TIME_THRES1, flag_pcc_global
     use minimise,           only: get_E_and_F, sc_tolerance, L_tolerance, &
@@ -446,7 +446,7 @@ contains
     logical           :: vary_mu, fixed_potential
     real(double)      :: total_energy
     character(len=40) :: output_file
-        
+
 
     ! Local variables
     integer        :: i, j, iter, lun
@@ -507,7 +507,7 @@ contains
        !elseif (k2==0.01_double) then
        !   k3 = 0.01_double
        !else
-       !   k3 = lambda*k2          
+       !   k3 = lambda*k2
        !endif
 !       k3 = 0.032_double
        ! These lines calculate the difference between atomic densities and total density
@@ -561,7 +561,7 @@ contains
           iter = iter + 1
        else if (abs(k2) < RD_ERR) then ! We've gone too far
           !k3old = k3
-          !if(abs(dE)<RD_ERR) then 
+          !if(abs(dE)<RD_ERR) then
           !   k3 = k3old/2.0_double
           !   dE = 1.0_double
           !else
@@ -634,7 +634,7 @@ contains
                kmin, en_conv*energy_out, en_units(energy_units)
     if (energy_out > e2 .and. abs(bottom) > RD_ERR) then
        ! The interpolation failed - go back
-       call start_timer(tmr_l_tmp1,WITH_LEVEL) 
+       call start_timer(tmr_l_tmp1,WITH_LEVEL)
        if (inode == ionode) &
             write (io_lun,fmt='(/4x,"Interpolation failed; reverting"/)')
        kmin = k2
@@ -702,7 +702,7 @@ contains
   !!
   !! AUTHOR
   !!   Michiaki Arita
-  !! CREATION DATE 
+  !! CREATION DATE
   !!   2013/08/21
   !! MODIFICATION HISTORY
   !!   2013/12/02 M.Arita
@@ -736,8 +736,8 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell,           &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, cell_vec_len, &
+         cell_vec_len, flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global,    &
          id_glob,                                &
@@ -755,7 +755,7 @@ contains
     use matrix_data, ONLY: Lrange, Hrange, SFcoeff_range, SFcoeffTr_range, HTr_range
     use mult_module, ONLY: matL,L_trans, matK, matSFcoeff
     use timer_module
-    use dimens, ONLY: r_super_x, r_super_y, r_super_z
+    use global_module, ONLY: cell_vec_len
     use store_matrix, ONLY: dump_pos_and_matrices
     !for Debugging
     use mult_module, ONLY: allocate_temp_matrix, free_temp_matrix, matrix_sum
@@ -867,7 +867,7 @@ contains
        end if
        ! Now, we call dump_pos_and_matrices here. : 2018.Jan19 TM
        !  but if we want to use the information of the matrices in the beginning of this line minimisation
-       !  you can comment the following line, in the future. 
+       !  you can comment the following line, in the future.
        call dump_pos_and_matrices
 
        if (inode == ionode .and. iprint_MD + min_layer > 1) &
@@ -1085,7 +1085,7 @@ contains
   !!
   !! AUTHOR
   !!   David Bowler
-  !! CREATION DATE 
+  !! CREATION DATE
   !!   2019/12/09
   !! MODIFICATION HISTORY
   !!  2020/01/08 12:52 dave
@@ -1103,8 +1103,8 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell,           &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, cell_vec_len, &
+         cell_vec_len, flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global,    &
          id_glob,                                &
@@ -1122,7 +1122,7 @@ contains
     use matrix_data, ONLY: Lrange, Hrange, SFcoeff_range, SFcoeffTr_range, HTr_range
     use mult_module, ONLY: matL,L_trans, matK, matSFcoeff
     use timer_module
-    use dimens, ONLY: r_super_x, r_super_y, r_super_z
+    use global_module, ONLY: cell_vec_len
     use store_matrix, ONLY: dump_pos_and_matrices
     use mult_module, ONLY: allocate_temp_matrix, free_temp_matrix, matrix_sum
     use global_module, ONLY: atomf, sf
@@ -1266,7 +1266,7 @@ contains
     return
   end subroutine backtrack_linemin
 !!***
-  
+
   !!****f* move_atoms/single_step *
   !! PURPOSE
   !!  Carry out single step
@@ -1274,7 +1274,7 @@ contains
   !!
   !! AUTHOR
   !!   David Bowler
-  !! CREATION DATE 
+  !! CREATION DATE
   !!   2021/05/28
   !! MODIFICATION HISTORY
   !!   2021/09/15 14:41 dave
@@ -1396,7 +1396,7 @@ contains
     return
   end subroutine single_step
 !!***
-  
+
   !!****f* move_atoms/backtrack_linemin_cell *
   !! PURPOSE
   !!  Carry out back-tracking line minimisation
@@ -1418,8 +1418,8 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell,           &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, cell_vec_len, &
+         cell_vec_len, flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global,    &
          id_glob,                                &
@@ -1437,7 +1437,7 @@ contains
     use matrix_data, ONLY: Lrange, Hrange, SFcoeff_range, SFcoeffTr_range, HTr_range
     use mult_module, ONLY: matL,L_trans, matK, matSFcoeff
     use timer_module
-    use dimens, ONLY: r_super_x, r_super_y, r_super_z
+    use global_module, ONLY: cell_vec_len
     use store_matrix, ONLY: dump_pos_and_matrices
     use mult_module, ONLY: allocate_temp_matrix, free_temp_matrix, matrix_sum
     use io_module, ONLY: dump_matrix, return_prefix
@@ -1474,9 +1474,9 @@ contains
     iter = 0
     old_alpha = zero
     alpha = one
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
+    orcellx = cell_vec_len(1)
+    orcelly = cell_vec_len(2)
+    orcellz = cell_vec_len(3)
     h0 = enthalpy_in
     h3 = h0
     if (inode == ionode .and. iprint_MD + min_layer > 0) &
@@ -1492,9 +1492,12 @@ contains
     grad_f_dot_p = grad_f_dot_p + direction(1)*stress(1,1)
     grad_f_dot_p = grad_f_dot_p + direction(2)*stress(2,2)
     grad_f_dot_p = grad_f_dot_p + direction(3)*stress(3,3)
-    if(inode==ionode.AND.iprint_MD + min_layer>1) &
-         write(io_lun, fmt='(4x,a,e16.6)') &
-         trim(prefix)//" Magnitude of grad_f.p is ",sqrt(-grad_f_dot_p/three)
+    if(inode==ionode .and. iprint_MD + min_layer > 2) then
+       write(io_lun, fmt='(4x,a,3e16.6)') trim(prefix)//" direction: ", direction
+       write(io_lun, fmt='(4x,a,3e16.6)') trim(prefix)//" diagonal virial: ", &
+            stress(1,1), stress(2,2), stress(3,3)
+       write(io_lun, fmt='(4x,a,e16.6)') trim(prefix)//" grad_f.p: ", grad_f_dot_p
+    end if
     done = .false.
     do while ((.not. done) .and. iter<max_back_iters)
        iter = iter+1
@@ -1512,7 +1515,7 @@ contains
        if (myid == 0 .and. iprint_MD + min_layer > 3) then
           write(io_lun, fmt='(/4x,a)') trim(prefix)//" Simulation cell dimensions: "
           write(io_lun, fmt='(6x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            cell_vec_len(1), d_units(dist_units), cell_vec_len(2), d_units(dist_units), cell_vec_len(3), d_units(dist_units)
        end if
        call update_H(fixed_potential)
        ! Write out atomic positions
@@ -1571,7 +1574,7 @@ contains
     if (myid == 0 .and. iprint_MD + min_layer > 2) then
        write(io_lun, fmt='(/4x,a)') trim(prefix)//" Simulation cell dimensions: "
        write(io_lun, fmt='(6x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            cell_vec_len(1), d_units(dist_units), cell_vec_len(2), d_units(dist_units), cell_vec_len(3), d_units(dist_units)
     end if
     dE = enthalpy_in - enthalpy_out
     if (inode == ionode .and. iprint_MD + min_layer >= 0) then
@@ -1583,6 +1586,154 @@ contains
     return
   end subroutine backtrack_linemin_cell
 !!***
+
+  !!****f* move_atoms/backtrack_linemin_lattice *
+  !!
+  !! PURPOSE
+  !!  Backtracking line minimisation for all six independent symmetric
+  !!  strain components.  Expressing the search direction as a strain,
+  !!  rather than as the upper triangle of the lattice matrix, removes
+  !!  rigid rotations without requiring the input lattice to have a
+  !!  particular Cartesian orientation.
+  !!
+  subroutine backtrack_linemin_lattice(direction, target_press, &
+       enthalpy_in, enthalpy_out, fixed_potential, vary_mu, step_accepted)
+
+    use datatypes
+    use numbers
+    use units
+    use global_module, only: iprint_MD, min_layer, lat_vec, &
+         cell_vol, flag_SFcoeffReuse
+    use minimise, only: get_E_and_F, sc_tolerance, L_tolerance, &
+         n_L_iterations, dE_elec_opt
+    use GenComms, only: inode, ionode, cq_abort, cq_warn
+    use force_module, only: force, stress
+    use store_matrix, only: dump_pos_and_matrices
+    use io_module, only: return_prefix
+
+    implicit none
+
+    real(double), intent(in) :: direction(3,3)
+    real(double), intent(in) :: target_press, enthalpy_in
+    real(double), intent(out) :: enthalpy_out
+    logical, intent(in) :: fixed_potential, vary_mu
+    logical, intent(out), optional :: step_accepted
+
+    integer :: i, iter
+    logical :: done
+    real(double) :: alpha, alpha_new, armijo, grad_f_dot_p
+    real(double) :: h0, h3, e3, c1
+    real(double) :: start_lattice(3,3)
+    real(double) :: effective_stress(3,3)
+    character(len=20) :: subname = "back_lm_lattice: "
+    character(len=120) :: prefix
+
+    prefix = return_prefix(subname, min_layer)
+    call start_timer(tmr_std_moveatoms)
+    start_lattice = lat_vec
+    h0 = enthalpy_in
+    h3 = h0
+    alpha = one
+    c1 = 0.01_double
+    iter = 0
+    if (present(step_accepted)) step_accepted = .false.
+
+    effective_stress = stress
+    do i = 1, 3
+       effective_stress(i,i) = effective_stress(i,i) + &
+            target_press*abs(cell_vol)
+    end do
+    ! The internal stress array is the derivative of the enthalpy with
+    ! respect to homogeneous strain (a virial, in energy units).  The
+    ! directional derivative therefore follows directly from sigma:D.
+    grad_f_dot_p = sum(effective_stress*direction)
+    if (grad_f_dot_p >= zero) &
+         call cq_abort("backtrack_linemin_lattice: direction is not downhill")
+
+    if (inode == ionode .and. iprint_MD + min_layer > 0) &
+         write(io_lun,fmt='(4x,a,f16.6," ",a2)') &
+         trim(prefix)//" initial enthalpy is ", &
+         en_conv*enthalpy_in,en_units(energy_units)
+
+    done = .false.
+    do while ((.not.done) .and. iter < max_back_iters)
+       iter = iter + 1
+       call update_lattice_vectors(start_lattice,direction,alpha)
+       if (flag_SFcoeffReuse) then
+          call update_pos_and_matrices(updateSFcoeff)
+       else
+          call update_pos_and_matrices(updateLorK)
+       end if
+       call update_H(fixed_potential)
+       call get_E_and_F(fixed_potential,vary_mu,e3,.false.,.false.)
+       h3 = enthalpy(e3,target_press)
+       if (abs(h3-enthalpy_in) < abs(two*dE_elec_opt)) then
+          call cq_warn(subname, &
+               "Electronic structure dE is similar to cell movement dE; increase tolerance", &
+               dE_elec_opt,h3-enthalpy_in)
+       end if
+       armijo = h0 + c1*alpha*grad_f_dot_p
+       if (inode == ionode .and. iprint_MD + min_layer > 1) then
+          write(io_lun,fmt='(4x,a,i3," step and enthalpy are ",2f16.7," ",a2)') &
+               trim(prefix)//" Iter ",iter,alpha,en_conv*h3, &
+               en_units(energy_units)
+          write(io_lun,fmt='(4x,a,f16.7," ",a2)') &
+               trim(prefix)//" Armijo threshold is ", &
+               en_conv*armijo,en_units(energy_units)
+       end if
+       if (h3 < armijo) then
+          done = .true.
+       else
+          alpha_new = (-half*alpha*grad_f_dot_p)/ &
+               ((h3-h0)/alpha-grad_f_dot_p)
+          alpha = max(alpha_new,0.1_double*alpha)
+       end if
+    end do
+
+    if (.not.done) then
+       ! At small residual stresses the predicted cell-energy change can fall
+       ! below the real-space-grid/SCF noise.  Restore the exact line-search
+       ! origin instead of terminating the whole relaxation in a distorted
+       ! trial cell.
+       call update_lattice_vectors(start_lattice,direction,zero)
+       if (flag_SFcoeffReuse) then
+          call update_pos_and_matrices(updateSFcoeff)
+       else
+          call update_pos_and_matrices(updateLorK)
+       end if
+       call update_H(fixed_potential)
+       call get_E_and_F(fixed_potential,vary_mu,e3,.false.,.false.)
+       enthalpy_out = enthalpy(e3,target_press)
+       call dump_pos_and_matrices
+       if (iprint_MD + min_layer > 0) then
+          call force(fixed_potential,vary_mu,n_L_iterations, &
+               L_tolerance,sc_tolerance,e3,.true.)
+       else
+          call force(fixed_potential,vary_mu,n_L_iterations, &
+               L_tolerance,sc_tolerance,e3,.false.)
+       end if
+       call cq_warn(subname, &
+            "No resolvable downhill full-lattice step; restored previous cell")
+       call stop_timer(tmr_std_moveatoms)
+       return
+    end if
+    enthalpy_out = h3
+    if (present(step_accepted)) step_accepted = .true.
+    call dump_pos_and_matrices
+    if (iprint_MD + min_layer > 0) then
+       call force(fixed_potential,vary_mu,n_L_iterations, &
+            L_tolerance,sc_tolerance,e3,.true.)
+    else
+       call force(fixed_potential,vary_mu,n_L_iterations, &
+            L_tolerance,sc_tolerance,e3,.false.)
+    end if
+    if (inode == ionode .and. iprint_MD + min_layer >= 0) &
+         write(io_lun,fmt='(4x,a,i4," iterations with enthalpy ",f16.6," ",a2)') &
+         trim(prefix)//" exit after ",iter,en_conv*enthalpy_out, &
+         en_units(energy_units)
+    call stop_timer(tmr_std_moveatoms)
+  end subroutine backtrack_linemin_lattice
+  !!***
 
   !!****f* move_atoms/single_step_cell *
   !! PURPOSE
@@ -1605,8 +1756,8 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell,           &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, cell_vec_len, &
+         cell_vec_len, flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global,    &
          id_glob,                                &
@@ -1624,7 +1775,7 @@ contains
     use matrix_data, ONLY: Lrange, Hrange, SFcoeff_range, SFcoeffTr_range, HTr_range
     use mult_module, ONLY: matL,L_trans, matK, matSFcoeff
     use timer_module
-    use dimens, ONLY: r_super_x, r_super_y, r_super_z
+    use global_module, ONLY: cell_vec_len
     use store_matrix, ONLY: dump_pos_and_matrices
     use mult_module, ONLY: allocate_temp_matrix, free_temp_matrix, matrix_sum
     use global_module, ONLY: atomf, sf
@@ -1660,9 +1811,9 @@ contains
     prefix = return_prefix(subname, min_layer)
     call start_timer(tmr_std_moveatoms)
     alpha = one
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
+    orcellx = cell_vec_len(1)
+    orcelly = cell_vec_len(2)
+    orcellz = cell_vec_len(3)
     e0 = energy_in
     e3 = e0
     if (inode == ionode .and. iprint_MD + min_layer > 0) &
@@ -1670,7 +1821,7 @@ contains
          fmt='(4x,a,f16.6," ",a2)') trim(prefix)//" initial energy is ", &
          en_conv * energy_in, en_units(energy_units)
     ! Take a step along search direction
-    call update_cell_dims(rcellx, rcelly, rcellz, &
+    call update_cell_dims(cell_vec_len(1), cell_vec_len(2), cell_vec_len(3), &
          direction(1), direction(2), direction(3), direction(1), alpha)
 
     ! Update and find new energy
@@ -1695,7 +1846,7 @@ contains
     if(energy_out>energy_in) then
        if (inode == ionode .and. iprint_MD + min_layer > 1) &
             write (io_lun, fmt='(4x,a)') trim(prefix)//" energy rise: undoing step"
-       call update_cell_dims(rcellx, rcelly, rcellz, &
+       call update_cell_dims(cell_vec_len(1), cell_vec_len(2), cell_vec_len(3), &
             direction(1), direction(2), direction(3), direction(1), -alpha)
        if(flag_SFcoeffReuse) then
           call update_pos_and_matrices(updateSFcoeff)
@@ -1745,8 +1896,8 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell,           &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, cell_vec_len, &
+         cell_vec_len, flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global,    &
          id_glob,                                &
@@ -1764,7 +1915,7 @@ contains
     use matrix_data, ONLY: Lrange, Hrange, SFcoeff_range, SFcoeffTr_range, HTr_range
     use mult_module, ONLY: matL,L_trans, matK, matSFcoeff
     use timer_module
-    use dimens, ONLY: r_super_x, r_super_y, r_super_z
+    use global_module, ONLY: cell_vec_len
     use store_matrix, ONLY: dump_pos_and_matrices
     use mult_module, ONLY: allocate_temp_matrix, free_temp_matrix, matrix_sum
     use global_module, ONLY: atomf, sf
@@ -1937,7 +2088,7 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell, ni_in_cell, flag_SFcoeffReuse, min_layer, &
-         rcellx, rcelly, rcellz
+         cell_vec_len
     use minimise,       only: get_E_and_F, sc_tolerance, L_tolerance, &
          n_L_iterations, dE_elec_opt
     use GenComms,       only: my_barrier, myid, inode, ionode,        &
@@ -1976,9 +2127,9 @@ contains
     call start_timer(tmr_std_moveatoms)
     dummy = zero
     alpha = one
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
+    orcellx = cell_vec_len(1)
+    orcelly = cell_vec_len(2)
+    orcellz = cell_vec_len(3)
     e0 = energy_in
     e3 = e0
     if (inode == ionode .and. iprint_MD > 0) &
@@ -1992,7 +2143,7 @@ contains
        y_atom_cell(i) = y_atom_cell(i) + alpha * direction(2,i)
        z_atom_cell(i) = z_atom_cell(i) + alpha * direction(3,i)
     end do
-    call update_cell_dims(rcellx, rcelly, rcellz, &
+    call update_cell_dims(cell_vec_len(1), cell_vec_len(2), cell_vec_len(3), &
          direction(1,ni_in_cell+1), direction(2,ni_in_cell+1), direction(3,ni_in_cell+1), &
          direction(1,ni_in_cell+1), alpha)
 
@@ -2026,7 +2177,7 @@ contains
           y_atom_cell(i) = y_atom_cell(i) - alpha * direction(2,i)
           z_atom_cell(i) = z_atom_cell(i) - alpha * direction(3,i)
        end do
-       call update_cell_dims(rcellx, rcelly, rcellz, &
+       call update_cell_dims(cell_vec_len(1), cell_vec_len(2), cell_vec_len(3), &
             direction(1,ni_in_cell+1), direction(2,ni_in_cell+1), direction(3,ni_in_cell+1), &
             direction(1,ni_in_cell+1), -alpha)
        if(flag_SFcoeffReuse) then
@@ -2065,7 +2216,7 @@ contains
   !!
   !! AUTHOR
   !!   David Bowler
-  !! CREATION DATE 
+  !! CREATION DATE
   !!   2019/12/09
   !! MODIFICATION HISTORY
   !!   2022/08/09 09:00 dave
@@ -2081,8 +2232,8 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
          z_atom_cell,           &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, cell_vec_len, &
+         cell_vec_len, flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global,    &
          id_glob,                                &
@@ -2100,7 +2251,7 @@ contains
     use matrix_data, ONLY: Lrange, Hrange, SFcoeff_range, SFcoeffTr_range, HTr_range
     use mult_module, ONLY: matL,L_trans, matK, matSFcoeff
     use timer_module
-    use dimens, ONLY: r_super_x, r_super_y, r_super_z
+    use global_module, ONLY: cell_vec_len
     use store_matrix, ONLY: dump_pos_and_matrices
     use mult_module, ONLY: allocate_temp_matrix, free_temp_matrix, matrix_sum
     use global_module, ONLY: atomf, sf
@@ -2251,7 +2402,7 @@ contains
     return
   end subroutine adapt_backtrack_linemin
 !!***
-  
+
   !!****f* move_atoms/safemin_cell *
   !! PURPOSE
   !! Optimize the simulation cell dimensions a b and c
@@ -2294,8 +2445,8 @@ contains
     use units
     use global_module,      only: iprint_MD, x_atom_cell, y_atom_cell,    &
                                   z_atom_cell,           &
-                                  atom_coord, ni_in_cell, rcellx, rcelly, &
-                                  rcellz, flag_self_consistent,           &
+                                  atom_coord, ni_in_cell, cell_vec_len, &
+                                  cell_vec_len, flag_self_consistent,           &
                                   flag_reset_dens_on_atom_move,           &
                                   IPRINT_TIME_THRES1, flag_pcc_global, &
                                   flag_diagonalisation, cell_constraint_flag, &
@@ -2310,7 +2461,7 @@ contains
     use density_module,     only: density
     use maxima_module,      only: maxngrid
     use timer_module
-    use dimens,             only: r_super_x, r_super_y, r_super_z, &
+    use dimens,             only: &
                                   r_super_x_squared, r_super_y_squared, &
                                   r_super_z_squared, volume, &
                                   grid_point_volume, &
@@ -2401,7 +2552,7 @@ contains
        if (myid == 0 .and. iprint_MD + min_layer > 3) then
           write(io_lun, fmt='(/4x,a)') trim(prefix)//" Simulation cell dimensions: "
           write(io_lun, fmt='(6x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            cell_vec_len(1), d_units(dist_units), cell_vec_len(2), d_units(dist_units), cell_vec_len(3), d_units(dist_units)
        end if
        call update_pos_and_matrices(update_var,direction)
        call update_H(fixed_potential)
@@ -2476,7 +2627,7 @@ contains
     if (myid == 0 .and. iprint_MD + min_layer > 3) then
        write(io_lun, fmt='(/4x,a)') trim(prefix)//" Simulation cell dimensions: "
        write(io_lun, fmt='(6x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            cell_vec_len(1), d_units(dist_units), cell_vec_len(2), d_units(dist_units), cell_vec_len(3), d_units(dist_units)
     end if
     call update_pos_and_matrices(update_var,direction)
     call update_H(fixed_potential)
@@ -2591,7 +2742,7 @@ contains
     if (myid == 0 .and. iprint_MD + min_layer > 2) then
        write(io_lun, fmt='(/4x,a)') trim(prefix)//" Simulation cell dimensions: "
        write(io_lun, fmt='(6x,f12.5,1x,a2," x ",f12.5,1x,a2," x ",f12.5,1x,a2)') &
-            rcellx, d_units(dist_units), rcelly, d_units(dist_units), rcellz, d_units(dist_units)
+            cell_vec_len(1), d_units(dist_units), cell_vec_len(2), d_units(dist_units), cell_vec_len(3), d_units(dist_units)
     end if
     dH = h0 - enthalpy_out
     if (inode == ionode .and. iprint_MD + min_layer >= 0) then
@@ -2610,7 +2761,7 @@ contains
 
   !!****f* move_atoms/safemin_full *
   !! PURPOSE
-  !!  Carry out line minimisation of cell + ionic degrees of freedom 
+  !!  Carry out line minimisation of cell + ionic degrees of freedom
   !!  in conjunction with reusing L-matrix (adapted from safemin2)
   !!
   !!  Beware! The search direction here uses force/atom_coord ordering
@@ -2621,7 +2772,7 @@ contains
   !!
   !! AUTHOR
   !!   Zamaan Raza
-  !! CREATION DATE 
+  !! CREATION DATE
   !!   2019/02/06
   !! MODIFICATION HISTORY
   !!  2021/10/15 17:51 dave
@@ -2638,7 +2789,7 @@ contains
     use units
     use global_module,  only: iprint_MD, x_atom_cell, y_atom_cell,    &
                               z_atom_cell,           &
-                              ni_in_cell, rcellx, rcelly, rcellz,     &
+                              ni_in_cell, cell_vec_len,     &
                               flag_self_consistent,                   &
                               IPRINT_TIME_THRES1, flag_pcc_global,    &
                               flag_LmatrixReuse, flag_SFcoeffReuse,   &
@@ -2756,7 +2907,7 @@ contains
        end if
        ! Now, we call dump_pos_and_matrices here. : 2018.Jan19 TM
        !  but if we want to use the information of the matrices in the beginning of this line minimisation
-       !  you can comment the following line, in the future. 
+       !  you can comment the following line, in the future.
        call dump_pos_and_matrices
        if (inode == ionode .and. iprint_MD + min_layer > 1) &
             write (io_lun, &
@@ -2955,16 +3106,16 @@ contains
 
   !!****f* move_atoms/update_start_xyz *
   !!
-  !!NAME 
+  !!NAME
   !! update_start_xyz
   !!USAGE
-  !! 
+  !!
   !!PURPOSE
   !! Updates start_x, start_y and start_z after updating member info.
   !!INPUTS
-  !! 
+  !!
   !!USES
-  !! 
+  !!
   !!AUTHOR
   !! Michiaki Arita
   !!CREATION DATE
@@ -3040,20 +3191,20 @@ contains
 
   !!****f* move_atoms/pulayStep *
   !!
-  !!NAME 
+  !!NAME
   !! pulayStep
   !!USAGE
-  !! 
+  !!
   !!PURPOSE
   !! Relaxes the atoms to their minimum energy positions using the
   !! guaranteed reduction Pulay algorithm (see Chem. Phys. Lett. 325, 796
   !! (2000) for more details - also minimise).  Take a step with the atoms
   !! based on the timestep and then minimise the norm of the force vector.
   !!INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!USES
-  !! 
+  !!
   !!AUTHOR
   !! D.R.Bowler
   !!CREATION DATE
@@ -3129,13 +3280,13 @@ contains
   ! --------------------------------------------------------------------
   ! Subroutine updateIndices
   ! --------------------------------------------------------------------
-  
+
   !!****f* move_atoms/updateIndices *
   !!
-  !!  NAME 
+  !!  NAME
   !!   updateIndices
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Updates the indices for matrices, saves relevant information
   !!   and stores (if necessary) old L matrix
@@ -3146,9 +3297,9 @@ contains
   !!  INPUTS
   !!   logical :: matrix_update Flags whether the user wants ALL
   !!   matrix information updated
-  !! 
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -3156,14 +3307,14 @@ contains
   !!  MODIFICATION HISTORY
   !!   08:13, 2003/02/04 dave
   !!    Added blipgrid initialisation and reinitialisation calls
-  !!   14:42, 26/02/2003 drb 
+  !!   14:42, 26/02/2003 drb
   !!    Added gsum on check
   !!   08:36, 2003/03/12 dave
   !!    Removed unnecessary use of H_matrix_module
   !!   09:01, 2003/11/10 dave
   !!    D'oh ! Put in a call to cover_update for ewald_CS so that the
   !!    new ewald routines work
-  !!   08:49, 11/05/2005 dave 
+  !!   08:49, 11/05/2005 dave
   !!    Added lines which check for change in band energy, and reset
   !!    DM if too large; these are commented out as these ideas are
   !!    not rigorously tested
@@ -3217,7 +3368,7 @@ contains
     use timer_module
     use density_module,         only: build_Becke_weights
     use DiagModule, only: end_scalapack_format, init_scalapack_format
-    
+
     implicit none
 
     ! Passed variables
@@ -3278,7 +3429,7 @@ contains
   !! RETURN VALUE
   !! AUTHOR
   !!   David Bowler
-  !! CREATION DATE 
+  !! CREATION DATE
   !! MODIFICATION HISTORY
   !!   2011/12/09 L.Tong
   !!     Removed redundant parameter number_of_bands
@@ -3378,7 +3529,7 @@ contains
   !!   - iteration will be deleted in the next update
   !! AUTHOR
   !!   Michiaki Arita
-  !! CREATION DATE 
+  !! CREATION DATE
   !!   2013/07/02
   !! MODIFICATION HISTORY
   !!   2013/08/20 M.Arita
@@ -3568,33 +3719,33 @@ contains
   ! --------------------------------------------------------------------
   ! Subroutine update_H
   ! --------------------------------------------------------------------
-  
+
   !!****f* move_atoms/update_H *
   !!
-  !!  NAME 
+  !!  NAME
   !!   update_H
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Updates various quantities when atoms move: blips, S, n(r), H
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
   !!   08:24, 2003/02/05 dave
   !!  MODIFICATION HISTORY
-  !!   15:04, 27/02/2003 drb & tm 
+  !!   15:04, 27/02/2003 drb & tm
   !!    Added call to set_density for Harris-Foulkes type calculations;
   !!    completely sorted out charge density questions
   !!   18:28, 2003/02/27 dave
   !!    Added call to deallocate Tm pseudopotential
-  !!   10:25, 06/03/2003 drb 
+  !!   10:25, 06/03/2003 drb
   !!    Corrected Tm pseudo updating (alloc/dealloc not needed)
-  !!   13:12, 22/10/2003 mjg & drb 
+  !!   13:12, 22/10/2003 mjg & drb
   !!    Added old/new ewald calls
   !!   12:13  31/03/2011 M.Arita
   !!    Added the statement to recall sbrt: set_density_pcc for NSC cg calculations
@@ -3639,11 +3790,11 @@ contains
 
     use numbers
     use logicals
-    use timer_module    
+    use timer_module
     use S_matrix_module,        only: get_S_matrix
     use H_matrix_module,        only: get_H_matrix
     use mult_module,            only: LNV_matrix_multiply, matrix_scale, matrix_transpose, &
-                                      matSFcoeff,matSFcoeff_tran 
+                                      matSFcoeff,matSFcoeff_tran
     use ion_electrostatic,      only: ewald, screened_ion_interaction
     use pseudopotential_data,   only: init_pseudo
     use pseudo_tm_module,       only: set_tm_pseudo
@@ -3697,7 +3848,7 @@ contains
     ! (0) Prepare SF-PAO coefficients for contracted SFs
     if (atomf.ne.sf) then
        if (flag_SFcoeffReuse) then
-       ! Use the coefficients in the previous step   
+       ! Use the coefficients in the previous step
        ! SF coeffs are already updated before calling update_H, but we need its transpose
          do spin_SF = 1,nspin_SF
           call matrix_transpose(matSFcoeff(spin_SF), matSFcoeff_tran(spin_SF))
@@ -3807,13 +3958,13 @@ contains
   ! --------------------------------------------------------------------
   ! Subroutine checkBonds
   ! --------------------------------------------------------------------
-  
+
   !!****f* move_atoms/checkBonds *
   !!
-  !!  NAME 
+  !!  NAME
   !!   checkBonds
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Checks to see if there are new H range interactions
   !!
@@ -3829,9 +3980,9 @@ contains
   !!
   !!  INPUTS
   !!   logiccal :: newAtom Flags if a new atom is found
-  !! 
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -3908,21 +4059,21 @@ contains
   ! --------------------------------------------------------------------
   ! Subroutine primary_update
   ! --------------------------------------------------------------------
-  
+
   !!****f* move_atoms/primary_update *
   !!
-  !!  NAME 
+  !!  NAME
   !!   primary_update
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
-  !!   Updates the atomic positions in primary set after atom 
+  !!   Updates the atomic positions in primary set after atom
   !!   movement
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -3937,7 +4088,7 @@ contains
 
     use datatypes
     use basic_types
-    use global_module, only: ni_in_cell, rcellx, rcelly, rcellz, &
+    use global_module, only: ni_in_cell, cell_vec_len, lat_vec, &
                              IPRINT_TIME_THRES3
     use timer_module
 
@@ -3960,9 +4111,9 @@ contains
     call start_timer(tmr_l_tmp1,WITH_LEVEL)
     n_prim = 0
     nnd = myid+1
-    dcellx=rcellx/groups%ngcellx
-    dcelly=rcelly/groups%ngcelly
-    dcellz=rcellz/groups%ngcellz
+    dcellx=cell_vec_len(1)/groups%ngcellx
+    dcelly=cell_vec_len(2)/groups%ngcelly
+    dcellz=cell_vec_len(3)/groups%ngcellz
     do ng = 1,groups%ng_on_node(nnd)
        ind_group=groups%ngnode(groups%inode_beg(nnd)+ng-1)
        nx=1+(ind_group-1)/(groups%ngcelly*groups%ngcellz)
@@ -3971,9 +4122,15 @@ contains
        nx1=prim%nx_origin+prim%idisp_primx(ng)
        ny1=prim%ny_origin+prim%idisp_primy(ng)
        nz1=prim%nz_origin+prim%idisp_primz(ng)
-       xadd=real(nx1-nx,double)*dcellx
-       yadd=real(ny1-ny,double)*dcelly
-       zadd=real(nz1-nz,double)*dcellz
+       xadd = real(nx1-nx,double)*lat_vec(1,1)/groups%ngcellx + &
+              real(ny1-ny,double)*lat_vec(1,2)/groups%ngcelly + &
+              real(nz1-nz,double)*lat_vec(1,3)/groups%ngcellz
+       yadd = real(nx1-nx,double)*lat_vec(2,1)/groups%ngcellx + &
+              real(ny1-ny,double)*lat_vec(2,2)/groups%ngcelly + &
+              real(nz1-nz,double)*lat_vec(2,3)/groups%ngcellz
+       zadd = real(nx1-nx,double)*lat_vec(3,1)/groups%ngcellx + &
+              real(ny1-ny,double)*lat_vec(3,2)/groups%ngcelly + &
+              real(nz1-nz,double)*lat_vec(3,3)/groups%ngcellz
        if(prim%nm_nodgroup(ng).gt.0) then
           do ni=1,prim%nm_nodgroup(ng)
              n_prim = n_prim + 1
@@ -3994,15 +4151,15 @@ contains
   ! --------------------------------------------------------------------
   ! Subroutine cover_update
   ! --------------------------------------------------------------------
-  
+
   !!****f* move_atoms/cover_update *
   !!
-  !!  NAME 
+  !!  NAME
   !!   cover_update
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
-  !!   Updates the atomic positions in cover set after atom 
+  !!   Updates the atomic positions in cover set after atom
   !!   movement
   !!
   !!   The details of how atoms are offset in covering sets
@@ -4011,10 +4168,10 @@ contains
   !!   Dave Bowler, referred to in cover_module - see there
   !!   for details.
   !!  INPUTS
-  !! 
-  !! 
+  !!
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -4030,7 +4187,7 @@ contains
 
     use datatypes
     use basic_types
-    use global_module, only: ni_in_cell, rcellx, rcelly, rcellz, &
+    use global_module, only: ni_in_cell, cell_vec_len, lat_vec, &
                              IPRINT_TIME_THRES3
     use functions,  only: heapsort_integer_index
     use GenComms,      only: cq_abort, myid
@@ -4078,9 +4235,9 @@ contains
          call cq_abort("Error allocating nx_in_cover: ", set%ng_cover,stat)
     call stop_timer(tmr_std_allocation)
     ! Conversion factors from unit cell lengths->groups
-    dcellx=rcellx/real(groups%ngcellx,double)
-    dcelly=rcelly/real(groups%ngcelly,double)
-    dcellz=rcellz/real(groups%ngcellz,double)
+    dcellx=cell_vec_len(1)/real(groups%ngcellx,double)
+    dcelly=cell_vec_len(2)/real(groups%ngcelly,double)
+    dcellz=cell_vec_len(3)/real(groups%ngcellz,double)
     ! Used in calculating offsets of groups in CS
     nmodx=((groups%ngcellx+set%nspanlx-1)/groups%ngcellx)*groups%ngcellx
     nmody=((groups%ngcelly+set%nspanly-1)/groups%ngcelly)*groups%ngcelly
@@ -4132,7 +4289,7 @@ contains
        end if
     end do
     ! go over groups in GCS periodic-irreducible set, calculating
-    ! simulation-cell (node-order, home-start) label of each 
+    ! simulation-cell (node-order, home-start) label of each
     ng_in_cell = groups%ngcellx*groups%ngcelly*groups%ngcellz
     ng_in_min = minx*miny*minz
     ind=0
@@ -4153,9 +4310,9 @@ contains
           enddo
        enddo
     enddo
-    ! sort minimum CS by nodes 
+    ! sort minimum CS by nodes
     call heapsort_integer_index(ng_in_min,ind_min,min_sort)
-    ! go over all GCS groups in node-periodic-grouped order 
+    ! go over all GCS groups in node-periodic-grouped order
     ind_cover=0
     do ind=1,ng_in_min
        ngcx=ngcx_min(min_sort(ind))
@@ -4190,9 +4347,15 @@ contains
        nqx=1+mod(nx_o+nsx+nmodx-1,groups%ngcellx)
        nqy=1+mod(ny_o+nsy+nmody-1,groups%ngcelly)
        nqz=1+mod(nz_o+nsz+nmodz-1,groups%ngcellz)
-       xadd=(nx_o+nsx-nqx)*dcellx
-       yadd=(ny_o+nsy-nqy)*dcelly
-       zadd=(nz_o+nsz-nqz)*dcellz
+       xadd = real(nx_o+nsx-nqx,double)*lat_vec(1,1)/groups%ngcellx + &
+              real(ny_o+nsy-nqy,double)*lat_vec(1,2)/groups%ngcelly + &
+              real(nz_o+nsz-nqz,double)*lat_vec(1,3)/groups%ngcellz
+       yadd = real(nx_o+nsx-nqx,double)*lat_vec(2,1)/groups%ngcellx + &
+              real(ny_o+nsy-nqy,double)*lat_vec(2,2)/groups%ngcelly + &
+              real(nz_o+nsz-nqz,double)*lat_vec(2,3)/groups%ngcellz
+       zadd = real(nx_o+nsx-nqx,double)*lat_vec(3,1)/groups%ngcellx + &
+              real(ny_o+nsy-nqy,double)*lat_vec(3,2)/groups%ngcelly + &
+              real(nz_o+nsz-nqz,double)*lat_vec(3,3)/groups%ngcellz
        !ind_qart=(nqx-1)*groups%ngcelly*groups%ngcellz+&
        !     (nqy-1)*groups%ngcellz+nqz
        ind_qart= set%lab_cell(ind_cover)
@@ -4217,20 +4380,20 @@ contains
   ! --------------------------------------------------------------------
   ! Subroutine update_atom_coord
   ! --------------------------------------------------------------------
-  
+
   !!****f* move_atoms/update_atom_coord *
-  !!  
-  !!  NAME 
+  !!
+  !!  NAME
   !!   update_atom_coord
   !!  USAGE
   !!
   !!  PURPOSE
-  !!   Updates the atomic positions (atom_coord) in global_module after atom 
-  !!   movement 
-  !!  
+  !!   Updates the atomic positions (atom_coord) in global_module after atom
+  !!   movement
+  !!
   !!  INPUTS
-  !!  
-  !!  
+  !!
+  !!
   !!  USES
   !!   global_module
   !!  AUTHOR
@@ -4245,27 +4408,27 @@ contains
   !!  SOURCE
   !!
   subroutine update_atom_coord
-    
+
     use datatypes
     use global_module, only: x_atom_cell, y_atom_cell, z_atom_cell,   &
                              id_glob, atom_coord, ni_in_cell, io_lun, &
                              iprint_MD, IPRINT_TIME_THRES2
-    use dimens,        only: r_super_x, r_super_y, r_super_z
+    use global_module,        only: cell_vec_len
     use group_module,  only: parts
     use timer_module
     use GenComms, only: inode, ionode
-    
+
     implicit none
 
     integer        :: ni, id_global
     real(double)   :: dx, dy, dz
     type(cq_timer) :: tmr_l_tmp1
-    
+
     call start_timer(tmr_std_indexing)    ! NOTE: This will be annotated in area 8
     call start_timer(tmr_l_tmp1, WITH_LEVEL)
-    dx = r_super_x / parts%ngcellx
-    dy = r_super_y / parts%ngcelly
-    dz = r_super_z / parts%ngcellz
+    dx = cell_vec_len(1) / parts%ngcellx
+    dy = cell_vec_len(2) / parts%ngcelly
+    dz = cell_vec_len(3) / parts%ngcellz
 
     do ni = 1, ni_in_cell
        id_global = id_glob(ni)
@@ -4301,8 +4464,8 @@ contains
   !!***
 
   !!****f* move_atoms/update_r_atom_cell *
-  !!  
-  !!  NAME 
+  !!
+  !!  NAME
   !!   update_r_atom_cell
   !!  USAGE
   !!
@@ -4323,27 +4486,27 @@ contains
   !!  SOURCE
   !!
   subroutine update_r_atom_cell
-    
+
     use datatypes
     use global_module, only: x_atom_cell, y_atom_cell, z_atom_cell,   &
                              id_glob, atom_coord, ni_in_cell, io_lun, &
                              iprint_MD, IPRINT_TIME_THRES2, id_glob_inv
-    use dimens,        only: r_super_x, r_super_y, r_super_z
+    use global_module,        only: cell_vec_len
     use group_module,  only: parts
     use timer_module
     use GenComms, only: inode, ionode
-    
+
     implicit none
 
     integer        :: ni, id_global
     real(double)   :: dx, dy, dz
     type(cq_timer) :: tmr_l_tmp1
-    
+
     call start_timer(tmr_std_indexing)    ! NOTE: This will be annotated in area 8
     call start_timer(tmr_l_tmp1, WITH_LEVEL)
-    dx = r_super_x / parts%ngcellx
-    dy = r_super_y / parts%ngcelly
-    dz = r_super_z / parts%ngcellz
+    dx = cell_vec_len(1) / parts%ngcellx
+    dy = cell_vec_len(2) / parts%ngcelly
+    dz = cell_vec_len(3) / parts%ngcellz
 
     do id_global = 1, ni_in_cell
        ni = id_glob_inv(id_global)
@@ -4380,10 +4543,10 @@ contains
 
   !!****f*  move_atoms/init_velocity *
   !!
-  !!  NAME 
+  !!  NAME
   !!   init_velocity
   !!  USAGE
-  !!   
+  !!
   !!  PURPOSE
   !!   Initialise ionic velocities for MD via normal distribution
   !!  INPUTS
@@ -4395,7 +4558,7 @@ contains
   !!  AUTHOR
   !!   T. Miyazaki
   !!  CREATION DATE
-  !!   2010/6/30 
+  !!   2010/6/30
   !!  MODIFICATION HISTORY
   !!   2019/05/21 zamaan
   !!    Replaced old rng calls with new one from rng module
@@ -4460,14 +4623,14 @@ contains
 
           ! -- (Important Notes) ----
           ! it is tricky, but velocity is in the unit, bohr/fs, transforming from
-          ! (fs * Har/bohr)/ amu, with the factor (fac) defined in the beginning of 
-          ! this module.  This factor comes from that v is calculated as (dt*F/mass), 
-          ! and we want to express dt in femtosecond, force in Hartree/bohr, 
-          ! and m in atomic mass units. 
+          ! (fs * Har/bohr)/ amu, with the factor (fac) defined in the beginning of
+          ! this module.  This factor comes from that v is calculated as (dt*F/mass),
+          ! and we want to express dt in femtosecond, force in Hartree/bohr,
+          ! and m in atomic mass units.
           ! (it should be equivalent to express dt and m in atomic units, I think.)
           ! Kinetic Energy is calculated as m/2*v^2 *fac in Hartree unit, and
           ! Positions are calculated as v*dt in bohr unit. (m in amu, dt in fs)
-          v0 = sqrt(temp*fac_Kelvin2Hartree/(massa*fac)) 
+          v0 = sqrt(temp*fac_Kelvin2Hartree/(massa*fac))
           do dir=1,3
              if(flag_move_atom(dir,iglob)) then
                 u0 = myrng%rng_normal()
@@ -4505,10 +4668,10 @@ contains
   ! --------------------------------------------------------------------
   ! Subroutine wrap_xyz_atom_cell
   ! --------------------------------------------------------------------
-  
+
   !!****f* move_atoms/wrap_xyz_atom_cell *
-  !!  
-  !!  NAME 
+  !!
+  !!  NAME
   !!   wrap_xyz_atom_cell
   !!  USAGE
   !!
@@ -4519,7 +4682,7 @@ contains
   !!   to use the same shift_in_bohr as used in atom2part or allatom2part.
   !!   This is important for the atoms on the bondary of partitions.
   !!  INPUTS
-  !!  
+  !!
   !!  USES
   !!   global_module
   !!  AUTHOR
@@ -4531,23 +4694,37 @@ contains
   !!  SOURCE
   !!
   subroutine wrap_xyz_atom_cell
-    
+
     use datatypes
     use global_module, only: x_atom_cell, y_atom_cell, z_atom_cell,   &
-                             shift_in_bohr, ni_in_cell, io_lun, iprint_MD
-    use dimens,        only: r_super_x, r_super_y, r_super_z
+                             shift_in_bohr, ni_in_cell, io_lun, iprint_MD, &
+                             lat_vec, lat_vec_inv
+    use global_module,        only: cell_vec_len
 
     implicit none
     integer        :: atom
     real(double)   :: eps
+    real(double)   :: f(3), x, y, z
 
     eps=shift_in_bohr
     do atom = 1, ni_in_cell
-      x_atom_cell(atom) = x_atom_cell(atom) - floor((x_atom_cell(atom)+eps)/r_super_x)*r_super_x
-      y_atom_cell(atom) = y_atom_cell(atom) - floor((y_atom_cell(atom)+eps)/r_super_y)*r_super_y
-      z_atom_cell(atom) = z_atom_cell(atom) - floor((z_atom_cell(atom)+eps)/r_super_z)*r_super_z
+      x = x_atom_cell(atom) + eps
+      y = y_atom_cell(atom) + eps
+      z = z_atom_cell(atom) + eps
+
+      f(1) = lat_vec_inv(1,1)*x + lat_vec_inv(1,2)*y + lat_vec_inv(1,3)*z
+      f(2) = lat_vec_inv(2,1)*x + lat_vec_inv(2,2)*y + lat_vec_inv(2,3)*z
+      f(3) = lat_vec_inv(3,1)*x + lat_vec_inv(3,2)*y + lat_vec_inv(3,3)*z
+
+      f(1) = f(1) - floor(f(1))
+      f(2) = f(2) - floor(f(2))
+      f(3) = f(3) - floor(f(3))
+
+      x_atom_cell(atom) = lat_vec(1,1)*f(1) + lat_vec(1,2)*f(2) + lat_vec(1,3)*f(3) - eps
+      y_atom_cell(atom) = lat_vec(2,1)*f(1) + lat_vec(2,2)*f(2) + lat_vec(2,3)*f(3) - eps
+      z_atom_cell(atom) = lat_vec(3,1)*f(1) + lat_vec(3,2)*f(2) + lat_vec(3,3)*f(3) - eps
     enddo
-      
+
     return
   end subroutine wrap_xyz_atom_cell
   !!***
@@ -4555,9 +4732,9 @@ contains
   ! --------------------------------------------------------------------
   ! Subroutine calculate_kinetic_energy
   ! --------------------------------------------------------------------
-  
+
   !!****f* move_atoms/calculate_kinetic_energy *
-  !!  NAME 
+  !!  NAME
   !!   calculate_kinetic_energy
   !!  USAGE
   !!   call calculate_kinetic_energy(v,KE)
@@ -4603,7 +4780,7 @@ contains
   !!***
 
   !!****f* move_atoms/zero_COM_velocity *
-  !!  NAME 
+  !!  NAME
   !!   zero_COM_velocity
   !!  USAGE
   !!   call zero_COM_velocity(v)
@@ -4660,7 +4837,7 @@ contains
   !!***
 
   !!****f* move_atoms/check_move_atoms *
-  !!  NAME 
+  !!  NAME
   !!   check_move_atoms
   !!  USAGE
   !!   call check_move_atoms(flag_movable)
@@ -4732,18 +4909,19 @@ contains
     use numbers
     use units
     use global_module,      only: iprint_MD, x_atom_cell, y_atom_cell, z_atom_cell, &
-         atom_coord, ni_in_cell, rcellx, rcelly, &
-         rcellz, flag_self_consistent,           &
+         atom_coord, ni_in_cell, cell_vec_len, &
+         flag_self_consistent,           &
          flag_reset_dens_on_atom_move,           &
          IPRINT_TIME_THRES1, flag_pcc_global, &
-         flag_diagonalisation, cell_constraint_flag, min_layer
+         flag_diagonalisation, cell_constraint_flag, min_layer, &
+         lat_vec, lat_vec_inv, recip_lat_vec, invert_3x3, cell_vol
     use GenComms,           only: my_barrier, myid, inode, ionode,        &
          cq_abort
     use io_module,          only: write_atomic_positions, pdb_template
     use density_module,     only: density, set_density_pcc
     use maxima_module,      only: maxngrid
     use timer_module
-    use dimens, ONLY: r_super_x, r_super_y, r_super_z, &
+    use dimens, ONLY: &
          r_super_x_squared, r_super_y_squared, r_super_z_squared, volume, &
          grid_point_volume, one_over_grid_point_volume, n_grid_x, n_grid_y, n_grid_z
     use fft_module, ONLY: recip_vector, hartree_factor, i0
@@ -4758,107 +4936,208 @@ contains
 
     ! local variables
     real(double) :: orcellx, orcelly, orcellz, xvec, yvec, zvec, r2, scale
+    real(double) :: f(3), old_lat_vec(3,3), old_lat_vec_inv(3,3), &
+         old_volume, det_new, recip_frac(3)
     integer :: i, j
 
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
+    orcellx = cell_vec_len(1)
+    orcelly = cell_vec_len(2)
+    orcellz = cell_vec_len(3)
+    old_lat_vec = lat_vec
+    old_lat_vec_inv = lat_vec_inv
+    old_volume = abs(cell_vol)
     ! Update based on constraints.
     ! none => Unconstrained case
     if (leqi(cell_constraint_flag, 'none')) then
-        rcellx = start_rcellx + k * search_dir_x
-        rcelly = start_rcelly + k * search_dir_y
-        rcellz = start_rcellz + k * search_dir_z
+        cell_vec_len(1) = start_rcellx + k * search_dir_x
+        cell_vec_len(2) = start_rcelly + k * search_dir_y
+        cell_vec_len(3) = start_rcellz + k * search_dir_z
 
     else if (leqi(cell_constraint_flag, 'volume')) then
-        rcellx = start_rcellx + k * search_dir_mean
-        rcelly = start_rcelly + k * search_dir_mean
-        rcellz = start_rcellz + k * search_dir_mean
+        cell_vec_len(1) = start_rcellx + k * search_dir_mean
+        cell_vec_len(2) = start_rcelly + k * search_dir_mean
+        cell_vec_len(3) = start_rcellz + k * search_dir_mean
 
     ! Fix a single dimension?
     else if (leqi(cell_constraint_flag, 'a')) then
-        rcelly = start_rcelly + k * search_dir_y
-        rcellz = start_rcellz + k * search_dir_z
+        cell_vec_len(2) = start_rcelly + k * search_dir_y
+        cell_vec_len(3) = start_rcellz + k * search_dir_z
     else if (leqi(cell_constraint_flag, 'b')) then
-        rcellx = start_rcellx + k * search_dir_x
-        rcellz = start_rcellz + k * search_dir_z
+        cell_vec_len(1) = start_rcellx + k * search_dir_x
+        cell_vec_len(3) = start_rcellz + k * search_dir_z
     else if (leqi(cell_constraint_flag, 'c')) then
-        rcelly = start_rcelly + k * search_dir_y
-        rcellx = start_rcellx + k * search_dir_x
+        cell_vec_len(2) = start_rcelly + k * search_dir_y
+        cell_vec_len(1) = start_rcellx + k * search_dir_x
 
     ! Fix two dimensions?
     else if (leqi(cell_constraint_flag, 'c a') .or. leqi(cell_constraint_flag, 'a c')) then
-        rcelly = start_rcelly + k * search_dir_y
+        cell_vec_len(2) = start_rcelly + k * search_dir_y
     else if (leqi(cell_constraint_flag, 'a b') .or. leqi(cell_constraint_flag, 'b a')) then
-        rcellz = start_rcellz + k * search_dir_z
+        cell_vec_len(3) = start_rcellz + k * search_dir_z
     else if (leqi(cell_constraint_flag, 'b c') .or. leqi(cell_constraint_flag, 'c b')) then
-        rcellx = start_rcellx + k * search_dir_x
+        cell_vec_len(1) = start_rcellx + k * search_dir_x
 
     ! Fix a single ratio?
     else if (leqi(cell_constraint_flag, 'a/c') .OR. leqi(cell_constraint_flag, 'c/a')) then
-       rcellx = start_rcellx + k * search_dir_x
-       rcelly = start_rcelly + k * search_dir_y
-       rcellz = start_rcellz + k * (start_rcellz/start_rcellx)*search_dir_x
+       cell_vec_len(1) = start_rcellx + k * search_dir_x
+       cell_vec_len(2) = start_rcelly + k * search_dir_y
+       cell_vec_len(3) = start_rcellz + k * (start_rcellz/start_rcellx)*search_dir_x
     else if (leqi(cell_constraint_flag, 'a/b') .OR. leqi(cell_constraint_flag, 'b/a')) then
-       rcellx = start_rcellx + k * search_dir_x
-       rcelly = start_rcelly + k * (start_rcelly/start_rcellx)*search_dir_x
-       rcellz = start_rcellz + k * search_dir_z
+       cell_vec_len(1) = start_rcellx + k * search_dir_x
+       cell_vec_len(2) = start_rcelly + k * (start_rcelly/start_rcellx)*search_dir_x
+       cell_vec_len(3) = start_rcellz + k * search_dir_z
     else if (leqi(cell_constraint_flag, 'b/c') .OR. leqi(cell_constraint_flag, 'c/b')) then
-       rcellx = start_rcellx + k * search_dir_x
-       rcelly = start_rcelly + k * search_dir_y
-       rcellz = start_rcellz + k * (start_rcellz/start_rcelly)*search_dir_y
+       cell_vec_len(1) = start_rcellx + k * search_dir_x
+       cell_vec_len(2) = start_rcelly + k * search_dir_y
+       cell_vec_len(3) = start_rcellz + k * (start_rcellz/start_rcelly)*search_dir_y
     end if
 
-    r_super_x = rcellx
-    r_super_y = rcelly
-    r_super_z = rcellz
+    ! Update the Cartesian lattice vectors to match the scaled lengths
+    lat_vec(:,1) = lat_vec(:,1) * (cell_vec_len(1) / orcellx)
+    lat_vec(:,2) = lat_vec(:,2) * (cell_vec_len(2) / orcelly)
+    lat_vec(:,3) = lat_vec(:,3) * (cell_vec_len(3) / orcellz)
+
     ! DRB added 2017/05/24 17:05
     ! We've changed the simulation cell. Now we must update grids and the density
-    r_super_x_squared = r_super_x * r_super_x
-    r_super_y_squared = r_super_y * r_super_y
-    r_super_z_squared = r_super_z * r_super_z
-    volume = r_super_x * r_super_y * r_super_z
+    r_super_x_squared = cell_vec_len(1) * cell_vec_len(1)
+    r_super_y_squared = cell_vec_len(2) * cell_vec_len(2)
+    r_super_z_squared = cell_vec_len(3) * cell_vec_len(3)
+    call invert_3x3(lat_vec, lat_vec_inv, det_new)
+    volume = abs(det_new)
+    cell_vol = volume
     grid_point_volume = volume/(n_grid_x*n_grid_y*n_grid_z)
     one_over_grid_point_volume = one / grid_point_volume
-    scale = (orcellx*orcelly*orcellz)/volume
+    scale = old_volume/volume
     density = density * scale
     if(flag_diagonalisation) then
        do i = 1, nkp
-          kk(1,i) = kk(1,i) * orcellx / rcellx
-          kk(2,i) = kk(2,i) * orcelly / rcelly
-          kk(3,i) = kk(3,i) * orcellz / rcellz
+          recip_frac = matmul(transpose(old_lat_vec), kk(:,i))/(two*pi)
+          kk(:,i) = two*pi*matmul(transpose(lat_vec_inv), recip_frac)
        end do
     end if
     do j = 1, maxngrid
-       recip_vector(j,1) = recip_vector(j,1) * orcellx / rcellx
-       recip_vector(j,2) = recip_vector(j,2) * orcelly / rcelly
-       recip_vector(j,3) = recip_vector(j,3) * orcellz / rcellz
+       recip_frac = matmul(transpose(old_lat_vec), recip_vector(j,:))/(two*pi)
+       recip_vector(j,:) = two*pi*matmul(transpose(lat_vec_inv), recip_frac)
        xvec = recip_vector(j,1)/(two*pi)
        yvec = recip_vector(j,2)/(two*pi)
        zvec = recip_vector(j,3)/(two*pi)
        r2 = xvec*xvec + yvec*yvec + zvec*zvec
        if(j/=i0) hartree_factor(j) = one/r2 ! i0 notates gamma point
     end do
+    ! Calculate new atomic positions by preserving fractional coordinates
     do j = 1, ni_in_cell
-       x_atom_cell(j) = (rcellx/orcellx)*x_atom_cell(j)
-       y_atom_cell(j) = (rcelly/orcelly)*y_atom_cell(j)
-       z_atom_cell(j) = (rcellz/orcellz)*z_atom_cell(j)
-       !if (inode == ionode .and. iprint_MD > 3) &
-       !     write (io_lun,*) 'Position: ', j, x_atom_cell(j), &
-       !     y_atom_cell(j), z_atom_cell(j)
+       ! Calculate fractional coordinates in the *old* cell.  lat_vec_inv
+       ! has already been updated above, so using it here would leave the
+       ! Cartesian coordinates unchanged instead of applying the affine
+       ! cell deformation.
+       f(1) = old_lat_vec_inv(1,1)*x_atom_cell(j) + old_lat_vec_inv(1,2)*y_atom_cell(j) + old_lat_vec_inv(1,3)*z_atom_cell(j)
+       f(2) = old_lat_vec_inv(2,1)*x_atom_cell(j) + old_lat_vec_inv(2,2)*y_atom_cell(j) + old_lat_vec_inv(2,3)*z_atom_cell(j)
+       f(3) = old_lat_vec_inv(3,1)*x_atom_cell(j) + old_lat_vec_inv(3,2)*y_atom_cell(j) + old_lat_vec_inv(3,3)*z_atom_cell(j)
+
+       ! 2. Calculate new Cartesian coordinates with new lat_vec
+       x_atom_cell(j) = lat_vec(1,1)*f(1) + lat_vec(1,2)*f(2) + lat_vec(1,3)*f(3)
+       y_atom_cell(j) = lat_vec(2,1)*f(1) + lat_vec(2,2)*f(2) + lat_vec(2,3)*f(3)
+       z_atom_cell(j) = lat_vec(3,1)*f(1) + lat_vec(3,2)*f(2) + lat_vec(3,3)*f(3)
     end do
+    recip_lat_vec = transpose(lat_vec_inv)
     if(inode==ionode.and.iprint_MD>2) then
-       write(io_lun,fmt='(6x,"Scaling cell dimenstions by: ",3f9.6)') rcellx/start_rcellx, rcelly/start_rcelly, rcellz/start_rcellz
-       write(io_lun,fmt='(6x,"Updated cell dimensions: ",f10.6," a0 x",f10.6," a0 x",f10.6," a0")') rcellx, rcelly, rcellz
+       write(io_lun,fmt='(6x,"Scaling cell dimenstions by: ",3f9.6)') cell_vec_len(1)/start_rcellx, cell_vec_len(2)/start_rcelly, cell_vec_len(3)/start_rcellz
+       write(io_lun,fmt='(6x,"Updated cell dimensions: ",f10.6," a0 x",f10.6," a0 x",f10.6," a0")') cell_vec_len(1), cell_vec_len(2), cell_vec_len(3)
     end if
   end subroutine update_cell_dims
+  !!***
+
+  !!****f* move_atoms/update_lattice_vectors *
+  !!
+  !! PURPOSE
+  !!  Apply an absolute line-search step in a symmetric homogeneous strain
+  !!  direction:
+  !!
+  !!      A(k) = (I + k D) A(0)
+  !!
+  !!  where D is symmetric.  This supplies the six physical cell degrees
+  !!  of freedom for a lattice in any Cartesian orientation, without
+  !!  introducing a rigid-rotation degree of freedom.  Atomic fractional
+  !!  coordinates and reciprocal-space fractional coordinates are
+  !!  preserved.
+  !!
+  subroutine update_lattice_vectors(start_lattice, direction, k)
+    use datatypes
+    use numbers
+    use global_module, only: x_atom_cell, y_atom_cell, z_atom_cell, &
+         ni_in_cell, cell_vec_len, flag_diagonalisation, lat_vec, &
+         lat_vec_inv, recip_lat_vec, invert_3x3, cell_vol
+    use GenComms, only: cq_abort
+    use density_module, only: density
+    use maxima_module, only: maxngrid
+    use dimens, only: r_super_x_squared, r_super_y_squared, &
+         r_super_z_squared, volume, grid_point_volume, &
+         one_over_grid_point_volume, n_grid_x, n_grid_y, n_grid_z
+    use fft_module, only: recip_vector, hartree_factor, i0
+    use DiagModule, only: kk, nkp
+
+    implicit none
+
+    real(double), intent(in) :: start_lattice(3,3), direction(3,3), k
+    real(double) :: old_lattice(3,3), old_lattice_inv(3,3)
+    real(double) :: old_volume, det_new, scale, fractional(3)
+    real(double) :: xvec, yvec, zvec, r2
+    integer :: i, j
+
+    old_lattice = lat_vec
+    old_lattice_inv = lat_vec_inv
+    old_volume = abs(cell_vol)
+    lat_vec = start_lattice + k*matmul(direction,start_lattice)
+
+    call invert_3x3(lat_vec, lat_vec_inv, det_new)
+    if (det_new <= very_small) &
+         call cq_abort("update_lattice_vectors: non-positive cell volume")
+
+    cell_vol = det_new
+    volume = det_new
+    do i = 1, 3
+       cell_vec_len(i) = sqrt(sum(lat_vec(:,i)*lat_vec(:,i)))
+    end do
+    r_super_x_squared = cell_vec_len(1)*cell_vec_len(1)
+    r_super_y_squared = cell_vec_len(2)*cell_vec_len(2)
+    r_super_z_squared = cell_vec_len(3)*cell_vec_len(3)
+    grid_point_volume = volume/(n_grid_x*n_grid_y*n_grid_z)
+    one_over_grid_point_volume = one/grid_point_volume
+    scale = old_volume/volume
+    density = density*scale
+
+    if (flag_diagonalisation) then
+       do i = 1, nkp
+          fractional = matmul(transpose(old_lattice),kk(:,i))/(two*pi)
+          kk(:,i) = two*pi*matmul(transpose(lat_vec_inv),fractional)
+       end do
+    end if
+    do j = 1, maxngrid
+       fractional = matmul(transpose(old_lattice),recip_vector(j,:))/(two*pi)
+       recip_vector(j,:) = two*pi*matmul(transpose(lat_vec_inv),fractional)
+       xvec = recip_vector(j,1)/(two*pi)
+       yvec = recip_vector(j,2)/(two*pi)
+       zvec = recip_vector(j,3)/(two*pi)
+       r2 = xvec*xvec + yvec*yvec + zvec*zvec
+       if (j /= i0) hartree_factor(j) = one/r2
+    end do
+
+    do j = 1, ni_in_cell
+       fractional = matmul(old_lattice_inv, &
+            (/x_atom_cell(j),y_atom_cell(j),z_atom_cell(j)/))
+       x_atom_cell(j) = dot_product(lat_vec(1,:),fractional)
+       y_atom_cell(j) = dot_product(lat_vec(2,:),fractional)
+       z_atom_cell(j) = dot_product(lat_vec(3,:),fractional)
+    end do
+    recip_lat_vec = transpose(lat_vec_inv)
+  end subroutine update_lattice_vectors
   !!***
 
   !!****f* move_atoms/rescale_grids_and_density *
   !!  NAME
   !!   rescale_grids_and_density
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   scale the grid and density when the cell is updated
   !!   (adapted from move_atoms/update_cell_dims)
@@ -4867,7 +5146,7 @@ contains
   !!  CREATION DATE
   !!   2018/02/07
   !!  MODIFICATION HISTORY
-  !! 
+  !!
   !!  SOURCE
   !!
   subroutine rescale_grids_and_density(orcellx, orcelly, orcellz)
@@ -4875,11 +5154,11 @@ contains
     use datatypes
     use numbers
     use global_module,  only: x_atom_cell, y_atom_cell, z_atom_cell, &
-                              rcellx, rcelly, rcellz, flag_diagonalisation, &
+                              cell_vec_len, flag_diagonalisation, &
                               iprint_MD
     use GenComms,       only: inode, ionode
     use maxima_module,  only: maxngrid
-    use dimens,         only: r_super_x, r_super_y, r_super_z, &
+    use dimens,         only: &
                               r_super_x_squared, r_super_y_squared, &
                               r_super_z_squared, volume, grid_point_volume, &
                               one_over_grid_point_volume, n_grid_x, n_grid_y, &
@@ -4888,7 +5167,7 @@ contains
     use fft_module,     only: recip_vector, hartree_factor, i0
     use density_module, only: density
     use input_module,   only: leqi
-    
+
     implicit none
 
     ! passed variables
@@ -4900,30 +5179,30 @@ contains
     if (inode==ionode .and. iprint_MD > 3) &
       write(io_lun,'(6x,a)') "move_atoms/rescale_grid_and_density"
 
-    r_super_x = rcellx
-    r_super_y = rcelly
-    r_super_z = rcellz
+    cell_vec_len(1) = cell_vec_len(1)
+    cell_vec_len(2) = cell_vec_len(2)
+    cell_vec_len(3) = cell_vec_len(3)
     ! DRB added 2017/05/24 17:05
     ! We've changed the simulation cell. Now we must update grids and the density
-    r_super_x_squared = r_super_x * r_super_x
-    r_super_y_squared = r_super_y * r_super_y
-    r_super_z_squared = r_super_z * r_super_z
-    volume = r_super_x * r_super_y * r_super_z
+    r_super_x_squared = cell_vec_len(1) * cell_vec_len(1)
+    r_super_y_squared = cell_vec_len(2) * cell_vec_len(2)
+    r_super_z_squared = cell_vec_len(3) * cell_vec_len(3)
+    volume = cell_vec_len(1) * cell_vec_len(2) * cell_vec_len(3)
     grid_point_volume = volume/(n_grid_x*n_grid_y*n_grid_z)
     one_over_grid_point_volume = one / grid_point_volume
     scale = (orcellx*orcelly*orcellz)/volume
     density = density * scale
     if(flag_diagonalisation) then
        do i = 1, nkp
-          kk(1,i) = kk(1,i) * orcellx / rcellx
-          kk(2,i) = kk(2,i) * orcelly / rcelly
-          kk(3,i) = kk(3,i) * orcellz / rcellz
+          kk(1,i) = kk(1,i) * orcellx / cell_vec_len(1)
+          kk(2,i) = kk(2,i) * orcelly / cell_vec_len(2)
+          kk(3,i) = kk(3,i) * orcellz / cell_vec_len(3)
        end do
     end if
     do j = 1, maxngrid
-       recip_vector(j,1) = recip_vector(j,1) * orcellx / rcellx
-       recip_vector(j,2) = recip_vector(j,2) * orcelly / rcelly
-       recip_vector(j,3) = recip_vector(j,3) * orcellz / rcellz
+       recip_vector(j,1) = recip_vector(j,1) * orcellx / cell_vec_len(1)
+       recip_vector(j,2) = recip_vector(j,2) * orcelly / cell_vec_len(2)
+       recip_vector(j,3) = recip_vector(j,3) * orcellz / cell_vec_len(3)
        xvec = recip_vector(j,1)/(two*pi)
        yvec = recip_vector(j,2)/(two*pi)
        zvec = recip_vector(j,3)/(two*pi)
@@ -4946,7 +5225,7 @@ contains
   !!
   !!  PURPOSE
   !!    Update information of atomic positions, neighbour lists, ...
-  !!     AND...     matrices  
+  !!     AND...     matrices
   !!
   !!  INPUTS
   !!    update_method :: showing which matrices will be updated.
@@ -4975,7 +5254,7 @@ contains
     use datatypes
     use numbers,         only: half, zero, one, very_small
     use global_module,   only: flag_diagonalisation, atom_coord, atom_vels, atom_coord_diff, &
-         rcellx, rcelly, rcellz, ni_in_cell, nspin, nspin_SF, id_glob, &
+         cell_vec_len, ni_in_cell, nspin, nspin_SF, id_glob, &
          area_moveatoms, flag_basis_set, blips
     ! n_proc_old and glob2node_old have been removed
     use GenComms,        only: my_barrier, inode, ionode, cq_abort, gcopy
@@ -4993,7 +5272,7 @@ contains
     real(double), optional :: velocity(3, ni_in_cell)
     logical :: flag_L, flag_K, flag_S, flag_SFcoeff, flag_X
     integer :: nfile, symm, ig, spin_SF
-    logical :: fixed_potential 
+    logical :: fixed_potential
     ! should be removed in the future (calling update_H is outside of this routine)
     real(double) :: scale_x, scale_y, scale_z, rms_change
     real(double) :: small_change = 0.3_double
@@ -5088,12 +5367,12 @@ contains
     call grab_InfoMatGlobal(InfoGlob,index=0)
     call set_atom_coord_diff(InfoGlob)
 
-    ! Since the order of the atoms in x,y,z_atom_cell and velocity (or direction in CG) changes 
+    ! Since the order of the atoms in x,y,z_atom_cell and velocity (or direction in CG) changes
     ! depending on their partitions, they are rearranged in updateIndices3.
     ! (these arrays should be replaced by atom_coord and atom_veloc in the future.)
     !    updateIndices3 : deallocates member of parts, bundles, covering sets, domain, ...
     !                     and allocates them following the new atomic positions.
-    !   Now, old informaiton is stored in InfoGlob, thus some of the information is redundant 
+    !   Now, old informaiton is stored in InfoGlob, thus some of the information is redundant
     !    I (TM) should make new routine like "updateIndices4" using InfoGlob, soon.  ! 2017.Nov.13  Tsuyoshi Miyazaki
     !   (NOTE) If CONQUEST stops before calling "finalise", coord_next.dat should be used in the next job.
     !       coord_next.dat is made in "updateIndices3", at present.
@@ -5111,8 +5390,8 @@ contains
        call updateIndices3(fixed_potential, dummy)
        deallocate(dummy)
     end if
-    ! 2020/Oct/12 TM   
-    !  if we want to reduce the memory size ...  
+    ! 2020/Oct/12 TM
+    !  if we want to reduce the memory size ...
     !      deallocate(atom_vels, STAT=stat)
     !       if (stat /= 0) &
     !            call cq_abort("Error deallocating atom_vels in init_md: stat=", stat)
@@ -5173,7 +5452,7 @@ contains
   !!  USAGE
   !!
   !!  PURPOSE
-  !!   Generate new configuration by shifting the position vector config in 
+  !!   Generate new configuration by shifting the position vector config in
   !!   direction force by distance k
   !!
   !!  USES
@@ -5243,7 +5522,7 @@ contains
   !!   coordinates, as defined in !!   Pfrommer et al. J. Comput. Phys. 131,
   !!    233 (1997)
   !!
-  !!   Stress components: 
+  !!   Stress components:
   !!      f_sigma,i = -(sigma_i + pV)(1 + epsilon_i)^-1
   !!   f_sigma,i = ith component of force on cell as defined above
   !!   sigma_i = ith component of stress
@@ -5252,7 +5531,7 @@ contains
   !!      F_i = h^T h f_i
   !!   h = matrix of lattice vectors (h^T h = g, metric tensor)
   !!   f_i = force on atom i, as computed from gradient of energy
-  !! 
+  !!
   !!   force contains scaled stresses force(:,1) and ionic forces in lattice
   !!   coordinates force(:,2:)
   !!
@@ -5273,7 +5552,7 @@ contains
 
     use numbers
     use GenComms,      only: inode, ionode
-    use global_module, only: rcellx, rcelly, rcellz, ni_in_cell, &
+    use global_module, only: cell_vec_len, ni_in_cell, &
                              iprint_MD, id_glob_inv, atom_coord
 
     implicit none
@@ -5291,17 +5570,17 @@ contains
       write(io_lun,'(6x,a)') "move_atoms/vector_to_cq"
 
 
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
+    orcellx = cell_vec_len(1)
+    orcelly = cell_vec_len(2)
+    orcellz = cell_vec_len(3)
 
-    rcellx = (one + config(1,ni_in_cell+1))*cell_ref(1)
-    rcelly = (one + config(2,ni_in_cell+1))*cell_ref(2)
-    rcellz = (one + config(3,ni_in_cell+1))*cell_ref(3)
+    cell_vec_len(1) = (one + config(1,ni_in_cell+1))*cell_ref(1)
+    cell_vec_len(2) = (one + config(2,ni_in_cell+1))*cell_ref(2)
+    cell_vec_len(3) = (one + config(3,ni_in_cell+1))*cell_ref(3)
     do i=1,ni_in_cell
-      atom_coord(1,i) = config(1,i)*rcellx
-      atom_coord(2,i) = config(2,i)*rcelly
-      atom_coord(3,i) = config(3,i)*rcellz
+      atom_coord(1,i) = config(1,i)*cell_vec_len(1)
+      atom_coord(2,i) = config(2,i)*cell_vec_len(2)
+      atom_coord(3,i) = config(3,i)*cell_vec_len(3)
     end do
 
     ! Now we've changed atom_coord, we want these changes to be reflected
@@ -5320,8 +5599,8 @@ contains
   !!
   !!  PURPOSE
   !!   Convert Conquest variables x_atom_cell, y_atom_cell, z_atom_cell,
-  !!   rcellx, rcelly, rcellz and tot_force to the vectors required for full
-  !!   cell optimisation, as defined in Pfrommer et al. 
+  !!   cell_vec_len(1), cell_vec_len(2), cell_vec_len(3) and tot_force to the vectors required for full
+  !!   cell optimisation, as defined in Pfrommer et al.
   !!   J. Comput. Phys. 131, 233 (1997) (see cq_to_vector)
   !!  INPUTS
   !!
@@ -5336,16 +5615,16 @@ contains
   !!  SOURCE
   !!
   subroutine cq_to_vector(force, config, cell_ref, target_press)
- 
+
     use numbers
-    use global_module, only: rcellx, rcelly, rcellz, ni_in_cell, &
+    use global_module, only: cell_vec_len, ni_in_cell, &
                              iprint_MD, id_glob, atom_coord
     use GenComms,      only: inode, ionode
     use force_module,  only: stress, tot_force
     use io_module,     only: print_atomic_positions
 
     implicit none
- 
+
     ! passed variables
     real(double), dimension(:,:), intent(out) :: force, config
     real(double), dimension(3), intent(in)    :: cell_ref
@@ -5358,23 +5637,23 @@ contains
 
     if (inode==ionode .and. iprint_MD>3) &
       write(io_lun,'(6x,a)') "move_atoms/cq_to_vector"
- 
-    vol = rcellx*rcelly*rcellz
-    one_plus_strain(1) = rcellx/cell_ref(1)
-    one_plus_strain(2) = rcelly/cell_ref(2)
-    one_plus_strain(3) = rcellz/cell_ref(3)
+
+    vol = cell_vec_len(1)*cell_vec_len(2)*cell_vec_len(3)
+    one_plus_strain(1) = cell_vec_len(1)/cell_ref(1)
+    one_plus_strain(2) = cell_vec_len(2)/cell_ref(2)
+    one_plus_strain(3) = cell_vec_len(3)/cell_ref(3)
     do i=1,3
       config(i,ni_in_cell+1) = one_plus_strain(i) - one
       force(i,ni_in_cell+1) = &
         -(stress(i,i) + target_press*vol)/one_plus_strain(i)
     end do
     do i=1,ni_in_cell
-      config(1,i) = atom_coord(1,i)/rcellx ! Fractional coordinates
-      config(2,i) = atom_coord(2,i)/rcelly
-      config(3,i) = atom_coord(3,i)/rcellz
-      force(1,i) = tot_force(1,i)*rcellx
-      force(2,i) = tot_force(2,i)*rcelly
-      force(3,i) = tot_force(3,i)*rcellz
+      config(1,i) = atom_coord(1,i)/cell_vec_len(1) ! Fractional coordinates
+      config(2,i) = atom_coord(2,i)/cell_vec_len(2)
+      config(3,i) = atom_coord(3,i)/cell_vec_len(3)
+      force(1,i) = tot_force(1,i)*cell_vec_len(1)
+      force(2,i) = tot_force(2,i)*cell_vec_len(2)
+      force(3,i) = tot_force(3,i)*cell_vec_len(3)
     end do
 
     if (inode==ionode .and. iprint_MD>3) call print_atomic_positions
@@ -5384,16 +5663,16 @@ contains
 
   !!****f* move_atoms/enthalpy *
   !!
-  !!  NAME 
+  !!  NAME
   !!   enthalpy
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Compute the enthalpy for cell optimisation
   !!  INPUTS
-  !! 
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   Zamaan Raza
   !!  CREATION DATE
@@ -5405,18 +5684,18 @@ contains
 
     use datatypes
     use GenComms,       only: inode, ionode
-    use global_module,  only: rcellx, rcelly, rcellz, iprint_MD, flag_MDdebug
+    use global_module,  only: cell_vec_len, cell_vol, iprint_MD, flag_MDdebug
 
     implicit none
 
     ! passed variables
-    real(double), intent(in)  :: e, p    
+    real(double), intent(in)  :: e, p
     real(double)              :: h
 
     ! local variables
     real(double)              :: pv
 
-    pv = p*(rcellx*rcelly*rcellz)
+    pv = p*abs(cell_vol)
     h = e + pv
 
     if (inode==ionode .and. iprint_MD > 2) then
@@ -5424,10 +5703,10 @@ contains
           write(io_lun,'(2x,a)') "move_atoms/enthalpy"
           write(io_lun,'(4x,"energy   = ",f16.8)') e
           write(io_lun,'(4x,"P        = ",f16.8)') p
-          write(io_lun,'(4x,"V        = ",f16.8)') rcellx*rcelly*rcellz
+          write(io_lun,'(4x,"V        = ",f16.8)') abs(cell_vol)
           write(io_lun,'(4x,"PV       = ",f16.8)') pv
           write(io_lun,'(4x,"enthalpy = ",f16.8)') h
-       end if 
+       end if
     end if
 
   end function enthalpy

@@ -338,7 +338,7 @@ contains
     use dimens
     use GenComms, ONLY : cq_abort, my_barrier
     use group_module, ONLY : parts
-    use global_module, ONLY : x_atom_cell, y_atom_cell, z_atom_cell, &
+    use global_module, ONLY : x_atom_cell, y_atom_cell, z_atom_cell, lat_vec, &
                               iprint_gen, ni_in_cell, area_general, flag_stress
     use numbers
     use primary_module, ONLY : bundle
@@ -367,29 +367,15 @@ contains
     real(double), dimension(3,3) :: real_cell_vec, recip_cell_vec, &
          part_cell_vec, part_cell_dual
 
-    if(inode == ionode.AND.iprint_gen>1) &
-         write(io_lun,fmt='(/8x," edge lengths of orthorhombic supercell:", &
-         &3f12.6," a.u.")') r_super_x, r_super_y, r_super_z
-
     ! ------------ setting primitive translation vectors of cell ------------
-    !   At time of writing, Conquest is restricted to orthorhombic
-    !   cells. However the present Ewald routine is written for
-    !   general cells. The variables r_super_x, r_super_y, r_super_z
-    !   are the edge lengths of the orthorhombic cell. These are used
-    !   to make the general real-space primitive translation vectors,
-    !   which in turn are used to make the reciprocal-space
-    !   vectors. Here, real_cell_vec(n,i) and recip_cell_vec(n,i) are
-    !   the Cartesian components (labelled by i) of the real- and
-    !   reciprocal-space vectors (labelled by n).
-    real_cell_vec(1,1) = r_super_x
-    real_cell_vec(1,2) = zero
-    real_cell_vec(1,3) = zero
-    real_cell_vec(2,1) = zero
-    real_cell_vec(2,2) = r_super_y
-    real_cell_vec(2,3) = zero
-    real_cell_vec(3,1) = zero
-    real_cell_vec(3,2) = zero
-    real_cell_vec(3,3) = r_super_z
+    !   The Ewald implementation below is formulated for general primitive
+    !   translations with vector number as the first index and Cartesian
+    !   component as the second.  The central lattice convention stores the
+    !   same information as lat_vec(component,vector), hence the transpose.
+    !   Do not reconstruct a diagonal box from vector lengths here: doing so
+    !   discards every lattice angle and gives the wrong real/reciprocal sums
+    !   and volume for a skewed cell.
+    real_cell_vec = transpose(lat_vec)
     if(inode == ionode.AND.iprint_gen>1) then
        write(io_lun,fmt='(/8x," set_ewald: cartesian components &
             &of real-cell primitive translations vectors:"/)')

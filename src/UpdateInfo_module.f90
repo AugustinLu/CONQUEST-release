@@ -11,7 +11,7 @@
 !!   2013/08/22
 !!  MODIFICATION HISTORY
 !!   2018/Sep/08 tsuyoshi
-!!    Added the check for the consistency of the orbitals between the present matrix 
+!!    Added the check for the consistency of the orbitals between the present matrix
 !!    and the one read from the file.
 !!    Also added the subroutine ReportMatrixUpdate to check the missing pairs.
 !!   2018/10/03 17:10 dave
@@ -22,10 +22,11 @@
 !!   2019/11/27 08:11 dave
 !!    Tidying source
 !!  SOURCE
-!!  
+!!
 module UpdateInfo
 
   use datatypes
+    use global_module, ONLY: cell_vec_len
   use global_module, ONLY: flag_MDdebug,iprint_MDdebug, iprint_MD
 
   implicit none
@@ -34,7 +35,7 @@ module UpdateInfo
      integer :: nspin
      integer :: natom_remote
      integer :: nrecv_node
-     ! Size : 
+     ! Size :
      integer, pointer :: list_recv_node(:)
      integer, pointer :: natom_recv_node(:)
      ! Size :
@@ -64,19 +65,19 @@ module UpdateInfo
   private :: ifile_local, iatom_local, ij_local, ij_success_local, ij_fail_local, &
        min_Rij_fail_local, max_Rij_fail_local, ave_Rij_fail_local, matrix_name
   character(4) :: matrix_name = 'Kmat'
-  integer :: ifile_local       ! # of files 
-  integer :: iatom_local       ! # of iatom 
+  integer :: ifile_local       ! # of files
+  integer :: iatom_local       ! # of iatom
   integer :: ij_local          ! # of (ij) pair
   integer :: ij_success_local  ! # of (ij) pair, whose elements are found
   integer :: ij_fail_local     ! # of (ij) pair, whose elements are not found
   real(double) :: min_Rij_fail_local, max_Rij_fail_local, ave_Rij_fail_local, sum_Rij_fail
 
-  integer :: ifile_remote       ! # of files 
-  integer :: iatom_remote       ! # of iatom 
+  integer :: ifile_remote       ! # of files
+  integer :: iatom_remote       ! # of iatom
   integer :: ij_remote          ! # of (ij) pair
   integer :: ij_success_remote  ! # of (ij) pair, whose elements are found
   integer :: ij_fail_remote     ! # of (ij) pair, whose elements are not found
-  real(double) :: min_Rij_fail_remote, max_Rij_fail_remote, ave_Rij_fail_remote  
+  real(double) :: min_Rij_fail_remote, max_Rij_fail_remote, ave_Rij_fail_remote
 
 contains
 
@@ -103,11 +104,11 @@ contains
   !!   2013/08/22
   !!  MODIFICATION
   !!   2013/08/23 michi
-  !!   - Replaced call for symmetrise_L with symmetrise_matA, 
+  !!   - Replaced call for symmetrise_L with symmetrise_matA,
   !!     and added trans and symm in dummy arguments
   !!   2014/02/03 michi
   !!   - Bug fix for serial simulations
-  !!   - Bug fix for changing the number of processors at the 
+  !!   - Bug fix for changing the number of processors at the
   !!     sequential job
   !!   2016/04/06 dave
   !!    Changed Info to pointer from allocatable (gcc 4.4.7 issue)
@@ -228,11 +229,11 @@ contains
     if (LmatrixRecv%nsend_node.GT.0 .AND. numprocs.NE.1) then
        call CommMat_irecv_data(LmatrixRecv,irecv2_array,recv_array,nreq2,nreq3)
     endif
-    !! ------------------------------ NOTE: ------------------------------- !! 
+    !! ------------------------------ NOTE: ------------------------------- !!
     !! If it takes a bunch of time in communication, try with the following !!
     !! statements active. The overlap of communication and calculation can  !!
     !! be expected.							    !!
-    !! ------------------------------ NOTE: ------------------------------- !! 
+    !! ------------------------------ NOTE: ------------------------------- !!
     !! call UpdateMatrix_local(InfoMat,range,matA,flag_remote_iprim,nfile)
     if (LmatrixSend%nrecv_node.GT.0 .AND. numprocs.NE.1) then
        call CommMat_send_neigh(LmatrixSend,isend2_array,InfoMat)
@@ -252,7 +253,7 @@ contains
          write (io_lun,*) "Got through communication! Matrix reconstruction follows next."
 
     !! ----- DEBUG: 12/NOV/2012 ----- !!
-    if (flag_MDdebug) then 
+    if (flag_MDdebug) then
        call io_close(lun_db)
        if (iprint_MDdebug.GT.3) then
           call get_file_name('irecv',numprocs,inode,file_name2)
@@ -281,10 +282,10 @@ contains
     !! /---- DEBUG: 12/NOV/2012 ----- !!
 
     ! Organise and reconstruct Lmatrix data only when communication occurs.
-    !! ------------------------------ NOTE: ------------------------------- !! 
+    !! ------------------------------ NOTE: ------------------------------- !!
     !!  If UpdateMatrix_local is called above, comment out the following   !!
     !!  call statement instead.                                             !!
-    !! ------------------------------ NOTE: ------------------------------- !! 
+    !! ------------------------------ NOTE: ------------------------------- !!
     call UpdateMatrix_local(InfoMat,range,nspin_local,matA,flag_remote_iprim,nfile)
     if (numprocs.NE.1) then
        if (LmatrixSend%nrecv_node.GT.0 .OR. LmatrixRecv%nsend_node.GT.0) then
@@ -382,7 +383,7 @@ contains
     character(20) :: name
 
     glob2node = 0
-    do ind_part = 1, parts%mx_gcell    
+    do ind_part = 1, parts%mx_gcell
        id_node = parts%i_cc2node(ind_part) ! CC labeling
        if (parts%nm_group(ind_part).NE.0) then
           do ni = 1, parts%nm_group(ind_part)
@@ -409,7 +410,7 @@ contains
   !!  USAGE
   !!
   !!  PURPOSE
-  !!   Performs heap-sort to decide the node order for MPI communication 
+  !!   Performs heap-sort to decide the node order for MPI communication
   !!   to send/receive data.
   !!   Be careful! isort_node is the ORDER of receiving nodes, NOT the node ID
   !!   itself!
@@ -547,12 +548,12 @@ contains
   !!
   !!  PURPOSE
   !!   This subroutine can be subdivided into five processes;
-  !! 
+  !!
   !!     1. Check which atom is not my primary atoms and
   !!        make a list of nodes that possess these remote atoms.
   !!     2. Prepare temporary arrays (lists) for receiving nodes.
   !!     3. Sort receiving nodes to prevent a traffic jam in communication.
-  !!        To this end, receiving nodes are sorted with an ascending order 
+  !!        To this end, receiving nodes are sorted with an ascending order
   !!        beginning from (inode+1).
   !!     4. Group and reorder the atoms depending on the node they belong to.
   !!     5. Make three arrays sent to remote nodes.
@@ -696,7 +697,7 @@ contains
     if (LmatrixSend%natom_remote.GT.0 .AND. nfile.GT.0) then
        allocate (list_node_tmp(LmatrixSend%natom_remote) , &
             natom_node_tmp(LmatrixSend%natom_remote), &
-            natomr_to_nnd(LmatrixSend%natom_remote) , & 
+            natomr_to_nnd(LmatrixSend%natom_remote) , &
             natomr_to_iaINnode(LmatrixSend%natom_remote), STAT=stat_alloc)
        if (stat_alloc.NE.0) call cq_abort('Error allocating arrays in process 2: ', &
             LmatrixSend%natom_remote)
@@ -1018,7 +1019,7 @@ contains
        inode_recv = LmatrixSend%list_recv_node(nnd)
        natom_send = LmatrixSend%natom_recv_node(nnd)
        if (natom_send.LT.1) call cq_abort('Error: natom_send should take at least 1.')
-       tag = 1 
+       tag = 1
        isize = 4 * natom_send
 
        !! ------ DEBUG ------ !!
@@ -1454,7 +1455,7 @@ contains
             LmatrixRecv%nsend_node)
        allocate (irecv_array(LmatrixRecv%natom_remote*4), STAT=stat_alloc)
        if (stat_alloc.NE.0) call cq_abort('Error allocating irecv_array: ', &
-            LmatrixRecv%natom_remote*4) 
+            LmatrixRecv%natom_remote*4)
        irecv_array = 0
        LmatrixRecv%ibeg_send_node(1) = 1
        do nnd = 1, LmatrixRecv%nsend_node
@@ -1544,7 +1545,7 @@ contains
        isize1=0 ; isize2=0
        LmatrixRecv%ibeg1_recv_array(1)=1 ; LmatrixRecv%ibeg2_recv_array(1)=1
        ibeg = 1
-       do nnd = 1, LmatrixRecv%nsend_node 
+       do nnd = 1, LmatrixRecv%nsend_node
           do ia = 1, LmatrixRecv%natom_send_node(nnd)
              iprim_remote = iprim_remote + 1
              if (iprim_remote.GT.LmatrixRecv%natom_remote) &
@@ -1844,7 +1845,7 @@ contains
   !!    Removed delta_ix/y/z=zero condition when flag_move_atom is false
   !!   2018/Sep/07 tsuyoshi
   !!    Added the check of the inconsistency for the number of orbitals (sf1)
-  !!    between the present matrix and the one read from the file. 
+  !!    between the present matrix and the one read from the file.
   !!    Also added the part collecting the information of missing pairs
   !!   2019/Nov/13 tsuyoshi
   !!    spin-dependent version
@@ -1855,7 +1856,7 @@ contains
     ! Module usage
     use numbers
     use global_module, ONLY: glob2node,id_glob,atom_coord_diff, &
-         runtype, rcellx, rcelly, rcellz, sf, nlpf, atomf
+         runtype, cell_vec_len, sf, nlpf, atomf
     use species_module, ONLY: nsf_species, natomf_species, nlpf_species
     use Gencomms, ONLY: inode,cq_abort
     use primary_module, ONLY: bundle
@@ -1873,9 +1874,9 @@ contains
     use matrix_data, ONLY: max_range
     use atom_dispenser, ONLY: allatom2part
     use GenComms, ONLY: ionode
-    use global_module, ONLY:  ni_in_cell, atom_coord, shift_in_bohr
+    use global_module, ONLY:  ni_in_cell, atom_coord, shift_in_bohr, lat_vec
 
-    use dimens,        only: r_super_x, r_super_y, r_super_z
+    use dimens,        only:
 
 
     implicit none
@@ -1897,7 +1898,7 @@ contains
     integer :: jj,n_beta,idglob_jj,jcoverx,jcovery,jcoverz,jpart,jpart_nopg, &
          jjj,jcover,idglob_jjj,j_in_halo,jseq,ja,nj,idglob_jjjj
     integer :: BCSp_lx,BCSp_ly,BCSp_lz,BCSp_gx,BCSp_gy,BCSp_gz
-    real(double) :: deltaj_x,deltaj_y,deltaj_z,xx_j,yy_j,zz_j
+    real(double) :: deltaj_x,deltaj_y,deltaj_z,xx_j,yy_j,zz_j, rvec_cart(3)
     logical :: find_jcover,flag_jseq
 
     type(matrix_halo), pointer :: matA_halo
@@ -2009,9 +2010,10 @@ contains
                 deltaj_x=atom_coord_diff(1,idglob_jj)
                 deltaj_y=atom_coord_diff(2,idglob_jj)
                 deltaj_z=atom_coord_diff(3,idglob_jj)
-                xx_j=xprim_i-InfoMat(ifile)%rvec_Pij(1,ibeg1+jj-1)*rcellx+deltaj_x-deltai_x
-                yy_j=yprim_i-InfoMat(ifile)%rvec_Pij(2,ibeg1+jj-1)*rcelly+deltaj_y-deltai_y
-                zz_j=zprim_i-InfoMat(ifile)%rvec_Pij(3,ibeg1+jj-1)*rcellz+deltaj_z-deltai_z
+                rvec_cart = matmul(lat_vec,InfoMat(ifile)%rvec_Pij(:,ibeg1+jj-1))
+                xx_j=xprim_i-rvec_cart(1)+deltaj_x-deltai_x
+                yy_j=yprim_i-rvec_cart(2)+deltaj_y-deltai_y
+                zz_j=zprim_i-rvec_cart(3)+deltaj_z-deltai_z
 
                 Rijx=xprim_i-xx_j
                 Rijy=yprim_i-yy_j
@@ -2024,7 +2026,7 @@ contains
                    write (lun_db,*) "! --- Neighbours: j ---!"
                    write (lun_db,*) "ibeg1+jj-1:", ibeg1+jj-1
                    write (lun_db,*) "idglob_jj and its beta:", idglob_jj, n_beta
-                   write (lun_db,*) "vec_Pij:" 
+                   write (lun_db,*) "vec_Pij:"
                    write (lun_db,*) InfoMat(ifile)%rvec_Pij(1:3,ibeg1+jj-1)
                    write (lun_db,*) "delta_i or atom_coord_diff(1:3,idglob_ii):", deltai_x,deltai_y,deltai_z
                    write (lun_db,*) "delta_j or atom_coord_diff(1:3,idglob_jj):", deltaj_x,deltaj_y,deltaj_z
@@ -2066,7 +2068,7 @@ contains
                 jpart_nopg = BCS_parts%inv_lab_cover(jpart)
 
                 find_jcover = .false.
-                ! Find out "j_new". 
+                ! Find out "j_new".
                 do jjj = 1, BCS_parts%n_ing_cover(jpart_nopg)
                    jcover = BCS_parts%icover_ibeg(jpart_nopg) + jjj - 1      ! ID in CS
                    idglob_jjj = BCS_parts%ig_cover(jcover)                   ! CS --> glob
@@ -2079,23 +2081,24 @@ contains
                    endif
                 enddo !(jjj, n_ing_cover)
                 if (.NOT. find_jcover) then
-                   xx_j=xprim_i-InfoMat(ifile)%rvec_Pij(1,ibeg1+jj-1)*rcellx+deltaj_x-deltai_x
-                   yy_j=yprim_i-InfoMat(ifile)%rvec_Pij(2,ibeg1+jj-1)*rcelly+deltaj_y-deltai_y
-                   zz_j=zprim_i-InfoMat(ifile)%rvec_Pij(3,ibeg1+jj-1)*rcellz+deltaj_z-deltai_z
+                   rvec_cart = matmul(lat_vec,InfoMat(ifile)%rvec_Pij(:,ibeg1+jj-1))
+                   xx_j=xprim_i-rvec_cart(1)+deltaj_x-deltai_x
+                   yy_j=yprim_i-rvec_cart(2)+deltaj_y-deltai_y
+                   zz_j=zprim_i-rvec_cart(3)+deltaj_z-deltai_z
                    write(io_lun,*) ' :ERROR: inode = ',inode
                    write(io_lun,*) ' :ERROR: idglob_jj, idglob_jjj, jcover,jpart_nopg,#ofjjj = ', &
                         idglob_jj, idglob_jjj,jcover,jpart_nopg,BCS_parts%n_ing_cover(jpart_nopg)
                    write(io_lun,*) ' :ERROR: jcoverxyz ',jcoverx,jcovery,jcoverz
                    write(io_lun,*) ' :ERROR: vecRij ', &
                         InfoMat(ifile)%rvec_Pij(1,ibeg1+jj-1), InfoMat(ifile)%rvec_Pij(2,ibeg1+jj-1), &
-                        InfoMat(ifile)%rvec_Pij(3,ibeg1+jj-1) 
+                        InfoMat(ifile)%rvec_Pij(3,ibeg1+jj-1)
                    write(io_lun,*) ' :ERROR: deltaj_x  ',deltaj_x,deltaj_y,deltaj_z
                    write(io_lun,*) ' :ERROR: deltai_x  ',deltai_x,deltai_y,deltai_z
                    write(io_lun,*) ' :ERROR: vecRi  ',xprim_i, yprim_i, zprim_i
                    write(io_lun,*) ' :ERROR: vecRj  ',xx_j, yy_j, zz_j
                    call cq_abort('Error: find_cover must be T - local.')
                 endif
-                ! Now that we have known who "j_new" is w/ its global and CS ID and partition in CS, 
+                ! Now that we have known who "j_new" is w/ its global and CS ID and partition in CS,
                 ! we are going to examine its neighbour ID of the primary set of atom "i_new".
                 j_in_halo = matA_halo%i_halo(matA_halo%i_hbeg(jpart)+jseq-1)
                 if (j_in_halo.GT.matA_halo%ni_in_halo) &
@@ -2187,21 +2190,21 @@ contains
   !!   2013/08/22
   !!  MODIFICATION
   !!   2017/05/09 dave
-  !!    Removed restriction spin and on L-matrix update 
+  !!    Removed restriction spin and on L-matrix update
   !!   2018/02/12 dave
   !!    Removed delta_ix/y/z=zero condition when flag_move_atom is false
   !!   2018/Sep/07 tsuyoshi
   !!    Added the check of the inconsistency for the number of orbitals (sf1)
-  !!    between the present matrix and the one read from the file. 
+  !!    between the present matrix and the one read from the file.
   !!   2019/Nov/13 tsuyoshi
-  !!    spin dependent version 
+  !!    spin dependent version
   !!  SOURCE
   !!
   subroutine UpdateMatrix_remote(range,n_matrix,matA,LmatrixRecv,flag_remote_iprim,irecv2_array,recv_array)
 
     ! Module usage
     use numbers
-    use global_module, ONLY: nspin,atom_coord_diff,runtype,io_lun, rcellx, rcelly, rcellz
+    use global_module, ONLY: nspin,atom_coord_diff,runtype,io_lun, cell_vec_len, lat_vec
     use GenComms, ONLY: cq_abort
     use primary_module, ONLY: bundle
     use cover_module, ONLY: BCS_parts
@@ -2241,7 +2244,7 @@ contains
          jcoverx,jcovery,jcoverz,jpart,jpart_nopg,jjj,idglob_jjj,  &
          jcover,j_in_halo,jbeg,jseq,ibeg_Lij
     real(double) :: xx_j,yy_j,zz_j,deltaj_x,deltaj_y,deltaj_z
-    real(double) :: vec_Rij(3)
+    real(double) :: vec_Rij(3), rvec_cart(3)
     logical :: find_jcover
     integer :: ibeg_dataLtmp, iadd_dataL
 
@@ -2353,9 +2356,10 @@ contains
           deltaj_x=atom_coord_diff(1,idglob_jj)
           deltaj_y=atom_coord_diff(2,idglob_jj)
           deltaj_z=atom_coord_diff(3,idglob_jj)
-          xx_j = xprim_i - vec_Rij(1)*rcellx + deltaj_x - deltai_x
-          yy_j = yprim_i - vec_Rij(2)*rcelly + deltaj_y - deltai_y
-          zz_j = zprim_i - vec_Rij(3)*rcellz + deltaj_z - deltai_z
+          rvec_cart = matmul(lat_vec,vec_Rij)
+          xx_j = xprim_i - rvec_cart(1) + deltaj_x - deltai_x
+          yy_j = yprim_i - rvec_cart(2) + deltaj_y - deltai_y
+          zz_j = zprim_i - rvec_cart(3) + deltaj_z - deltai_z
 
           Rijx=xprim_i-xx_j
           Rijy=yprim_i-yy_j
@@ -2387,7 +2391,7 @@ contains
                (jcoverz.GT.BCS_parts%ncoverz .OR. jcoverz.LT.1) ) then
              ibeg_dataL = ibeg_dataL + n_alpha*n_beta * n_matrix
              ij_fail_remote = ij_fail_remote + 1
-             if(ij_fail_remote == 1) then 
+             if(ij_fail_remote == 1) then
                 min_Rij_fail_remote = Rij; max_Rij_fail_remote = Rij
              endif
              sum_Rij_fail = sum_Rij_fail + Rij
@@ -2413,7 +2417,7 @@ contains
           enddo
           if (.NOT. find_jcover) &
                call cq_abort('Error: find_jcover must be T - remote.')
-          ! Now that we have known who "j_new" is, we are ready to get 
+          ! Now that we have known who "j_new" is, we are ready to get
           ! jcover -> j_in_halo -> neigh.
           j_in_halo = matA_halo%i_halo(matA_halo%i_hbeg(jpart)+jseq-1)
           if (j_in_halo.GT.matA_halo%ni_in_halo) &
@@ -2466,7 +2470,7 @@ contains
              if(Rij > max_Rij_fail_remote) max_Rij_fail_remote = Rij
 
           endif !(ibeg_Lij.NE.0)
-          ibeg_dataL = ibeg_dataL + len 
+          ibeg_dataL = ibeg_dataL + len
        enddo !(jj, nzise1)
     enddo !(iprim_remote, natom_remote)
 
@@ -2599,11 +2603,11 @@ contains
           write(io_lun,'(6x," iatom_local, ij_local, success, fail  = ",4i8)') &
                iatom_local, ij_local, ij_success_local, ij_fail_local
           write(io_lun,'(8x," min_Rij, max_Rij, ave_Rij for local  = ",3f15.5)') &
-               min_Rij_fail_local, max_Rij_fail_local, ave_Rij_fail_local  
+               min_Rij_fail_local, max_Rij_fail_local, ave_Rij_fail_local
           write(io_lun,'(6x," iatom_remote, ij_remote, success, fail  = ",4i8)') &
                iatom_remote, ij_remote, ij_success_remote, ij_fail_remote
           write(io_lun,'(8x," min_Rij, max_Rij, ave_Rij for remote  = ",3f15.5)') &
-               min_Rij_fail_remote, max_Rij_fail_remote, ave_Rij_fail_remote  
+               min_Rij_fail_remote, max_Rij_fail_remote, ave_Rij_fail_remote
        endif
        call my_barrier()
     enddo

@@ -1,0 +1,92 @@
+{
+  "converged": true,
+  "initial": {
+    "lattice_bohr": [
+      [
+        0.0,
+        5.18,
+        5.18
+      ],
+      [
+        5.18,
+        0.0,
+        5.18
+      ],
+      [
+        5.18,
+        5.18,
+        0.0
+      ]
+    ],
+    "vector_lengths_bohr": [
+      7.325626253092632,
+      7.325626253092632,
+      7.325626253092632
+    ],
+    "angles_degrees_alpha_beta_gamma": [
+      59.99999999999999,
+      59.99999999999999,
+      59.99999999999999
+    ],
+    "volume_bohr3": 277.9836639999999,
+    "equivalent_conventional_a_angstrom": 5.482275904955078
+  },
+  "final": {
+    "lattice_bohr": [
+      [
+        7.7049025481e-07,
+        5.2703816889147586,
+        5.2703816889124635
+      ],
+      [
+        5.270381688998781,
+        7.7040862824e-07,
+        5.27038168899409
+      ],
+      [
+        5.270381688668378,
+        5.2703816886659824,
+        7.7073903033e-07
+      ]
+    ],
+    "vector_lengths_bohr": [
+      7.453445263344487,
+      7.453445263461618,
+      7.453445262995981
+    ],
+    "angles_degrees_alpha_beta_gamma": [
+      59.99999032691084,
+      59.999990326421056,
+      59.99999032851646
+    ],
+    "volume_bohr3": 292.78991003561123,
+    "equivalent_conventional_a_angstrom": 5.577931357253977
+  },
+  "maximum_fractional_coordinate_change": 3.885780586188048e-16,
+  "geometry_iterations": [
+    {
+      "iteration": 0,
+      "maximum_stress_gpa": 4.64170418,
+      "enthalpy_ha": -8.42609911,
+      "enthalpy_change_ha": 0.0
+    },
+    {
+      "iteration": 1,
+      "maximum_stress_gpa": 0.35187409,
+      "enthalpy_ha": -8.42722372,
+      "enthalpy_change_ha": -0.00112461
+    },
+    {
+      "iteration": 2,
+      "maximum_stress_gpa": 0.00015882,
+      "enthalpy_ha": -8.42722784,
+      "enthalpy_change_ha": -4.12e-06
+    },
+    {
+      "iteration": 3,
+      "maximum_stress_gpa": 0.00020044,
+      "enthalpy_ha": -8.42722784,
+      "enthalpy_change_ha": -0.0
+    }
+  ]
+}

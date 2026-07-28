@@ -82,6 +82,7 @@
 module force_module
 
   use datatypes
+    use global_module, ONLY: cell_vec_len
   use global_module,          only: io_lun, atomic_stress, ase_file, nspin
   use global_module,          only: io_ase, write_ase, ase_file  
   use timer_module,           only: start_timer, stop_timer, cq_timer
@@ -258,7 +259,7 @@ contains
                                       nspin, spin_factor, &
                                       flag_analytic_blip_int, flag_DFTplusU, &
                                       flag_neutral_atom, flag_stress, &
-                                      rcellx, rcelly, rcellz, flag_mix_L_SC_min, &
+                                      cell_vec_len, cell_vol, flag_mix_L_SC_min, &
                                       flag_atomic_stress, non_atomic_stress, &
                                       flag_heat_flux, cell_constraint_flag, &
                                       atom_coord, species_glob, min_layer, &
@@ -269,7 +270,7 @@ contains
          surface_dipole_density, surface_normal, surface_dipole_energy_elec, &
          surface_dipole_energy_ion
     use functions_on_grid,      only: atomfns, H_on_atomfns
-    use dimens,                 only: n_my_grid_points, r_super_x, r_super_y, r_super_z
+    use dimens,                 only: n_my_grid_points
     use matrix_data,            only: Hrange
     use mult_module,            only: matK, matKatomf, SF_to_AtomF_transform
     use maxima_module,          only: maxngrid
@@ -541,8 +542,8 @@ contains
     if(flag_neutral_atom_projector) call get_HNA_force(NA_force)
     if(flag_DFTplusU) call get_DFT_plus_U_force(PlusU_force, ni_in_cell)
     max_force = zero
-    max_atom  = 0
-    max_compt = 0
+    max_compt = 1
+    max_atom = 1
 
     ! print in Conquest output
     if (inode == ionode .and. write_forces .and. (iprint_MD + min_layer>=0 .and. ni_in_cell<atom_output_threshold) &
@@ -598,11 +599,11 @@ contains
     end if
     select case(surface_normal)
     case(1) ! X
-       r_super_norm = r_super_x
+       r_super_norm = cell_vec_len(1)
     case(2) ! Y
-       r_super_norm = r_super_y
+       r_super_norm = cell_vec_len(2)
     case(3) ! Z
-       r_super_norm = r_super_z
+       r_super_norm = cell_vec_len(3)
     end select
     !
     ! END %%%% ASE printing %%%%
@@ -797,21 +798,21 @@ contains
        else if (leqi(cell_constraint_flag,'a/b') .or. leqi(cell_constraint_flag,'b/a')) then
           call print_stress(trim(prefix)//" Orig  stress:     ", stress, -2, write_ase) ! Force output
           ! Desired ratio
-          scaleC = rcelly/rcellx
+          scaleC = cell_vec_len(2)/cell_vec_len(1)
           ! Average x-y stress
           stress(1,1) = (stress(1,1) + stress(2,2))/(one + scaleC)
           stress(2,2) = scaleC*stress(1,1)
        else if (leqi(cell_constraint_flag,'a/c') .or. leqi(cell_constraint_flag,'c/a')) then
           call print_stress(trim(prefix)//" Orig  stress:     ", stress, -2, write_ase) ! Force output
           ! Desired ratio
-          scaleC = rcellz/rcellx
+          scaleC = cell_vec_len(3)/cell_vec_len(1)
           ! Average x-z stress
           stress(1,1) = (stress(1,1) + stress(3,3))/(one + scaleC)
           stress(3,3) = scaleC*stress(1,1)
        else if (leqi(cell_constraint_flag,'c/b') .or. leqi(cell_constraint_flag,'b/c')) then
           call print_stress(trim(prefix)//" Orig  stress:     ", stress, -2, write_ase) ! Force output
           ! Desired ratio
-          scaleC = rcelly/rcellz
+          scaleC = cell_vec_len(2)/cell_vec_len(3)
           ! Average y-z stress
           stress(3,3) = (stress(3,3) + stress(2,2))/(one + scaleC)
           stress(2,2) = scaleC*stress(3,3)
@@ -842,7 +843,7 @@ contains
        call print_stress(trim(prefix)//" non-SCF stress:   ", nonSCF_stress, 3)
        if(flag_dft_D2) call print_stress(trim(prefix)//" DFT-D2 stress:    ", disp_stress, 3)
        call print_stress(trim(prefix)//" Total stress:     ", stress, -2, write_ase) ! Force output
-       volume = rcellx*rcelly*rcellz
+       volume = abs(cell_vol)
        ! We need pressure in GPa, and only diagonal terms output
        scale = -HaBohr3ToGPa/volume
        if(inode==ionode.AND.iprint_MD + min_layer>=1) &
@@ -1671,7 +1672,7 @@ contains
 !!   2016/07/20 16:30 nakata
 !!    Renamed naba_atm -> naba_atoms_of_blocks
 !!   2017/08/29 jack baker & dave
-!!    Removed r_super_x references (redundant)
+!!    Removed cell_vec_len(1) references (redundant)
 !!  TODO
 !!    Fix this so that it doesn't loop over all processors ! Follow
 !!    set_pseudo 13/05/2002 dave
@@ -1689,8 +1690,9 @@ contains
     use pseudopotential_data, only: ps_exponent, core_radius_2, &
          radius_max, n_points_max, local_pseudopotential, &
          d2_local_pseudopotential
-    use global_module, only: rcellx,rcelly,rcellz,id_glob, &
-         species_glob, nlpf, ni_in_cell
+    use global_module, only: cell_vec_len,id_glob, &
+         species_glob, nlpf, ni_in_cell, lattice_grid_block_origin, &
+         lattice_grid_point_offset
     use block_module, only : nx_in_block,ny_in_block,nz_in_block, &
          n_pts_in_block
     use group_module, only : blocks, parts
@@ -1759,9 +1761,9 @@ contains
 
     call hartree (density, h_potential, maxngrid, h_energy)
 
-    dcellx_block = rcellx / blocks%ngcellx
-    dcelly_block = rcelly / blocks%ngcelly
-    dcellz_block = rcellz / blocks%ngcellz
+    dcellx_block = cell_vec_len(1) / blocks%ngcellx
+    dcelly_block = cell_vec_len(2) / blocks%ngcelly
+    dcellz_block = cell_vec_len(3) / blocks%ngcellz
 
     dcellx_grid = dcellx_block / nx_in_block
     dcelly_grid = dcelly_block / ny_in_block
@@ -1770,12 +1772,12 @@ contains
     call my_barrier()
 
     do iblock = 1, domain%groups_on_node ! primary set of blocks
-       xblock = (domain%idisp_primx(iblock) + domain%nx_origin - 1) *&
-            & dcellx_block
-       yblock = (domain%idisp_primy(iblock) + domain%ny_origin - 1) *&
-            & dcelly_block
-       zblock = (domain%idisp_primz(iblock) + domain%nz_origin - 1) *&
-            & dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(iblock)+domain%nx_origin-1, &
+            domain%idisp_primy(iblock)+domain%ny_origin-1, &
+            domain%idisp_primz(iblock)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
 
        if (naba_atoms_of_blocks(nlpf)%no_of_part(iblock) > 0) then ! if there are naba atoms
           iatom = 0
@@ -1819,9 +1821,9 @@ contains
                                  & igrid, n_my_grid_points)
                          end if
                          elec_here = density(igrid) * grid_point_volume
-                         dx = dcellx_grid * (ix-1)
-                         dy = dcelly_grid * (iy-1)
-                         dz = dcellz_grid * (iz-1)
+                         call lattice_grid_point_offset(ix, iy, iz, &
+                              blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+                              nx_in_block, ny_in_block, nz_in_block, dx, dy, dz)
                          rx = xblock + dx - xatom
                          ry = yblock + dy - yatom
                          rz = zblock + dz - zatom
@@ -1919,9 +1921,9 @@ contains
 !          rx = rx - anint(rx)
 !          ry = ry - anint(ry)
 !          rz = rz - anint(rz)
-!          rx = rx * r_super_x
-!          ry = ry * r_super_y
-!          rz = rz * r_super_z
+!          rx = rx * cell_vec_len(1)
+!          ry = ry * cell_vec_len(2)
+!          rz = rz * cell_vec_len(3)
 !          r2 = rx * rx + ry * ry + rz * rz
 !          gauss = dexp( -alpha * r2 )
 !          if ( r2 .lt. core_radius_2(species(i)) ) then
@@ -3810,12 +3812,14 @@ contains
     use numbers
     use species_module,      only: species
     use GenComms,            only: gsum, cq_warn
-    use global_module,       only: rcellx, rcelly, rcellz, id_glob,    &
+    use global_module,       only: cell_vec_len, id_glob,    &
                                    ni_in_cell, species_glob, dens,     &
                                    area_moveatoms, IPRINT_TIME_THRES3, &
                                    flag_pcc_global, nspin, spin_factor, &
                                    flag_full_stress, flag_stress,      &
-                                   flag_atomic_stress, flag_neutral_atom
+                                   flag_atomic_stress, flag_neutral_atom, &
+                                   lattice_grid_block_origin,         &
+                                   lattice_grid_point_offset
     use XC,                  only: get_xc_potential,                   &
                                    get_dxc_potential,                  &
                                    flag_is_GGA
@@ -3903,9 +3907,9 @@ contains
 
     NSCforce = zero
 
-    dcellx_block = rcellx / blocks%ngcellx
-    dcelly_block = rcelly / blocks%ngcelly
-    dcellz_block = rcellz / blocks%ngcellz
+    dcellx_block = cell_vec_len(1) / blocks%ngcellx
+    dcelly_block = cell_vec_len(2) / blocks%ngcelly
+    dcellz_block = cell_vec_len(3) / blocks%ngcellz
 
     dcellx_grid = dcellx_block / nx_in_block
     dcelly_grid = dcelly_block / ny_in_block
@@ -4083,9 +4087,12 @@ contains
     call my_barrier()
     call start_timer(tmr_l_tmp1, WITH_LEVEL)
     do iblock = 1, domain%groups_on_node ! primary set of blocks
-       xblock = (domain%idisp_primx(iblock) + domain%nx_origin - 1) * dcellx_block
-       yblock = (domain%idisp_primy(iblock) + domain%ny_origin - 1) * dcelly_block
-       zblock = (domain%idisp_primz(iblock) + domain%nz_origin - 1) * dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(iblock)+domain%nx_origin-1, &
+            domain%idisp_primy(iblock)+domain%ny_origin-1, &
+            domain%idisp_primz(iblock)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
        if (naba_atoms_of_blocks(dens)%no_of_part(iblock) > 0) then ! if there are naba atoms
           iatom = 0
           do ipart = 1, naba_atoms_of_blocks(dens)%no_of_part(iblock)
@@ -4127,9 +4134,9 @@ contains
                             pot_here(spin) = &
                                  potential(igrid,spin) * grid_point_volume
                          end do
-                         dx = dcellx_grid * (ix - 1)
-                         dy = dcelly_grid * (iy - 1)
-                         dz = dcellz_grid * (iz - 1)
+                         call lattice_grid_point_offset(ix, iy, iz, &
+                              blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+                              nx_in_block, ny_in_block, nz_in_block, dx, dy, dz)
                          r(1) = xblock + dx - xatom
                          r(2) = yblock + dy - yatom
                          r(3) = zblock + dz - zatom
@@ -4239,12 +4246,12 @@ contains
 
        call start_timer(tmr_l_tmp1, WITH_LEVEL)
        do iblock = 1, domain%groups_on_node ! primary set of blocks
-          xblock = (domain%idisp_primx(iblock) + domain%nx_origin - 1) * &
-                   dcellx_block
-          yblock = (domain%idisp_primy(iblock) + domain%ny_origin - 1) * &
-                   dcelly_block
-          zblock = (domain%idisp_primz(iblock) + domain%nz_origin - 1) * &
-                   dcellz_block
+          call lattice_grid_block_origin( &
+               domain%idisp_primx(iblock)+domain%nx_origin-1, &
+               domain%idisp_primy(iblock)+domain%ny_origin-1, &
+               domain%idisp_primz(iblock)+domain%nz_origin-1, &
+               blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+               xblock, yblock, zblock)
           if (naba_atoms_of_blocks(dens)%no_of_part(iblock) > 0) then ! if there are naba atoms
              iatom = 0
              do ipart = 1, naba_atoms_of_blocks(dens)%no_of_part(iblock)
@@ -4285,9 +4292,9 @@ contains
                                pot_here_pcc(spin) = &
                                     potential(igrid,spin) * grid_point_volume
                             end do
-                            dx = dcellx_grid * (ix - 1)
-                            dy = dcelly_grid * (iy - 1)
-                            dz = dcellz_grid * (iz - 1)
+                            call lattice_grid_point_offset(ix, iy, iz, &
+                                 blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+                                 nx_in_block, ny_in_block, nz_in_block, dx, dy, dz)
                             r(1) = xblock + dx - xatom
                             r(2) = yblock + dy - yatom
                             r(3) = zblock + dz - zatom
@@ -4476,12 +4483,14 @@ contains
     use numbers
     use species_module,      only: species
     use GenComms,            only: gsum
-    use global_module,       only: rcellx, rcelly, rcellz, id_glob,    &
+    use global_module,       only: cell_vec_len, id_glob,    &
                                    ni_in_cell, species_glob, dens,     &
                                    area_moveatoms, IPRINT_TIME_THRES3, &
                                    nspin, spin_factor, flag_self_consistent, &
                                    flag_full_stress, flag_stress,      &
-                                   flag_atomic_stress, flag_mix_L_SC_min
+                                   flag_atomic_stress, flag_mix_L_SC_min, &
+                                   lattice_grid_block_origin,         &
+                                   lattice_grid_point_offset
     use block_module,        only: nx_in_block,ny_in_block,            &
                                    nz_in_block, n_pts_in_block
     use group_module,        only: blocks, parts
@@ -4545,9 +4554,9 @@ contains
     xc_potential = zero
     xc_epsilon = zero
 
-    dcellx_block = rcellx / blocks%ngcellx
-    dcelly_block = rcelly / blocks%ngcelly
-    dcellz_block = rcellz / blocks%ngcellz
+    dcellx_block = cell_vec_len(1) / blocks%ngcellx
+    dcelly_block = cell_vec_len(2) / blocks%ngcelly
+    dcellz_block = cell_vec_len(3) / blocks%ngcellz
 
     dcellx_grid = dcellx_block / nx_in_block
     dcelly_grid = dcelly_block / ny_in_block
@@ -4617,9 +4626,12 @@ contains
 
     call start_timer(tmr_l_tmp1,WITH_LEVEL)
     do iblock = 1, domain%groups_on_node ! primary set of blocks
-       xblock = (domain%idisp_primx(iblock) + domain%nx_origin - 1) * dcellx_block
-       yblock = (domain%idisp_primy(iblock) + domain%ny_origin - 1) * dcelly_block
-       zblock = (domain%idisp_primz(iblock) + domain%nz_origin - 1) * dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(iblock)+domain%nx_origin-1, &
+            domain%idisp_primy(iblock)+domain%ny_origin-1, &
+            domain%idisp_primz(iblock)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
        if (naba_atoms_of_blocks(dens)%no_of_part(iblock) > 0) then ! if there are naba atoms
           iatom = 0
           do ipart = 1, naba_atoms_of_blocks(dens)%no_of_part(iblock)
@@ -4661,9 +4673,9 @@ contains
                             pot_here_pcc(spin) = &
                                  xc_potential(igrid,spin) * grid_point_volume
                          end do
-                         dx = dcellx_grid * (ix - 1)
-                         dy = dcelly_grid * (iy - 1)
-                         dz = dcellz_grid * (iz - 1)
+                         call lattice_grid_point_offset(ix, iy, iz, &
+                              blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+                              nx_in_block, ny_in_block, nz_in_block, dx, dy, dz)
                          r(1) = xblock + dx - xatom
                          r(2) = yblock + dy - yatom
                          r(3) = zblock + dz - zatom
@@ -4779,7 +4791,7 @@ subroutine print_stress(label, str_mat, print_level,print_ase)
   use numbers
   use units
   use GenComms,       only: inode, ionode, cq_abort
-  use global_module,  only: iprint_MD, flag_full_stress, rcellx, rcelly, rcellz, min_layer
+  use global_module,  only: iprint_MD, flag_full_stress, cell_vol, min_layer
   use global_module,  only: ni_in_cell, flag_diagonalisation
   use input_module,   only: io_close
   
@@ -4797,7 +4809,7 @@ subroutine print_stress(label, str_mat, print_level,print_ase)
   
   if (inode==ionode) then
      if (iprint_MD + min_layer >= print_level) then
-        volume = rcellx*rcelly*rcellz
+        volume = abs(cell_vol)
         scale = HaBohr3ToGPa/volume
         if (flag_full_stress) then
            write(io_lun,fmt=fmt) label, str_mat(1,:)*scale, ' GPa'!en_units(energy_units)

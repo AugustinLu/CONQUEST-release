@@ -53,8 +53,8 @@ module dimens
   implicit none
   save
 
-  real(double) :: r_super_x, r_super_y, r_super_z, volume
-  real(double) :: r_super_x_squared, r_super_y_squared, r_super_z_squared
+  real(double) :: r_super_vec(3,3), r_super_vec_inv(3,3)
+  real(double) :: volume
   real(double) :: r_s, r_h, r_c, r_nl, r_core_squared, r_dft_d2, r_exx, r_exxs
   real(double) :: r_s_atomf, r_h_atomf, r_MS, r_LD
   real(double) :: grid_point_volume, one_over_grid_point_volume
@@ -72,6 +72,7 @@ module dimens
 
   integer :: n_grid_x, n_grid_y, n_grid_z, n_my_grid_points
 
+  real(double) :: r_super_x_squared, r_super_y_squared, r_super_z_squared
   real(double) :: x_grid, y_grid, z_grid
 
   integer, parameter :: ngrids = 105
@@ -196,10 +197,9 @@ contains
 !****lat>$
 
     ! Various grid parameters
-    r_super_x_squared = r_super_x * r_super_x
-    r_super_y_squared = r_super_y * r_super_y
-    r_super_z_squared = r_super_z * r_super_z
-    volume = r_super_x * r_super_y * r_super_z
+    volume = abs(r_super_vec(1,1)*(r_super_vec(2,2)*r_super_vec(3,3) - r_super_vec(2,3)*r_super_vec(3,2)) &
+               - r_super_vec(1,2)*(r_super_vec(2,1)*r_super_vec(3,3) - r_super_vec(2,3)*r_super_vec(3,1)) &
+               + r_super_vec(1,3)*(r_super_vec(2,1)*r_super_vec(3,2) - r_super_vec(2,2)*r_super_vec(3,1)))
     grid_point_volume = volume/(n_grid_x*n_grid_y*n_grid_z)
     one_over_grid_point_volume = one / grid_point_volume
     !support_grid_volume = support_grid_spacing**3
@@ -207,7 +207,10 @@ contains
     y_grid = one / real( n_grid_y, double)
     z_grid = one / real( n_grid_z, double)
     ! Calculate largest grid spacing in any direction (local to routine for now)
-    max_grid = max(r_super_x*x_grid,r_super_y*y_grid,r_super_z*z_grid)
+    ! Approximate max grid size using vector norms
+    max_grid = max(sqrt(sum(r_super_vec(:,1)**2))*x_grid, &
+                   sqrt(sum(r_super_vec(:,2)**2))*y_grid, &
+                   sqrt(sum(r_super_vec(:,3)**2))*z_grid)
     ! Grid points in a block
     n_pts_in_block = in_block_x * in_block_y * in_block_z
 
@@ -477,7 +480,7 @@ contains
        sqKE = sqrt(two*GridCutoff) ! Use KE = 0.5*G*G
        ! For now, we assume orthorhombic cells
        ! x first
-       mingrid = int(sqKE*r_super_x/pi)
+       mingrid = int(sqKE*sqrt(sum(r_super_vec(:,1)**2))/pi)
        do i=1,ngrids
           if(grid_spacings(i)>mingrid) then
              n_grid_x = grid_spacings(i)
@@ -485,7 +488,7 @@ contains
           end if
        end do
        ! y
-       mingrid = int(sqKE*r_super_y/pi)
+       mingrid = int(sqKE*sqrt(sum(r_super_vec(:,2)**2))/pi)
        do i=1,ngrids
           if(grid_spacings(i)>mingrid) then
              n_grid_y = grid_spacings(i)
@@ -493,7 +496,7 @@ contains
           end if
        end do
        ! z
-       mingrid = int(sqKE*r_super_z/pi)
+       mingrid = int(sqKE*sqrt(sum(r_super_vec(:,3)**2))/pi)
        do i=1,ngrids
           if(grid_spacings(i)>mingrid) then
              n_grid_z = grid_spacings(i)

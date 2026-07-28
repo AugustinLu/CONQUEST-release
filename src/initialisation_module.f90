@@ -313,7 +313,7 @@ contains
   !!   2017/06/22 11:04 dave
   !!    Adding diagonalisation initialisation calls
   !!   2017/08/29 jack baker & dave
-  !!    Removed r_super_x references (redundant)
+  !!    Removed cell_vec_len(1) references (redundant)
   !!   2018/01/22 12:41 JST dave
   !!    Adding check for maximum angular momentum for Bessel functions
   !!   2022/06/09 08:36 dave
@@ -1548,7 +1548,7 @@ contains
 
   subroutine check_setgrid
 
-    use global_module,  only: numprocs,rcellx,rcelly,rcellz,  &
+    use global_module,  only: numprocs,cell_vec_len,  &
                               iprint_index
     use GenComms,       only: myid, my_barrier
     use group_module,   only: blocks, parts
@@ -1567,9 +1567,9 @@ contains
     if(iprint_index > 6) then
        call my_barrier()
        !-- CHECK -- bundle
-       dcellx=rcellx/parts%ngcellx
-       dcelly=rcelly/parts%ngcelly
-       dcellz=rcellz/parts%ngcellz
+       dcellx=cell_vec_len(1)/parts%ngcellx
+       dcelly=cell_vec_len(2)/parts%ngcelly
+       dcellz=cell_vec_len(3)/parts%ngcellz
        do nnd=1,numprocs
           if(myid == nnd-1) then
              write(io_lun,*)
@@ -1603,9 +1603,9 @@ contains
        end do
 
        !-- CHECK -- domain
-       dcellx = rcellx / blocks%ngcellx
-       dcelly = rcelly / blocks%ngcelly
-       dcellz = rcellz / blocks%ngcellz
+       dcellx = cell_vec_len(1) / blocks%ngcellx
+       dcelly = cell_vec_len(2) / blocks%ngcelly
+       dcellz = cell_vec_len(3) / blocks%ngcellz
        do nnd = 1, numprocs
           if(myid == nnd-1) then
              write(io_lun,*)
@@ -1641,9 +1641,9 @@ contains
        end do
 
        !-- CHECK -- BCS_parts
-       dcellx = rcellx / parts%ngcellx
-       dcelly = rcelly / parts%ngcelly
-       dcellz = rcellz / parts%ngcellz
+       dcellx = cell_vec_len(1) / parts%ngcellx
+       dcelly = cell_vec_len(2) / parts%ngcelly
+       dcellz = cell_vec_len(3) / parts%ngcellz
        do nnd2 = 1, numprocs
           if(myid == nnd2-1 ) then
              write(io_lun,*)
@@ -1722,9 +1722,9 @@ contains
           call my_barrier()
        end do
        !-- CHECK -- BCS_blocks
-       dcellx=rcellx/blocks%ngcellx
-       dcelly=rcelly/blocks%ngcelly
-       dcellz=rcellz/blocks%ngcellz
+       dcellx=cell_vec_len(1)/blocks%ngcellx
+       dcelly=cell_vec_len(2)/blocks%ngcelly
+       dcellz=cell_vec_len(3)/blocks%ngcellz
        do nnd2=1,numprocs
           if(myid ==nnd2-1 ) then
              write(io_lun,*)

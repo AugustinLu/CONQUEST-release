@@ -1,0 +1,33 @@
+IO.Title                    graphite_hexagonal_cell_relax
+IO.Coordinates              coords.dat
+IO.FractionalAtomicCoords   T
+IO.Iprint_MD                2
+
+AtomMove.TypeOfRun          cg
+AtomMove.OptCell            T
+AtomMove.OptCellMethod      2
+AtomMove.FullStress         T
+AtomMove.ReuseDM            T
+AtomMove.CGLineMin          backtrack
+AtomMove.NumSteps           30
+AtomMove.EnthalpyTolerance  1.0e-5
+AtomMove.StressTolerance    0.1
+AtomMove.MaxForceTol        2.0e-4
+
+General.NumberOfSpecies     1
+General.DifferentFunctional T
+General.FunctionalType      101
+General.PAOFromFiles        T
+General.DFT_D2              F
+%block ChemicalSpeciesLabel
+1 12.011 C C.ion
+%endblock
+
+Grid.GridCutoff             120
+DM.SolutionMethod           diagon
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-8
+Diag.MPMesh                 T
+Diag.MPMeshX                4
+Diag.MPMeshY                4
+Diag.MPMeshZ                2

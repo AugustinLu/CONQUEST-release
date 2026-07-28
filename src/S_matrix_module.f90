@@ -43,6 +43,7 @@
 module S_matrix_module
 
   use datatypes
+    use global_module, ONLY: cell_vec_len
   use global_module,          only: io_lun
   use timer_module,           only: start_timer, stop_timer
   use timer_module,           only: start_backtrace, stop_backtrace
@@ -533,8 +534,8 @@ contains
 
     use datatypes
     use numbers
-    use global_module,               only: rcellx,rcelly,rcellz, atomf, species_glob, &
-         ni_in_cell, id_glob, atom_coord
+    use global_module,               only: cell_vec_len, atomf, species_glob, &
+         ni_in_cell, id_glob, atom_coord, lattice_grid_block_origin
     use cover_module,                only: DCS_parts
     use block_module,                only: nx_in_block,ny_in_block,nz_in_block, &
                                            n_blocks, n_pts_in_block
@@ -542,7 +543,7 @@ contains
     use primary_module,              only: domain
     use set_blipgrid_module,         only: naba_atoms_of_blocks
     use functions_on_grid,           only: gridfunctions, fn_on_grid
-    use dimens,                      only: n_my_grid_points, r_h, r_super_x, r_super_y, r_super_z
+    use dimens,                      only: n_my_grid_points, r_h
     use GenComms,                    only: cq_abort
     use species_module,              only: natomf_species
     use PAO_grid_transform_module,   only: check_block
@@ -581,15 +582,18 @@ contains
          r_store(n_pts_in_block), STAT=stat)
     if(stat /= 0) call cq_abort(' Error allocating store in get_r_on_atomfns: ',n_pts_in_block)
 
-    dcellx_block=rcellx/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
-    dcelly_block=rcelly/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
-    dcellz_block=rcellz/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
     no_of_ib_ia = 0
     do iblock = 1, domain%groups_on_node
        if (iblock*n_pts_in_block > n_my_grid_points) call cq_abort('get_nonSC_force: igrid error ', igrid,n_my_grid_points)
-       xblock = (domain%idisp_primx(iblock) + domain%nx_origin - 1) * dcellx_block
-       yblock = (domain%idisp_primy(iblock) + domain%ny_origin - 1) * dcelly_block
-       zblock = (domain%idisp_primz(iblock) + domain%nz_origin - 1) * dcellz_block
+       call lattice_grid_block_origin( &
+            domain%idisp_primx(iblock)+domain%nx_origin-1, &
+            domain%idisp_primy(iblock)+domain%ny_origin-1, &
+            domain%idisp_primz(iblock)+domain%nz_origin-1, &
+            blocks%ngcellx, blocks%ngcelly, blocks%ngcellz, &
+            xblock, yblock, zblock)
        if (naba_atoms_of_blocks(atomf)%no_of_part(iblock) > 0) then ! if there are naba atoms
           iatom = 0
           do ipart = 1, naba_atoms_of_blocks(atomf)%no_of_part(iblock)
@@ -631,13 +635,13 @@ contains
                             ry = y
                             rz = z
                          else if(flag_func==1) then
-                            rx = cos(twopi*(x + atom_coord(1,ig_atom))/r_super_x)
-                            ry = cos(twopi*(y + atom_coord(2,ig_atom))/r_super_y)
-                            rz = cos(twopi*(z + atom_coord(3,ig_atom))/r_super_z)
+                            rx = cos(twopi*(x + atom_coord(1,ig_atom))/cell_vec_len(1))
+                            ry = cos(twopi*(y + atom_coord(2,ig_atom))/cell_vec_len(2))
+                            rz = cos(twopi*(z + atom_coord(3,ig_atom))/cell_vec_len(3))
                          else if(flag_func==2) then
-                            rx = sin(twopi*(x + atom_coord(1,ig_atom))/r_super_x)
-                            ry = sin(twopi*(y + atom_coord(2,ig_atom))/r_super_y)
-                            rz = sin(twopi*(z + atom_coord(3,ig_atom))/r_super_z)
+                            rx = sin(twopi*(x + atom_coord(1,ig_atom))/cell_vec_len(1))
+                            ry = sin(twopi*(y + atom_coord(2,ig_atom))/cell_vec_len(2))
+                            rz = sin(twopi*(z + atom_coord(3,ig_atom))/cell_vec_len(3))
                          end if
                          do nsf1=1,this_nsf
                             sfni = gridfunctions(inputgf)%griddata(position+(nsf1-1)*n_pts_in_block)
@@ -650,25 +654,25 @@ contains
                             if(flag_func==0) then
                                rx = x
                             else if(flag_func==1) then
-                               rx = cos(twopi*(x + atom_coord(1,ig_atom))/r_super_x)
+                               rx = cos(twopi*(x + atom_coord(1,ig_atom))/cell_vec_len(1))
                             else if(flag_func==2) then
-                               rx = sin(twopi*(x + atom_coord(1,ig_atom))/r_super_x)
+                               rx = sin(twopi*(x + atom_coord(1,ig_atom))/cell_vec_len(1))
                             end if
                          else if(direction==2) then
                             if(flag_func==0) then
                                rx = y
                             else if(flag_func==1) then
-                               rx = cos(twopi*(y + atom_coord(2,ig_atom))/r_super_y)
+                               rx = cos(twopi*(y + atom_coord(2,ig_atom))/cell_vec_len(2))
                             else if(flag_func==2) then
-                               rx = sin(twopi*(y + atom_coord(2,ig_atom))/r_super_y)
+                               rx = sin(twopi*(y + atom_coord(2,ig_atom))/cell_vec_len(2))
                             end if
                          else if(direction==3) then
                             if(flag_func==0) then
                                rx = z
                             else if(flag_func==1) then
-                               rx = cos(twopi*(z + atom_coord(3,ig_atom))/r_super_z)
+                               rx = cos(twopi*(z + atom_coord(3,ig_atom))/cell_vec_len(3))
                             else if(flag_func==2) then
-                               rx = sin(twopi*(z + atom_coord(3,ig_atom))/r_super_z)
+                               rx = sin(twopi*(z + atom_coord(3,ig_atom))/cell_vec_len(3))
                             end if
                          end if
                          do nsf1=1,this_nsf

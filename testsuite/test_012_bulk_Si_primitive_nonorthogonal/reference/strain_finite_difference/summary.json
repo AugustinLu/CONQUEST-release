@@ -1,0 +1,82 @@
+{
+  "strain_parameterization": "normal tensor strains; engineering shear with eps_ij=eps_ji=gamma/2",
+  "delta": 0.0005,
+  "base_energy_ha": -8.425507579974362,
+  "base_volume_bohr3": 281.9792330062192,
+  "analytic_stress_gpa": [
+    [
+      -2.18716536,
+      3.19382338,
+      -2.20174476
+    ],
+    [
+      3.19382338,
+      -4.4916918,
+      2.57233941
+    ],
+    [
+      -2.20174476,
+      2.57233941,
+      -3.49048433
+    ]
+  ],
+  "stress_antisymmetry_max_gpa": 0.0,
+  "maximum_absolute_error_gpa": 0.06458485585317764,
+  "rms_absolute_error_gpa": 0.04048213548578072,
+  "components": [
+    {
+      "component": "xx",
+      "analytic_gpa": -2.18716536,
+      "finite_difference_gpa": -2.187444505227588,
+      "absolute_error_gpa": 0.0002791452275880957,
+      "relative_error": 0.00012762877132806077,
+      "minus_energy_ha": -8.425496943006815,
+      "plus_energy_ha": -8.425517908078314
+    },
+    {
+      "component": "yy",
+      "analytic_gpa": -4.4916918,
+      "finite_difference_gpa": -4.546476707982664,
+      "absolute_error_gpa": 0.05478490798266389,
+      "relative_error": 0.012196942805083797,
+      "minus_energy_ha": -8.425485844939342,
+      "plus_energy_ha": -8.425529419626162
+    },
+    {
+      "component": "zz",
+      "analytic_gpa": -3.49048433,
+      "finite_difference_gpa": -3.445523786655169,
+      "absolute_error_gpa": 0.04496054334483102,
+      "relative_error": 0.012880889611336835,
+      "minus_energy_ha": -8.425491168141983,
+      "plus_energy_ha": -8.42552419099233
+    },
+    {
+      "component": "xy",
+      "analytic_gpa": 3.19382338,
+      "finite_difference_gpa": 3.208758313444864,
+      "absolute_error_gpa": 0.014934933444863852,
+      "relative_error": 0.004676192659364855,
+      "minus_energy_ha": -8.425522826428322,
+      "plus_energy_ha": -8.425492072803577
+    },
+    {
+      "component": "xz",
+      "analytic_gpa": -2.20174476,
+      "finite_difference_gpa": -2.2663296158531776,
+      "absolute_error_gpa": 0.06458485585317764,
+      "relative_error": 0.029333489070357835,
+      "minus_energy_ha": -8.425496865895457,
+      "plus_energy_ha": -8.425518587023616
+    },
+    {
+      "component": "yz",
+      "analytic_gpa": 2.57233941,
+      "finite_difference_gpa": 2.5927268913492725,
+      "absolute_error_gpa": 0.020387481349272374,
+      "relative_error": 0.007925657582360942,
+      "minus_energy_ha": -8.425519866341622,
+      "plus_energy_ha": -8.425495016931945
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "spacegroup_number": 136,
+  "spacegroup_international": "P4_2/mnm",
+  "path": [
+    [
+      "GAMMA",
+      "X"
+    ],
+    [
+      "X",
+      "M"
+    ],
+    [
+      "M",
+      "GAMMA"
+    ],
+    [
+      "GAMMA",
+      "Z"
+    ],
+    [
+      "Z",
+      "R"
+    ],
+    [
+      "R",
+      "A"
+    ],
+    [
+      "A",
+      "Z"
+    ],
+    [
+      "X",
+      "R"
+    ],
+    [
+      "M",
+      "A"
+    ]
+  ],
+  "band_kpoints": 309,
+  "indirect_path_gap_ev": 1.7039955621680505,
+  "minimum_direct_path_gap_ev": 1.7039955621680505,
+  "total_valence_electrons_from_scf": 48.0,
+  "integrated_states_in_exported_dos_window_at_fermi": 32.0,
+  "dos_window_note": "16 deep Ti semicore electrons lie below the exported window",
+  "relax_initial_max_force_ha_per_bohr": 0.01378036,
+  "relax_final_max_force_ha_per_bohr": 0.00015348,
+  "oxygen_u_initial": 0.31200000000000006,
+  "oxygen_u_final": 0.30525831282674
+}

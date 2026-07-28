@@ -31,21 +31,21 @@
 !!   07/06/2001 dave
 !!    Changed to get nodes from GenComms
 !!   07/06/2001 dave
-!!    Updated set_fft_map to use exch instead of alltoall and 
+!!    Updated set_fft_map to use exch instead of alltoall and
 !!    cq_abort instead of stop
 !!   18/03/2002 dave
 !!    Added a little to the header and a static tag for object file id
 !!   19/06/2002 dave
 !!    Changed to use GPFA
-!!   14:08, 29/07/2003 drb 
-!!    Rewrote dependences on n_nodes in common and nodes in GenComms to be 
+!!   14:08, 29/07/2003 drb
+!!    Rewrote dependences on n_nodes in common and nodes in GenComms to be
 !!    mx_node and numprocs from global_module - much more transparent.
 !!   08:33, 2003/09/05 dave
 !!    Fixed MAJOR bug (by me - whoops !) where the SAME set of trigonometric factors was used for x, y AND z
 !!    Also commented out MAX_FFT_SIZE variable which (it turns out) isn't being used !
-!!   11:02, 14/11/2005 drb 
-!!    Added array (recip_vector) to store reciprocal space vectors for grid 
-!!   15:54, 27/04/2007 drb 
+!!   11:02, 14/11/2005 drb
+!!    Added array (recip_vector) to store reciprocal space vectors for grid
+!!   15:54, 27/04/2007 drb
 !!    Changed recip_vector to be (n,3) for speed
 !!   2008/02/04 17:30 dave
 !!    Changed for output to file not stdout
@@ -117,7 +117,7 @@ contains
 
 !!****f* fft_module/fft3 *
 !!
-!!  NAME 
+!!  NAME
 !!   fft3
 !!  USAGE
 !!   fft3(input data, output complex FFT of data, direction)
@@ -129,15 +129,15 @@ contains
 !!   reverse transform does the opposite - in other words, the data
 !!   is NOT stored in the same format when in reciprocal space.
 !!
-!!   Note on allocating trigs_x, y and z: 
-!!   Note that the size of trigs_? is at least 2*(2^p+3^q+5^r), where n_grid_? factors 
+!!   Note on allocating trigs_x, y and z:
+!!   Note that the size of trigs_? is at least 2*(2^p+3^q+5^r), where n_grid_? factors
 !!   as 2^p*3^q*5^r.  If we set the size of trigs_? to 2*n_grid_? we'll be safe.
 !!  INPUTS
 !!   real(double), dimension(N_GRID_MAX) :: data
 !!   complex(double_cplx), dimension(N_GRID_MAX) :: cdata
 !!   integer :: isign
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   C.M.Goringe/D.R.Bowler
 !!  CREATION DATE
@@ -161,7 +161,7 @@ contains
 !!    Passed in size of cdata, data
 !!  SOURCE
 !!
-  subroutine fft3( data, cdata, size, isign ) 
+  subroutine fft3( data, cdata, size, isign )
 
     use dimens,        ONLY: n_my_grid_points, n_grid_x, n_grid_y, n_grid_z
     use GenComms,      ONLY: cq_abort, inode
@@ -204,7 +204,7 @@ contains
        call ffty(cdata,maxngrid,1,n_grid_y,0)
        call fftz(cdata,maxngrid,1,n_grid_z,0)
     end if
-    return    
+    return
   end subroutine fft3
 !!***
 
@@ -214,18 +214,18 @@ contains
 
 !!****f* fft_module/rearrange_data *
 !!
-!!  NAME 
+!!  NAME
 !!   rearrange_data
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
-!!   Rearrange data in the manner described by the 
+!!   Rearrange data in the manner described by the
 !!   pack,psnd,pr/rpr,unpack variables, created by set_fft_map.
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   C.M.Goringe/D.R.Bowler
 !!  CREATION DATE
@@ -254,8 +254,11 @@ contains
     complex(double_cplx), allocatable, dimension(:) :: send
     complex(double_cplx), allocatable, dimension(:) :: recv
 
+    integer :: len(6)
+
+
     integer :: pack(:), psend(:), pr(:), unpack(:)
-    
+
     ! Local variables
     integer :: I, stat
 
@@ -291,10 +294,10 @@ contains
 
 !!****f* fft_module/set_fft_map *
 !!
-!!  NAME 
+!!  NAME
 !!   set_fft_map
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   The first sort of transformation is going from the domain structure
 !!   to strips parallel to the x-axis : aka x-columns
@@ -310,23 +313,23 @@ contains
 !!   We need to create three indexes. The first (packbx) takes all of our data,
 !!   which occupies the first (n_grid_domain_x*n_grid_domain_y*n_grid_domain_z)
 !!   elements of chden and points to where it should be stored in sendtemp,
-!!   which is ordered such that the data to be sent to each recipient node 
-!!   is contiguous. The second, psendbx, is the data needed by zmexch, 
-!!   pointing at the start and finish in sendtemp of the data for each node, 
-!!   and EITHER rprbx, the location on the remote node to put the data into 
-!! (for SMAL style) OR prbx, the location on the local node to put data from 
-!!   the remote node (for PVM style). The third is the unpacking equivalent to 
-!!   the first, pointing to where the ith item in the new, x-column ordered, 
+!!   which is ordered such that the data to be sent to each recipient node
+!!   is contiguous. The second, psendbx, is the data needed by zmexch,
+!!   pointing at the start and finish in sendtemp of the data for each node,
+!!   and EITHER rprbx, the location on the remote node to put the data into
+!! (for SMAL style) OR prbx, the location on the local node to put data from
+!!   the remote node (for PVM style). The third is the unpacking equivalent to
+!!   the first, pointing to where the ith item in the new, x-column ordered,
 !!   chden is to be found in gettemp.
 !!
 !!   Inspection of the equivalencing in map.inc will show that most of the
 !!   data for the inverse (xb) transformation is equivalent to the data for
 !!   the bx transform
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   C.M.Goringe
 !!  CREATION DATE
@@ -350,9 +353,9 @@ contains
 !!    Also changed (slightly) calculation of hartree factor to use reciprocal lattice vectors
 !!
 !!    Note: this routine ASSUMES orthorhombic cells
-!!   11:06, 14/11/2005 drb 
+!!   11:06, 14/11/2005 drb
 !!    Also changed check for zero (used to be r2.NE.0, now r2>RD_ERR)
-!!   15:54, 27/04/2007 drb 
+!!   15:54, 27/04/2007 drb
 !!    Changed recip_vector for consistency
 !!   2008/05/23
 !!    Added timers
@@ -362,8 +365,8 @@ contains
 
     use global_module, ONLY: numprocs, area_SC, iprint_SC
     use numbers
-    use dimens, ONLY: n_my_grid_points, n_grid_x, n_grid_y, n_grid_z, &
-         r_super_x, r_super_y, r_super_z
+    use dimens, ONLY: n_my_grid_points, n_grid_x, n_grid_y, n_grid_z
+    use global_module, ONLY: lat_vec, lat_vec_inv, cell_vec_len
     use grid_index, ONLY: grid_point_x, grid_point_y, grid_point_z
     use GenComms, ONLY: gcopy_diff, exch, cq_abort, my_barrier, inode, myid
     use maxima_module, ONLY: maxngrid
@@ -380,9 +383,15 @@ contains
 
     real(double) :: xmin2, ymin2, zmin2, r2
     real(double) :: xmin, ymin, zmin, cutoff, tmp_r2
+    real(double) :: gfrac(3), gcart(3)
     integer :: remote_n_my_grid_points
     integer, allocatable, dimension(:) :: remote_grid_point_x, remote_grid_point_y, remote_grid_point_z, &
          temp_kl
+
+    ! cell_vec_len is from global_module
+    cell_vec_len(1) = sqrt(sum(lat_vec(:,1)**2))
+    cell_vec_len(2) = sqrt(sum(lat_vec(:,2)**2))
+    cell_vec_len(3) = sqrt(sum(lat_vec(:,3)**2))
 
     ! Allocate variables
     call start_timer(tmr_std_allocation)
@@ -454,13 +463,13 @@ contains
     end do
 
     ! We need to work out where on the remote node this
-    ! data is going to need to be sent. 
+    ! data is going to need to be sent.
     call exch(send_count, get_count, 1)
 
     ! prbx(I) is where we will unpack data from node I (for PVM)
     prbx(1) = 1
     do I = 1, numprocs
-       prbx(I+1) = prbx(I) + get_count(I)  
+       prbx(I+1) = prbx(I) + get_count(I)
     end do
     x_columns_node(inode) = (prbx(numprocs)+get_count(numprocs))/n_grid_x
     if(iprint_SC>4.AND.myid==0) write(io_lun,*) inode," xcols: ",prbx(numprocs)+get_count(numprocs),x_columns_node(inode)
@@ -505,7 +514,7 @@ contains
     ! now we need to do the same for the transform from x-columns to y-columns.
     ! since we are in x-column, item 'n' in chden is our column number
     ! (n/n_grid_x) + 1
-    ! and is the 
+    ! and is the
     ! MOD(n,n_grid_x) + 1 th item in it.
     !
     ! The Ath column on this node is the (A-1)*numprocs+inode th column overall
@@ -546,7 +555,7 @@ contains
     ! prxy(I) is where we will unpack data from node I (for PVM)
     prxy(1) = 1
     do I = 1, numprocs
-       prxy(I+1) = prxy(I) + get_count(I)  
+       prxy(I+1) = prxy(I) + get_count(I)
     end do
     y_columns_node(inode) = (prxy(numprocs)+get_count(numprocs))/n_grid_y
     if (prxy(numprocs)+get_count(numprocs)>maxngrid+1) &
@@ -584,8 +593,8 @@ contains
        end do
     end do
 
-    ! finally we need to do the same for the transform from y-columns to 
-    ! z-columns. In this case we also set up the scaling rules for the 
+    ! finally we need to do the same for the transform from y-columns to
+    ! z-columns. In this case we also set up the scaling rules for the
     ! hartree potential
     do I = 1, numprocs
        send_count(I) = 0
@@ -624,7 +633,7 @@ contains
     ! pryz(I) is where we will unpack data from node I (for PVM)
     pryz(1) = 1
     do I = 1, numprocs
-       pryz(I+1) = pryz(I) + get_count(I)  
+       pryz(I+1) = pryz(I) + get_count(I)
     end do
     z_columns_node(inode) = (pryz(numprocs)+get_count(numprocs))/n_grid_z
     if(iprint_SC>4.AND.myid==0) write(io_lun,*) inode," z column: ",z_columns_node(inode)
@@ -642,17 +651,17 @@ contains
     if(iprint_SC>4.AND.myid==0) write(io_lun,*) inode," z columns: ",z_columns_node
 
     ! Base kerker cutoff on shortest cell side and quarter
-    if(r_super_x<r_super_y) then
-       if(r_super_x<r_super_z) then
-          cutoff = pi*n_grid_x/r_super_x
+    if(cell_vec_len(1)<cell_vec_len(2)) then
+       if(cell_vec_len(1)<cell_vec_len(3)) then
+          cutoff = pi*n_grid_x/cell_vec_len(1)
        else
-          cutoff = pi*n_grid_z/r_super_z
+          cutoff = pi*n_grid_z/cell_vec_len(3)
        end if
     else
-       if(r_super_y<r_super_z) then
-          cutoff = pi*n_grid_y/r_super_y
+       if(cell_vec_len(2)<cell_vec_len(3)) then
+          cutoff = pi*n_grid_y/cell_vec_len(2)
        else
-          cutoff = pi*n_grid_z/r_super_z
+          cutoff = pi*n_grid_z/cell_vec_len(3)
        end if
     end if
     ! This should be user-definable (currently assumes 0.5*longest vector)
@@ -672,23 +681,23 @@ contains
           !c xmin2 is distance to nearest edge of reciprocal box squared
           !xmin2 = real(min(x*x,(n_grid_x-x)*(n_grid_x-x)))
           !xmin2 = xmin2 / (r_super_x_squared)
-          ! If we were looping over grid points in x, then I'd do a loop from 1 to ngridx/2+1 and set 
-          ! x = (nx-1)/r_super_x and then a second loop from ngridx/2+2 to ngridx and set 
-          ! x = ((nx-1)-ngridx)/r_super_x to get the Brillouin zone right; I'm assuming that the minus
+          ! If we were looping over grid points in x, then I'd do a loop from 1 to ngridx/2+1 and set
+          ! x = (nx-1)/cell_vec_len(1) and then a second loop from ngridx/2+2 to ngridx and set
+          ! x = ((nx-1)-ngridx)/cell_vec_len(1) to get the Brillouin zone right; I'm assuming that the minus
           ! one is correctly done
           if((n_grid_x-x)<x) then
-             xmin = real(x-n_grid_x,double)/r_super_x
+             xmin = real(x-n_grid_x,double)/cell_vec_len(1)
           else
-             xmin = real(x,double)/r_super_x
+             xmin = real(x,double)/cell_vec_len(1)
           end if
           xmin2 = xmin*xmin
           z = col_num / n_grid_x
           !zmin2 = real(min(z*z,(n_grid_z-z)*(n_grid_z-z)))
           !zmin2 = zmin2 / (r_super_z_squared)
           if((n_grid_z-z)<z) then
-             zmin = real(z-n_grid_z,double)/r_super_z
+             zmin = real(z-n_grid_z,double)/cell_vec_len(3)
           else
-             zmin = real(z,double)/r_super_z
+             zmin = real(z,double)/cell_vec_len(3)
           end if
           zmin2 = zmin*zmin
           do y = 0, n_grid_y-1
@@ -701,22 +710,27 @@ contains
                 !ymin2 = real(min(y*y,(n_grid_y-y)*(n_grid_y-y)))
                 !ymin2 =  ymin2 / (r_super_y_squared)
                 if((n_grid_y-y)<y) then
-                   ymin = real(y-n_grid_y,double)/r_super_y
+                   ymin = real(y-n_grid_y,double)/cell_vec_len(2)
                 else
-                   ymin = real(y,double)/r_super_y
+                   ymin = real(y,double)/cell_vec_len(2)
                 end if
                 ymin2 = ymin*ymin
-                recip_vector(site,1) = two*pi*xmin
-                recip_vector(site,2) = two*pi*ymin
-                recip_vector(site,3) = two*pi*zmin
-                r2 = xmin2+ymin2+zmin2
-                if (r2>RD_ERR) then 
+                ! xmin/ymin/zmin above are retained for the orthorhombic
+                ! indexing logic.  Build the physical reciprocal vector from
+                ! integer FFT frequencies and the full reciprocal lattice.
+                gfrac(1) = xmin*cell_vec_len(1)
+                gfrac(2) = ymin*cell_vec_len(2)
+                gfrac(3) = zmin*cell_vec_len(3)
+                gcart = matmul(transpose(lat_vec_inv), gfrac)
+                recip_vector(site,:) = two*pi*gcart
+                r2 = dot_product(gcart,gcart)
+                if (r2>RD_ERR) then
                    tmp_r2 = one/r2
                 else
                    tmp_r2 = zero
                    i0 = site ! Store location of gamma point
                 end if
-                hartree_factor(site) = tmp_r2 
+                hartree_factor(site) = tmp_r2
                 if(tmp_r2<cutoff.AND.tmp_r2>RD_ERR) then
                    size_kl = size_kl + 1
                    temp_kl(size_kl) = site
@@ -744,17 +758,17 @@ contains
 
 !!****f* fft_module/fftx *
 !!
-!!  NAME 
+!!  NAME
 !!   fftx
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   One dimensional fft of cols consecutive blocks of len data
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   C.M.Goringe
 !!  CREATION DATE
@@ -792,17 +806,17 @@ contains
 
 !!****f* fft_module/ffty *
 !!
-!!  NAME 
+!!  NAME
 !!   ffty
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   One dimensional fft of cols consecutive blocks of len data
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   C.M.Goringe
 !!  CREATION DATE
@@ -839,17 +853,17 @@ contains
 
 !!****f* fft_module/fftz *
 !!
-!!  NAME 
+!!  NAME
 !!   fftz
 !!  USAGE
-!! 
+!!
 !!  PURPOSE
 !!   One dimensional fft of cols consecutive blocks of len data
 !!  INPUTS
-!! 
-!! 
+!!
+!!
 !!  USES
-!! 
+!!
 !!  AUTHOR
 !!   C.M.Goringe
 !!  CREATION DATE

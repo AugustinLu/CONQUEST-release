@@ -1,0 +1,77 @@
+{
+  "source": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_013_rutile_TiO2_tetragonal/results/scf/coords.dat",
+  "recipe": "HPKOT",
+  "spacegroup_number": 136,
+  "spacegroup_international": "P4_2/mnm",
+  "bravais_lattice_extended": "tP1",
+  "path": [
+    [
+      "GAMMA",
+      "X"
+    ],
+    [
+      "X",
+      "M"
+    ],
+    [
+      "M",
+      "GAMMA"
+    ],
+    [
+      "GAMMA",
+      "Z"
+    ],
+    [
+      "Z",
+      "R"
+    ],
+    [
+      "R",
+      "A"
+    ],
+    [
+      "A",
+      "Z"
+    ],
+    [
+      "X",
+      "R"
+    ],
+    [
+      "M",
+      "A"
+    ]
+  ],
+  "point_coords": {
+    "GAMMA": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "Z": [
+      0.0,
+      0.0,
+      0.5
+    ],
+    "M": [
+      0.5,
+      0.5,
+      0.0
+    ],
+    "A": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "R": [
+      0.0,
+      0.5,
+      0.5
+    ],
+    "X": [
+      0.0,
+      0.5,
+      0.0
+    ]
+  }
+}

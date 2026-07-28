@@ -58,6 +58,7 @@
 module md_control
 
   use datatypes
+    use global_module, ONLY: cell_vec_len
   use numbers
   use global_module,    only: ni_in_cell, io_lun, iprint_MD, &
                               temp_ion, flag_MDcontinue, flag_MDdebug
@@ -1253,7 +1254,7 @@ contains
   !!  
   subroutine init_baro(baro, baro_type, dt, ndof, v, tau_P, ke_ions)
 
-    use global_module,    only: rcellx, rcelly, rcellz, min_layer
+    use global_module,    only: cell_vec_len, min_layer
     use io_module, ONLY: return_prefix
 
     ! passed variables
@@ -1306,9 +1307,9 @@ contains
 
     baro%P_ext = target_pressure/HaBohr3ToGPa
     baro%lat_ref = zero
-    baro%lat_ref(1,1) = rcellx
-    baro%lat_ref(2,2) = rcelly
-    baro%lat_ref(3,3) = rcellz
+    baro%lat_ref(1,1) = cell_vec_len(1)
+    baro%lat_ref(2,2) = cell_vec_len(2)
+    baro%lat_ref(3,3) = cell_vec_len(3)
     baro%lat = baro%lat_ref
     call baro%get_volume
     call baro%get_pressure_and_stress
@@ -2330,12 +2331,12 @@ contains
   subroutine update_cell(baro)
 
     use units
-    use global_module,      only: rcellx, rcelly, rcellz, &
+    use global_module,      only: cell_vec_len, &
                                   flag_diagonalisation, min_layer
     use GenComms,           only: inode, ionode
     use density_module,     only: density
     use maxima_module,      only: maxngrid
-    use dimens,             only: r_super_x, r_super_y, r_super_z, &
+    use dimens,             only:  &
                                   r_super_x_squared, r_super_y_squared, &
                                   r_super_z_squared, volume, &
                                   grid_point_volume, &
@@ -2360,30 +2361,30 @@ contains
     if (inode==ionode .and. flag_MDdebug .and. iprint_MD + min_layer> 1) &
       write(io_lun,'(4x,a)') trim(prefix)//" starting"
 
-    orcellx = rcellx
-    orcelly = rcelly
-    orcellz = rcellz
+    orcellx = cell_vec_len(1)
+    orcelly = cell_vec_len(2)
+    orcellz = cell_vec_len(3)
 
-    rcellx = baro%lat(1,1)
-    rcelly = baro%lat(2,2)
-    rcellz = baro%lat(3,3)
+    cell_vec_len(1) = baro%lat(1,1)
+    cell_vec_len(2) = baro%lat(2,2)
+    cell_vec_len(3) = baro%lat(3,3)
 
-    lattice_vec(1,1) = rcellx
-    lattice_vec(2,2) = rcelly
-    lattice_vec(3,3) = rcellz
+    lattice_vec(1,1) = cell_vec_len(1)
+    lattice_vec(2,2) = cell_vec_len(2)
+    lattice_vec(3,3) = cell_vec_len(3)
 
-    r_super_x = rcellx
-    r_super_y = rcelly
-    r_super_z = rcellz
+    cell_vec_len(1) = cell_vec_len(1)
+    cell_vec_len(2) = cell_vec_len(2)
+    cell_vec_len(3) = cell_vec_len(3)
 
     ! scale the integration grid and volume to the new cell.
     ! Constant number of grid points
-    r_super_x_squared = r_super_x * r_super_x
-    r_super_y_squared = r_super_y * r_super_y
-    r_super_z_squared = r_super_z * r_super_z
+    r_super_x_squared = cell_vec_len(1) * cell_vec_len(1)
+    r_super_y_squared = cell_vec_len(2) * cell_vec_len(2)
+    r_super_z_squared = cell_vec_len(3) * cell_vec_len(3)
     call baro%get_volume
     volume = baro%volume
-    ! volume = r_super_x * r_super_y * r_super_z
+    ! volume = cell_vec_len(1) * cell_vec_len(2) * cell_vec_len(3)
     ! baro%volume = volume
     grid_point_volume = volume/(n_grid_x*n_grid_y*n_grid_z)
     one_over_grid_point_volume = one / grid_point_volume
@@ -2391,15 +2392,15 @@ contains
     density = density * scale
     if(flag_diagonalisation) then
        do i = 1, nkp
-          kk(1,i) = kk(1,i) * orcellx / rcellx
-          kk(2,i) = kk(2,i) * orcelly / rcelly
-          kk(3,i) = kk(3,i) * orcellz / rcellz
+          kk(1,i) = kk(1,i) * orcellx / cell_vec_len(1)
+          kk(2,i) = kk(2,i) * orcelly / cell_vec_len(2)
+          kk(3,i) = kk(3,i) * orcellz / cell_vec_len(3)
        end do
     end if
     do j = 1, maxngrid
-       recip_vector(j,1) = recip_vector(j,1) * orcellx / rcellx
-       recip_vector(j,2) = recip_vector(j,2) * orcelly / rcelly
-       recip_vector(j,3) = recip_vector(j,3) * orcellz / rcellz
+       recip_vector(j,1) = recip_vector(j,1) * orcellx / cell_vec_len(1)
+       recip_vector(j,2) = recip_vector(j,2) * orcelly / cell_vec_len(2)
+       recip_vector(j,3) = recip_vector(j,3) * orcellz / cell_vec_len(3)
        xvec = recip_vector(j,1)/(two*pi)
        yvec = recip_vector(j,2)/(two*pi)
        zvec = recip_vector(j,3)/(two*pi)
@@ -2407,10 +2408,10 @@ contains
        if(j/=i0) hartree_factor(j) = one/r2 ! i0 notates gamma point
     end do
     if (inode == ionode .and. iprint_MD + min_layer > 1) then
-      write(io_lun,'(6x,a,3f12.6)') "cell scaling factors: ", rcellx/orcellx, &
-                                 rcelly/orcelly, rcellz/orcellz
-      write(io_lun,'(6x,a,3f12.6)') "new cell dimensions:  ", rcellx, rcelly, &
-                                 rcellz
+      write(io_lun,'(6x,a,3f12.6)') "cell scaling factors: ", cell_vec_len(1)/orcellx, &
+                                 cell_vec_len(2)/orcelly, cell_vec_len(3)/orcellz
+      write(io_lun,'(6x,a,3f12.6)') "new cell dimensions:  ", cell_vec_len(1), cell_vec_len(2), &
+                                 cell_vec_len(3)
     end if
 
   end subroutine update_cell

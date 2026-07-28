@@ -54,7 +54,9 @@ module sfc_partitions_module
 
   ! cell type
   type cell
-     real(double), dimension(3)   :: dims        ! cell dimensions
+     real(double), dimension(3)   :: dims        ! cell dimensions (bounding box extent)
+     real(double), dimension(3)   :: cell_min    ! minimum bounding box corner
+     real(double), dimension(3)   :: cell_max    ! maximum bounding box corner
      real(double), dimension(3)   :: r_atoms_min ! minimum atomic coordinates
      real(double), dimension(3)   :: r_atoms_max ! maximum atomic coordinates
      real(double), dimension(2,3) :: gap         ! gap(1,i) is the start coordinate
@@ -482,7 +484,8 @@ contains
     use numbers
     use GenComms,       only: cq_abort, inode, ionode
     use global_module,  only: atom_coord, ni_in_cell, species_glob, &
-                              area_init, shift_in_bohr, io_lun, global_maxatomspart
+                              area_init, shift_in_bohr, io_lun, global_maxatomspart, &
+                              lat_vec_inv
     use species_module, only: nsf_species
     use Hilbert3D,      only: Hilbert3D_Initialise, Hilbert3D_IntTOCoords, &
                               Hilbert3D_CoordsToInt
@@ -495,11 +498,17 @@ contains
     integer                    :: ihilbert, icc, ia
     real(double)               :: v_part, area
     real(double), dimension(3) :: r_occupied_cell
+    real(double), dimension(3) :: frac, eps_frac
     integer,      dimension(3) :: ipart_xyz, nParts
     integer                    :: n_parts_total
     logical                    :: refine
 
     
+
+    ! Positive boundary tolerance in fractional lattice coordinates.
+    eps_frac(1) = shift_in_bohr*sqrt(sum(lat_vec_inv(1,:)**2))
+    eps_frac(2) = shift_in_bohr*sqrt(sum(lat_vec_inv(2,:)**2))
+    eps_frac(3) = shift_in_bohr*sqrt(sum(lat_vec_inv(3,:)**2))
 
     ! get cell and system information
     call get_cell_info()
@@ -525,7 +534,10 @@ contains
           ! Assign atoms in cell to partitions and count
           loop_atoms_refine: do ia = 1, ni_in_cell
              ! get the partition x,y,z indices for the partition containing the atoms
-             ipart_xyz(1:3) = floor((atom_coord(1:3,ia)+shift_in_bohr) / r_part(1:3) )
+             frac = matmul(lat_vec_inv,atom_coord(:,ia))
+             frac = frac-floor(frac+eps_frac)
+             ipart_xyz(1:3) = floor((frac+eps_frac)*real(n_parts,double))
+             ipart_xyz = max(0, min(ipart_xyz, n_parts - 1))
              ! get the corresponding Hilbert curve index corresponding to the partition
              call Hilbert3D_CoordsToInt(ipart_xyz, ihilbert)
              ! accumulate the atoms count
@@ -563,7 +575,10 @@ contains
     parts(:)%n_atoms = 0
     loop_atoms_check: do ia = 1, ni_in_cell
        ! Assign to partition
-       ipart_xyz(1:3) = floor((atom_coord(1:3,ia)+shift_in_bohr) / r_part(1:3) )
+       frac = matmul(lat_vec_inv,atom_coord(:,ia))
+       frac = frac-floor(frac+eps_frac)
+       ipart_xyz(1:3) = floor((frac+eps_frac)*real(n_parts,double))
+       ipart_xyz = max(0, min(ipart_xyz, n_parts - 1))
        call Hilbert3D_CoordsToInt(ipart_xyz, ihilbert)
        ! accumulate the atoms count
        parts(ihilbert)%n_atoms = parts(ihilbert)%n_atoms + 1
@@ -579,7 +594,10 @@ contains
     parts(:)%n_atoms = 0
     loop_atoms_assign: do ia = 1, ni_in_cell
        ! Assign to partition
-       ipart_xyz(1:3) = floor((atom_coord(1:3,ia)+shift_in_bohr) / r_part(1:3) )
+       frac = matmul(lat_vec_inv,atom_coord(:,ia))
+       frac = frac-floor(frac+eps_frac)
+       ipart_xyz(1:3) = floor((frac+eps_frac)*real(n_parts,double))
+       ipart_xyz = max(0, min(ipart_xyz, n_parts - 1))
        call Hilbert3D_CoordsToInt(ipart_xyz, ihilbert)
        ! accumulate the atoms count
        parts(ihilbert)%n_atoms = parts(ihilbert)%n_atoms + 1
@@ -844,8 +862,8 @@ contains
 
     use datatypes
     use numbers
-    use dimens,        only: r_super_x, r_super_y, r_super_z
-    use global_module, only: atom_coord, ni_in_cell, area_init, shift_in_bohr
+    ! removed r_super_x from dimens
+    use global_module, only: atom_coord, ni_in_cell, area_init, shift_in_bohr, lat_vec
     use memory_module, only: reg_alloc_mem, reg_dealloc_mem, type_int
     use GenComms,      only: cq_abort
 
@@ -864,15 +882,30 @@ contains
     real(double) :: r_gap_block_min, r_gap_block_max
     real(double) :: tmp_min, tmp_max
     real(double) :: min_r_block
+    real(double) :: r_super_x, r_super_y, r_super_z
 
-    ! get cell dimensions
-    FSC%dims(1) = r_super_x
-    FSC%dims(2) = r_super_y
-    FSC%dims(3) = r_super_z
-    ! find the mimimum r_block
-    r_block(1) = r_super_x / real(min_n_slices, double)
-    r_block(2) = r_super_y / real(min_n_slices, double)
-    r_block(3) = r_super_z / real(min_n_slices, double)
+    r_super_x = sqrt(sum(lat_vec(:,1)**2))
+    r_super_y = sqrt(sum(lat_vec(:,2)**2))
+    r_super_z = sqrt(sum(lat_vec(:,3)**2))
+
+    ! Calculate bounding box of the parallelotope defined by lat_vec.
+    ! The 8 corners are sums of subsets of the 3 lattice vectors.
+    ! For each Cartesian component, cell_min is sum of negative contributions,
+    ! cell_max is sum of positive contributions.
+    FSC%cell_min = 0.0_double
+    FSC%cell_max = 0.0_double
+    do ii = 1, 3
+       FSC%cell_max(ii) = sum(max(0.0_double, lat_vec(ii,:)))
+       FSC%cell_min(ii) = sum(min(0.0_double, lat_vec(ii,:)))
+    end do
+    ! Cell dimensions are the bounding box extents
+    FSC%dims(1) = FSC%cell_max(1) - FSC%cell_min(1)
+    FSC%dims(2) = FSC%cell_max(2) - FSC%cell_min(2)
+    FSC%dims(3) = FSC%cell_max(3) - FSC%cell_min(3)
+    ! find the minimum r_block
+    r_block(1) = FSC%dims(1) / real(min_n_slices, double)
+    r_block(2) = FSC%dims(2) / real(min_n_slices, double)
+    r_block(3) = FSC%dims(3) / real(min_n_slices, double)
     min_r_block = r_block(1)
     dim_min_r_block = 1
     do ii = 2, 3
@@ -886,12 +919,12 @@ contains
        min_r_block = average_atomic_diameter
     end if
     ! recalculate the r_blocks based on the minimum value
-    n_blocks(1) = nint(r_super_x / min_r_block)
-    n_blocks(2) = nint(r_super_y / min_r_block)
-    n_blocks(3) = nint(r_super_z / min_r_block)
-    r_block(1) = r_super_x / real(n_blocks(1), double)
-    r_block(2) = r_super_y / real(n_blocks(2), double)
-    r_block(3) = r_super_z / real(n_blocks(3), double)
+    n_blocks(1) = max(1, nint(FSC%dims(1) / min_r_block))
+    n_blocks(2) = max(1, nint(FSC%dims(2) / min_r_block))
+    n_blocks(3) = max(1, nint(FSC%dims(3) / min_r_block))
+    r_block(1) = FSC%dims(1) / real(n_blocks(1), double)
+    r_block(2) = FSC%dims(2) / real(n_blocks(2), double)
+    r_block(3) = FSC%dims(3) / real(n_blocks(3), double)
     n_blocks_total = n_blocks(1) * n_blocks(2) * n_blocks(3)
     allocate(n_atoms_block(n_blocks_total), STAT=stat)
     if (stat /= 0) then
@@ -901,9 +934,10 @@ contains
     call reg_alloc_mem(area_init, n_blocks_total, type_int)
     n_atoms_block = 0.0_double
     ! calculate the number of atoms in each block
+    ! Offset coordinates by cell_min so all indices are non-negative
     do iatom = 1, ni_in_cell
-       !ORI i_block_xyz(1:3) = floor(atom_coord(1:3,iatom) / r_block(1:3) + RD_ERR)
-       i_block_xyz(1:3) = floor((atom_coord(1:3,iatom)+shift_in_bohr) / r_block(1:3) ) 
+       i_block_xyz(1:3) = floor((atom_coord(1:3,iatom)+shift_in_bohr - FSC%cell_min(1:3)) / r_block(1:3))
+       i_block_xyz = max(0, min(i_block_xyz, n_blocks - 1))
        icc = i_block_xyz(1) * n_blocks(2) * n_blocks(3) + &
              i_block_xyz(2) * n_blocks(3) + &
              i_block_xyz(3) + 1

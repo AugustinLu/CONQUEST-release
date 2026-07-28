@@ -108,7 +108,7 @@ contains
     use dimens, ONLY: r_h
     use GenComms, ONLY: inode, ionode
     use numbers
-    use global_module, ONLY: rcellx,rcelly,rcellz,id_glob,ni_in_cell, iprint_basis, species_glob, atomf
+    use global_module, ONLY: cell_vec_len,lat_vec,id_glob,ni_in_cell, iprint_basis, species_glob, atomf
     use species_module, ONLY: species, npao_species
     !  At present, these arrays are dummy arguments.
     use block_module, ONLY : nx_in_block,ny_in_block,nz_in_block, n_pts_in_block
@@ -131,6 +131,7 @@ contains
     integer :: my_species ! Temporary variables to reduce indirect accesses
     integer :: npoint ! outputs of check_block
     integer :: count1 ! incremented counter, maps from (l1, acz, m1) to linear index of gridfunctions%griddata
+    integer :: nx, ny, nz
     real(double):: dcellx_block,dcelly_block,dcellz_block ! grid dimensions, should be moved
     real(double) :: x,y,z ! Temporary variables to reduce indirect accesses
     real(double) :: rcut ! Input to check_block
@@ -171,11 +172,11 @@ contains
     ! --  Start of subroutine  ---
 
     ! No need to compute these here, since they are derived from globals
-    ! Store with rcellx, rcelly, rcellz?
+    ! Store with cell_vec_len?
     ! Reduces code duplication
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz
 
     call my_barrier()
 
@@ -212,11 +213,20 @@ contains
     !$omp                    rcut, n_pts_in_block, pao, gridfunctions, direction) &
     !$omp             private(ia, ipart, iblock, l1, acz, m1, count1, x, y, z, val, position, &
     !$omp                     npoint, r_store, ip_store, x_store, y_store, z_store, my_species, &
-    !$omp                     xblock, yblock, zblock, iatom, xatom, yatom, zatom, naba_part_label, ind_part, icover)
+    !$omp                     xblock, yblock, zblock, iatom, xatom, yatom, zatom, naba_part_label, ind_part, icover, nx, ny, nz)
     blocks_loop_omp: do iblock = 1, domain%groups_on_node ! primary set of blocks
-       xblock = ( domain%idisp_primx(iblock) + domain%nx_origin - 1 ) * dcellx_block
-       yblock = ( domain%idisp_primy(iblock) + domain%ny_origin - 1 ) * dcelly_block
-       zblock = ( domain%idisp_primz(iblock) + domain%nz_origin - 1 ) * dcellz_block
+       nx = domain%idisp_primx(iblock) + domain%nx_origin - 1
+       ny = domain%idisp_primy(iblock) + domain%ny_origin - 1
+       nz = domain%idisp_primz(iblock) + domain%nz_origin - 1
+       xblock = real(nx,double)*lat_vec(1,1)/blocks%ngcellx + &
+                real(ny,double)*lat_vec(1,2)/blocks%ngcelly + &
+                real(nz,double)*lat_vec(1,3)/blocks%ngcellz
+       yblock = real(nx,double)*lat_vec(2,1)/blocks%ngcellx + &
+                real(ny,double)*lat_vec(2,2)/blocks%ngcelly + &
+                real(nz,double)*lat_vec(2,3)/blocks%ngcellz
+       zblock = real(nx,double)*lat_vec(3,1)/blocks%ngcellx + &
+                real(ny,double)*lat_vec(3,2)/blocks%ngcelly + &
+                real(nz,double)*lat_vec(3,3)/blocks%ngcellz
        iatom = 0
        parts_loop_omp: do ipart=1,naba_atoms_of_blocks(atomf)%no_of_part(iblock)
           naba_part_label = naba_atoms_of_blocks(atomf)%list_part(ipart,iblock)
@@ -309,7 +319,7 @@ contains
        npoint, ip_store, r_store, x_store, y_store, z_store,blocksize)
 
     use numbers
-    use global_module, ONLY: rcellx,rcelly,rcellz
+    use global_module, ONLY: cell_vec_len, lat_vec
     use group_module,  ONLY: blocks
     use block_module,  ONLY: nx_in_block,ny_in_block,nz_in_block!, &
 !         n_pts_in_block
@@ -329,18 +339,22 @@ contains
     real(double):: dcellx_block,dcelly_block,dcellz_block
     real(double):: dcellx_grid, dcelly_grid, dcellz_grid
     real(double):: dx, dy, dz
+    real(double):: grid_x(3),grid_y(3),grid_z(3),delta(3)
     integer :: ipoint, iz, iy, ix
     real(double) ::  r2, r_from_i, rx, ry, rz, x, y, z, rcut2
 
 
     rcut2 = rcut* rcut
-    dcellx_block=rcellx/blocks%ngcellx
-    dcelly_block=rcelly/blocks%ngcelly
-    dcellz_block=rcellz/blocks%ngcellz
+    dcellx_block=cell_vec_len(1)/blocks%ngcellx
+    dcelly_block=cell_vec_len(2)/blocks%ngcelly
+    dcellz_block=cell_vec_len(3)/blocks%ngcellz
 
     dcellx_grid=dcellx_block/nx_in_block
     dcelly_grid=dcelly_block/ny_in_block
     dcellz_grid=dcellz_block/nz_in_block
+    grid_x = lat_vec(:,1)/real(blocks%ngcellx*nx_in_block,double)
+    grid_y = lat_vec(:,2)/real(blocks%ngcelly*ny_in_block,double)
+    grid_z = lat_vec(:,3)/real(blocks%ngcellz*nz_in_block,double)
 
     ipoint=0
     npoint=0
@@ -349,9 +363,11 @@ contains
           do ix=1,nx_in_block
              ipoint=ipoint+1
 
-             dx=dcellx_grid*(ix-1)
-             dy=dcelly_grid*(iy-1)
-             dz=dcellz_grid*(iz-1)
+             delta = real(ix-1,double)*grid_x + real(iy-1,double)*grid_y + &
+                     real(iz-1,double)*grid_z
+             dx=delta(1)
+             dy=delta(2)
+             dz=delta(3)
 
              rx=xblock+dx-xatom
              ry=yblock+dy-yatom

@@ -549,7 +549,7 @@ contains
 
     ! Module usage
     use basic_types
-    use global_module, ONLY: rcellx,rcelly,rcellz,x_atom_cell,y_atom_cell,z_atom_cell, &
+    use global_module, ONLY: lat_vec,x_atom_cell,y_atom_cell,z_atom_cell, &
                              id_glob
     use GenComms, ONLY: cq_abort,inode
     use group_module, ONLY: parts
@@ -579,9 +579,7 @@ contains
     endif
     !! ---------- DEBUG ---------- !!
 
-    dcellx = rcellx / parts%ngcellx
-    dcelly = rcelly / parts%ngcelly
-    dcellz = rcellz / parts%ngcellz
+    bundle%nm_nodgroup=0  ; bundle%nm_nodbeg=0
     bundle%nm_nodgroup=0  ; bundle%nm_nodbeg=0
     bundle%nm_nodbeg(1)=1 ; n_prim = 0
     do ng = 1, parts%ng_on_node(inode)
@@ -595,9 +593,15 @@ contains
       ny1=bundle%ny_origin+bundle%idisp_primy(ng)
       nz1=bundle%nz_origin+bundle%idisp_primz(ng)
       ! Offset to bring atoms to PS.
-      xadd = real(nx1-nx,double)*dcellx
-      yadd = real(ny1-ny,double)*dcelly
-      zadd = real(nz1-nz,double)*dcellz
+      xadd = real((nx1-nx)/parts%ngcellx,double)*lat_vec(1,1) + &
+             real((ny1-ny)/parts%ngcelly,double)*lat_vec(1,2) + &
+             real((nz1-nz)/parts%ngcellz,double)*lat_vec(1,3)
+      yadd = real((nx1-nx)/parts%ngcellx,double)*lat_vec(2,1) + &
+             real((ny1-ny)/parts%ngcelly,double)*lat_vec(2,2) + &
+             real((nz1-nz)/parts%ngcellz,double)*lat_vec(2,3)
+      zadd = real((nx1-nx)/parts%ngcellx,double)*lat_vec(3,1) + &
+             real((ny1-ny)/parts%ngcelly,double)*lat_vec(3,2) + &
+             real((nz1-nz)/parts%ngcellz,double)*lat_vec(3,3)
       bundle%nm_nodgroup(ng) = parts%nm_group(ind_group)
       if (bundle%nm_nodgroup(ng).GT.0) then
         do ni = 1, bundle%nm_nodgroup(ng)
@@ -745,7 +749,7 @@ contains
 
     ! Module usage
     use basic_types
-    use global_module, ONLY: rcellx,rcelly,rcellz
+    use global_module, ONLY: lat_vec
     use GenComms, ONLY: cq_abort
     use functions, ONLY: heapsort_integer_index
     ! DB
@@ -811,9 +815,6 @@ contains
       call cq_abort('Error allocating ind_min,ngcx,y,z_min,min_sort:', groups%mx_gcell)
 
     ! Conversion factors from unit cell lengths -> groups.
-    dcellx = rcellx/real(groups%ngcellx,double)
-    dcelly = rcelly/real(groups%ngcelly,double)
-    dcellz = rcellz/real(groups%ngcellz,double)
 
     ! Refer to make_cs.
     nmodx = ((groups%ngcellx+set%nspanlx-1)/groups%ngcellx)*groups%ngcellx
@@ -975,7 +976,7 @@ contains
     use basic_types
     use global_module, ONLY: ni_in_cell, &
                              x_atom_cell,y_atom_cell,z_atom_cell, &
-                             id_glob
+                             id_glob, lat_vec
     use GenComms, ONLY: cq_abort
     ! DB
     use io_module, ONLY: get_file_name
@@ -998,6 +999,7 @@ contains
     integer :: ni,stat_alloc
     integer :: i,pr,ind_group,j
     real(double) :: xadd,yadd,zadd
+    integer :: kx,ky,kz
 
     ! DB
     integer :: lun_db
@@ -1011,9 +1013,12 @@ contains
       nqx = 1+mod(set%nx_origin+nsx+nmodx-1, groups%ngcellx)
       nqy = 1+mod(set%ny_origin+nsy+nmody-1, groups%ngcelly)
       nqz = 1+mod(set%nz_origin+nsz+nmodz-1, groups%ngcellz)
-      xadd = (set%nx_origin+nsx-nqx)*dcellx
-      yadd = (set%ny_origin+nsy-nqy)*dcelly
-      zadd = (set%nz_origin+nsz-nqz)*dcellz
+      kx = (set%nx_origin+nsx-nqx) / groups%ngcellx
+      ky = (set%ny_origin+nsy-nqy) / groups%ngcelly
+      kz = (set%nz_origin+nsz-nqz) / groups%ngcellz
+      xadd = kx * lat_vec(1,1) + ky * lat_vec(1,2) + kz * lat_vec(1,3)
+      yadd = kx * lat_vec(2,1) + ky * lat_vec(2,2) + kz * lat_vec(2,3)
+      zadd = kx * lat_vec(3,1) + ky * lat_vec(3,2) + kz * lat_vec(3,3)
       ind_qart = set%lab_cell(ind_cover)        ! CC in sim-cell.
       if (groups%nm_group(ind_qart).GT.0) then
         set%n_ing_cover(ind_cover) = groups%nm_group(ind_qart)

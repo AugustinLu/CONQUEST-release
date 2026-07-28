@@ -177,7 +177,7 @@ contains
     integer :: minz,ngcz,ng_in_min,ind,nqx,nqy,nqz,ind_qart,ino,ind_cover
     integer :: nrx,nry,nrz,nsx,nsy,nsz,ni,nnd,stat
     integer :: nm_in_cover
-    real(double) :: dcellx,dcelly,dcellz,xadd,yadd,zadd
+    real(double) :: dcellx(3),dcelly(3),dcellz(3),xadd,yadd,zadd
     logical :: members
 
     call start_timer(tmr_std_indexing)
@@ -206,10 +206,9 @@ contains
     !        set%ng_cover,set%mx_gcover)
     !endif
     ! Conversion factors from unit cell lengths->groups
-    dcellx=rcellx/real(groups%ngcellx,double)
-    dcelly=rcelly/real(groups%ngcelly,double)
-    dcellz=rcellz/real(groups%ngcellz,double)
-    ! Fully explained in notes mentioned above
+    dcellx=lat_vec(:,1)/real(groups%ngcellx,double)
+    dcelly=lat_vec(:,2)/real(groups%ngcelly,double)
+    dcellz=lat_vec(:,3)/real(groups%ngcellz,double)
     nmodx=((groups%ngcellx+set%nspanlx-1)/groups%ngcellx)*groups%ngcellx
     nmody=((groups%ngcelly+set%nspanly-1)/groups%ngcelly)*groups%ngcelly
     nmodz=((groups%ngcellz+set%nspanlz-1)/groups%ngcellz)*groups%ngcellz
@@ -307,9 +306,10 @@ contains
        nqx=1+mod(nx_o+nsx+nmodx-1,groups%ngcellx)
        nqy=1+mod(ny_o+nsy+nmody-1,groups%ngcelly)
        nqz=1+mod(nz_o+nsz+nmodz-1,groups%ngcellz)
-       xadd=(nx_o+nsx-nqx)*dcellx
-       yadd=(ny_o+nsy-nqy)*dcelly
-       zadd=(nz_o+nsz-nqz)*dcellz
+       ! Calculate exact periodic shifts to avoid floating point round-off mismatches
+       xadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(1,1) + ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(1,2) + ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(1,3)
+       yadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(2,1) + ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(2,2) + ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(2,3)
+       zadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(3,1) + ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(3,2) + ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(3,3)
        ind_qart=(nqx-1)*groups%ngcelly*groups%ngcellz+&
             (nqy-1)*groups%ngcellz+nqz
        set%lab_cell(ind_cover)=ind_qart
@@ -375,9 +375,10 @@ contains
           nqx=1+mod(nx_o+nsx+nmodx-1,groups%ngcellx)
           nqy=1+mod(ny_o+nsy+nmody-1,groups%ngcelly)
           nqz=1+mod(nz_o+nsz+nmodz-1,groups%ngcellz)
-          xadd=(nx_o+nsx-nqx)*dcellx
-          yadd=(ny_o+nsy-nqy)*dcelly
-          zadd=(nz_o+nsz-nqz)*dcellz
+          ! Calculate exact periodic shifts to avoid floating point round-off mismatches
+          xadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(1,1) + ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(1,2) + ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(1,3)
+          yadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(2,1) + ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(2,2) + ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(2,3)
+          zadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(3,1) + ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(3,2) + ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(3,3)
           ind_qart= set%lab_cell(ind_cover)
           if(groups%nm_group(ind_qart)>0) then
              set%n_ing_cover(ind_cover)=groups%nm_group(ind_qart)
@@ -597,117 +598,157 @@ contains
     real(double) :: lhx,lhy,lhz,lhcx,lhcy,lhcz  ! Left hand corners
     real(double) :: rhx,rhy,rhz,rhcx,rhcy,rhcz  ! Right hand corners
     real(double) :: cslx,csly,cslz              ! Covering set left
+    real(double) :: grid_ext_x, grid_ext_y, grid_ext_z
+    real(double) :: ratio_x, ratio_y, ratio_z
+    real(double) :: recip_len_x, recip_len_y, recip_len_z
+    real(double) :: cos12, cos13, cos23
+    logical :: skewed_cell
 
     if(.NOT.associated(prim%groups)) then
        call cq_abort('convert_primary: primary set groups pointer not assoc')
     endif
-    ! First, find sizes of groups in terms of unit cell
-    dx =  rcellx/real(prim%groups%ngcellx,double)   ! Check for a more portable way !
-    dy =  rcelly/real(prim%groups%ngcelly,double)
-    dz =  rcellz/real(prim%groups%ngcellz,double)
-    dcx = rcellx/real(groups%ngcellx,double)
-    dcy = rcelly/real(groups%ngcelly,double)
-    dcz = rcellz/real(groups%ngcellz,double)
-    ! Convert origin of prim to reals (add very_small to prevent ambiguity)
-    ro_x = (real(prim%nx_origin-1,double))*dx + very_small 
-    ro_y = (real(prim%ny_origin-1,double))*dy + very_small
-    ro_z = (real(prim%nz_origin-1,double))*dz + very_small
-    ! Convert this to number of CS groups
-    ro_cx = ro_x/dcx
-    ro_cy = ro_y/dcy
-    ro_cz = ro_z/dcz
+    ! Ratio of group grids
+    ratio_x = real(groups%ngcellx,double) / real(prim%groups%ngcellx,double)
+    ratio_y = real(groups%ngcelly,double) / real(prim%groups%ngcelly,double)
+    ratio_z = real(groups%ngcellz,double) / real(prim%groups%ngcellz,double)
+
+    ! Reciprocal vector lengths
+    ! recip_lat_vec(:,i) is the reciprocal covector dual to lattice
+    ! vector i.  Its norm converts a Cartesian cutoff to a fractional
+    ! extent along that lattice coordinate.
+    recip_len_x = sqrt(sum(recip_lat_vec(:,1)**2))
+    recip_len_y = sqrt(sum(recip_lat_vec(:,2)**2))
+    recip_len_z = sqrt(sum(recip_lat_vec(:,3)**2))
+
+    ! Extent of rcut in groups grid units
+    grid_ext_x = set%rcut * recip_len_x * groups%ngcellx
+    grid_ext_y = set%rcut * recip_len_y * groups%ngcelly
+    grid_ext_z = set%rcut * recip_len_z * groups%ngcellz
+
+    ! Convert origin of prim to groups grid units
+    ro_cx = real(prim%nx_origin-1,double)*ratio_x + very_small
+    ro_cy = real(prim%ny_origin-1,double)*ratio_y + very_small
+    ro_cz = real(prim%nz_origin-1,double)*ratio_z + very_small
+
     ! Round and offset (partition 1,1,1 has LH corner at 0.0,0.0,0.0)
-    ! Accept implicit type conversion
-    ncx_o = 1+anint(ro_cx)  
+    ncx_o = 1+anint(ro_cx)
     ncy_o = 1+anint(ro_cy)
     ncz_o = 1+anint(ro_cz)
+    
     set%nx_origin = ncx_o
     set%ny_origin = ncy_o
     set%nz_origin = ncz_o
-    ! Find CS origin in reals
-    ro_cx = (real(ncx_o-1,double))*dcx
-    ro_cy = (real(ncy_o-1,double))*dcy
-    ro_cz = (real(ncz_o-1,double))*dcz
-    ! Start by finding the left and right hand corners of the CS
-    lhx = dx*(prim%nx_origin-1-prim%nleftx)-set%rcut
-    lhy = dy*(prim%ny_origin-1-prim%nlefty)-set%rcut
-    lhz = dz*(prim%nz_origin-1-prim%nleftz)-set%rcut
-    rhx = dx*(prim%nx_origin-1-prim%nleftx+prim%nw_primx)+set%rcut  
-    rhy = dy*(prim%ny_origin-1-prim%nlefty+prim%nw_primy)+set%rcut
-    rhz = dz*(prim%nz_origin-1-prim%nleftz+prim%nw_primz)+set%rcut
+    
+    ! Find CS origin in groups grid units
+    ro_cx = real(ncx_o-1,double)
+    ro_cy = real(ncy_o-1,double)
+    ro_cz = real(ncz_o-1,double)
+
+    ! Left and right hand corners in groups grid units
+    lhx = real(prim%nx_origin-1-prim%nleftx,double)*ratio_x - grid_ext_x
+    lhy = real(prim%ny_origin-1-prim%nlefty,double)*ratio_y - grid_ext_y
+    lhz = real(prim%nz_origin-1-prim%nleftz,double)*ratio_z - grid_ext_z
+    rhx = real(prim%nx_origin-1-prim%nleftx+prim%nw_primx,double)*ratio_x + grid_ext_x
+    rhy = real(prim%ny_origin-1-prim%nlefty+prim%nw_primy,double)*ratio_y + grid_ext_y
+    rhz = real(prim%nz_origin-1-prim%nleftz+prim%nw_primz,double)*ratio_z + grid_ext_z
+
     ! The cover set left span must be offset from the CS origin
-    cslx = (ro_cx - lhx)/dcx
-    csly = (ro_cy - lhy)/dcy
-    cslz = (ro_cz - lhz)/dcz
+    cslx = ro_cx - lhx
+    csly = ro_cy - lhy
+    cslz = ro_cz - lhz
+
     ! Convert to integers
     set%nspanlx = ceiling(cslx)
     set%nspanly = ceiling(csly)
     set%nspanlz = ceiling(cslz)
-    ! The width of the CS must be the distance from the LH corner to the 
+
+    ! The width of the CS must be the distance from the LH corner to the
     ! RH corner - this way we pick the SMALLEST CS needed.
-    set%ncoverx = ceiling(rhx/dcx)-(ncx_o-1-set%nspanlx)
-    set%ncovery = ceiling(rhy/dcy)-(ncy_o-1-set%nspanly)
-    set%ncoverz = ceiling(rhz/dcz)-(ncz_o-1-set%nspanlz)
+    set%ncoverx = ceiling(rhx) - (ncx_o-1-set%nspanlx)
+    set%ncovery = ceiling(rhy) - (ncy_o-1-set%nspanly)
+    set%ncoverz = ceiling(rhz) - (ncz_o-1-set%nspanlz)
     ! Calculate the corners of the CS for checks
-    lhcx = dcx*(ncx_o-1-set%nspanlx)
-    lhcy = dcy*(ncy_o-1-set%nspanly)
-    lhcz = dcz*(ncz_o-1-set%nspanlz)
-    rhcx = dcx*(ncx_o-1-set%nspanlx+set%ncoverx)
-    rhcy = dcy*(ncy_o-1-set%nspanly+set%ncovery)
-    rhcz = dcz*(ncz_o-1-set%nspanlz+set%ncoverz)
+    lhcx = real(ncx_o-1-set%nspanlx,double)
+    lhcy = real(ncy_o-1-set%nspanly,double)
+    lhcz = real(ncz_o-1-set%nspanlz,double)
+    rhcx = real(ncx_o-1-set%nspanlx+set%ncoverx,double)
+    rhcy = real(ncy_o-1-set%nspanly+set%ncovery,double)
+    rhcz = real(ncz_o-1-set%nspanlz+set%ncoverz,double)
     ! First check that the LH and RH corners are large enough
     ! LH
     if(lhx+very_small<lhcx) then
        write(io_lun,*) 'CS too small; adjusting nspanlx',lhx,lhcx
-       set%nspanlx = set%nspanlx+ceiling((lhcx-lhx)/dcx)
+       set%nspanlx = set%nspanlx+ceiling(lhcx-lhx)
     endif
     if(lhy+very_small<lhcy) then
        write(io_lun,*) 'CS too small; adjusting nspanly',lhy,lhcy
-       set%nspanly = set%nspanly+ceiling((lhcy-lhy)/dcy)
+       set%nspanly = set%nspanly+ceiling(lhcy-lhy)
     endif
     if(lhz+very_small<lhcz) then
        write(io_lun,*) 'CS too small; adjusting nspanlz',lhz,lhcz
-       set%nspanlz = set%nspanlz+ceiling((lhcz-lhz)/dcz)
+       set%nspanlz = set%nspanlz+ceiling(lhcz-lhz)
     endif
     ! RH
     if(rhx>rhcx+very_small) then
        write(io_lun,*) 'CS too small; adjusting ncoverx',rhx,rhcx
-       set%ncoverx = set%ncoverx+ceiling((rhx-rhcx)/dcx)
+       set%ncoverx = set%ncoverx+ceiling(rhx-rhcx)
     endif
     if(rhy>rhcy+very_small) then
        write(io_lun,*) 'CS too small; adjusting ncovery',rhy,rhcy
-       set%ncovery = set%ncovery+ceiling((rhy-rhcy)/dcy)
+       set%ncovery = set%ncovery+ceiling(rhy-rhcy)
     endif
     if(rhz>rhcz+very_small) then
        write(io_lun,*) 'CS too small; adjusting ncoverz',rhz,rhcz
-       set%ncoverz = set%ncoverz+ceiling((rhz-rhcz)/dcz)
+       set%ncoverz = set%ncoverz+ceiling(rhz-rhcz)
     endif
     ! Now check that the CS isn't too large
     ! LH
-    if(lhx-lhcx>dcx) then
+    if(lhx-lhcx>1.0_double) then
        write(io_lun,*) 'CS too big; adjusting nspanlx',lhx,lhcx
-       set%nspanlx = set%nspanlx-floor((lhx-lhcx)/dcx)
+       set%nspanlx = set%nspanlx-floor(lhx-lhcx)
     endif
-    if(lhy-lhcy>dcy) then
+    if(lhy-lhcy>1.0_double) then
        write(io_lun,*) 'CS too big; adjusting nspanly',lhy,lhcy
-       set%nspanly = set%nspanly-floor((lhy-lhcy)/dcy)
+       set%nspanly = set%nspanly-floor(lhy-lhcy)
     endif
-    if(lhz-lhcz>dcz) then
+    if(lhz-lhcz>1.0_double) then
        write(io_lun,*) 'CS too big; adjusting nspanlz',lhz,lhcz
-       set%nspanlz = set%nspanlz-floor((lhz-lhcz)/dcz)
+       set%nspanlz = set%nspanlz-floor(lhz-lhcz)
     endif
     ! RH
-    if(rhcx-rhx>dcx) then
+    if(rhcx-rhx>1.0_double) then
        write(io_lun,*) 'CS too big; adjusting ncoverx',rhx,rhcx
-       set%ncoverx = set%ncoverx-floor((rhx-rhcx)/dcx)
+       set%ncoverx = set%ncoverx-floor(rhcx-rhx)
     endif
-    if(rhcy-rhy>dcy) then
+    if(rhcy-rhy>1.0_double) then
        write(io_lun,*) 'CS too big; adjusting ncovery',rhy,rhcy
-       set%ncovery = set%ncovery-floor((rhy-rhcy)/dcy)
+       set%ncovery = set%ncovery-floor(rhcy-rhy)
     endif
-    if(rhcz-rhz>dcz) then
+    if(rhcz-rhz>1.0_double) then
        write(io_lun,*) 'CS too big; adjusting ncoverz',rhz,rhcz
-       set%ncoverz = set%ncoverz-floor((rhz-rhcz)/dcz)
+       set%ncoverz = set%ncoverz-floor(rhcz-rhz)
+    endif
+
+    ! The block-neighbour search uses Cartesian axis-aligned bounding boxes
+    ! around skewed grid parallelepipeds.  Those boxes are deliberately
+    ! conservative and can extend by part of one group beyond the exact
+    ! reciprocal-metric cutoff used above.  Retain one safety group on each
+    ! side so that BCS sender lists and DCS receiver lists contain identical
+    ! periodic images when a grid dimension changes with cell volume.
+    cos12 = dot_product(lat_vec(:,1),lat_vec(:,2)) / &
+         (cell_vec_len(1)*cell_vec_len(2))
+    cos13 = dot_product(lat_vec(:,1),lat_vec(:,3)) / &
+         (cell_vec_len(1)*cell_vec_len(3))
+    cos23 = dot_product(lat_vec(:,2),lat_vec(:,3)) / &
+         (cell_vec_len(2)*cell_vec_len(3))
+    skewed_cell = max(abs(cos12),abs(cos13),abs(cos23)) > 1.0e-10_double
+    if(skewed_cell) then
+       set%nspanlx = set%nspanlx + 1
+       set%nspanly = set%nspanly + 1
+       set%nspanlz = set%nspanlz + 1
+       set%ncoverx = set%ncoverx + 2
+       set%ncovery = set%ncovery + 2
+       set%ncoverz = set%ncoverz + 2
     endif
     return
   end subroutine convert_primary

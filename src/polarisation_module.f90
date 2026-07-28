@@ -21,6 +21,7 @@
 module polarisation
 
   use datatypes
+    use global_module, ONLY: cell_vec_len
 
   implicit none
 
@@ -31,15 +32,15 @@ module polarisation
 contains
 
   ! -----------------------------------------------------------
-  ! Subroutine 
+  ! Subroutine
   ! -----------------------------------------------------------
 
   !!****f* polarisation/get_polarisation *
   !!
-  !!  NAME 
+  !!  NAME
   !!   get_polarisation
   !!  USAGE
-  !! 
+  !!
   !!  PURPOSE
   !!   Calculates polarisation
   !!
@@ -53,9 +54,9 @@ contains
   !!   S matrix is found for all three directions at once in FindEvals in this case for
   !!   computational efficiency.
   !!  INPUTS
-  !! 
+  !!
   !!  USES
-  !! 
+  !!
   !!  AUTHOR
   !!   D.R.Bowler
   !!  CREATION DATE
@@ -78,7 +79,7 @@ contains
     use DiagModule, only: FindEvals
     use matrix_data, only: Srange, aSa_range
     use mult_module, only: S_trans, allocate_temp_matrix, free_temp_matrix
-    use dimens,                      only: r_super_x, r_super_y, r_super_z
+    use dimens,                      only:
     use units, only: eVToJ, BohrToAng
 
     implicit none
@@ -102,10 +103,10 @@ contains
        else
        end if
     end if
-    cell_vec(1) = r_super_x
-    cell_vec(2) = r_super_y
-    cell_vec(3) = r_super_z
-    cell_vol = r_super_x * r_super_y * r_super_z
+    cell_vec(1) = cell_vec_len(1)
+    cell_vec(2) = cell_vec_len(2)
+    cell_vec(3) = cell_vec_len(3)
+    cell_vol = cell_vec_len(1) * cell_vec_len(2) * cell_vec_len(3)
     ! Electronic contribution
     tmp_fn = allocate_temp_fn_on_grid(atomfns)
     gridfunctions(tmp_fn)%griddata = zero
@@ -214,7 +215,7 @@ contains
   ! -----------------------------------------------------------
   ! Subroutine get_P_ionic
   ! -----------------------------------------------------------
-  
+
   !!****f* polarisation_module/get_P_ionic *
   !!
   !!  NAME
@@ -247,7 +248,7 @@ contains
                                            iprint_gen, iprint_ops, io_lun
     use primary_module,              only: bundle, domain
     use species_module,              only: charge, species
-    use dimens,                      only: r_super_x, r_super_y, r_super_z
+    use dimens,                      only:
     use GenComms,                    only: gsum,my_barrier, inode, ionode
   !     use io_module,                   only: dump_locps
     implicit none
@@ -269,10 +270,10 @@ contains
             atom = atom + 1
             i = bundle%ig_prim(bundle%nm_nodbeg(ipoint)+ni-1)
 !           --- We want the positions of atom i in fractional coordinates ---
-!           --- (hence we divide by r_super_x)                            ---
-            x = atom_coord(1,i) / r_super_x
-            y = atom_coord(2,i) / r_super_y
-            z = atom_coord(3,i) / r_super_z
+!           --- (hence we divide by cell_vec_len(1))                            ---
+            x = atom_coord(1,i) / cell_vec_len(1)
+            y = atom_coord(2,i) / cell_vec_len(2)
+            z = atom_coord(3,i) / cell_vec_len(3)
             q_i = charge(bundle%species(bundle%nm_nodbeg(ipoint)+ni-1))
 
             ! write (io_lun, *) "q_i: ",q_i

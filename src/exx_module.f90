@@ -36,6 +36,7 @@
 module exx_module
   
   use datatypes
+    use global_module, ONLY: cell_vec_len
   use GenComms,                  only: my_barrier, cq_abort, mtime
   use GenComms,                  only: inode, ionode, myid, root
   use timer_module,              only: start_backtrace, stop_backtrace, cq_timer
@@ -73,7 +74,7 @@ contains
     use global_module,  only: iprint_exx, exx_hgrid_medium, exx_hgrid_coarse, exx_alpha
     use numbers,        only: zero, very_small, one, two, three
     use units,          only: BohrToAng
-    use dimens,         only: r_super_x, r_super_y, r_super_z, &
+    use dimens,         only:  &
                               n_grid_x, n_grid_y, n_grid_z,    &
                               r_h, r_nl, r_h   
     implicit none
@@ -112,9 +113,9 @@ contains
     !
     ! Find out the finest grid spacing from input
     ! Input grid spacing from input (Bohr unit)
-    gs(1) = r_super_x/n_grid_x
-    gs(2) = r_super_y/n_grid_y
-    gs(3) = r_super_z/n_grid_z
+    gs(1) = cell_vec_len(1)/n_grid_x
+    gs(2) = cell_vec_len(2)/n_grid_y
+    gs(3) = cell_vec_len(3)/n_grid_z
     !
     ! Find out the finest grid spacing from input
     ! we use the same grid spacing for Ox,Oy,Oz   

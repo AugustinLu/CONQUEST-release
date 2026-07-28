@@ -26,6 +26,12 @@ module store_matrix
 
   implicit none
 
+  ! The legacy InfoGlobal file stores only three cell-vector lengths.  Keep
+  ! the full lattice associated with the in-memory matrix snapshot as well,
+  ! so matrix remapping can distinguish affine shear from ionic motion.
+  real(double) :: stored_lat_vec(3,3)
+  logical :: stored_lat_vec_valid = .false.
+
   ! matrix_store : 
   !   It includes the information of a matrix in my process.
   !    (Information of Primary sets of atoms, Lists of Neighbours, ...  by global numbers.)
@@ -65,7 +71,7 @@ module store_matrix
      integer :: MDstep                       ! Will be used as "***"
      integer :: ni_in_cell, numprocs         ! number of atoms, number of MPI processes
      integer :: npcellx, npcelly, npcellz    ! partition
-     real(double) :: rcellx, rcelly, rcellz  ! cell length (should be changed to 3x3 cell parameters)
+     real(double), dimension(3) :: cell_vec_len  ! cell length (should be changed to 3x3 cell parameters)
      integer, allocatable :: glob_to_node(:)     ! global id of atoms -> index of MPI-process
      real(double), allocatable :: atom_coord(:,:)! atomic coordinates (3, global-id)
      real(double), allocatable :: atom_veloc(:,:)! atomic velocities  (3, global-id)
@@ -506,7 +512,7 @@ contains
     use cover_module, ONLY: BCS_parts
     use matrix_data, ONLY: mat
     use mult_module, ONLY: mat_p
-    use global_module, ONLY: rcellx, rcelly, rcellz
+    use global_module, ONLY: lat_vec_inv
 
     implicit none
 
@@ -622,10 +628,10 @@ contains
                 matinfo%vec_Rij(2,jst) = bundle%yprim(iprim) - BCS_parts%ycover(gcspart)
                 matinfo%vec_Rij(3,jst) = bundle%zprim(iprim) - BCS_parts%zcover(gcspart)
 
-                !vec_Rij is changed from cartesian unit to fractional coordinate  : 2017Dec14
-                matinfo%vec_Rij(1,jst) = matinfo%vec_Rij(1,jst)/rcellx
-                matinfo%vec_Rij(2,jst) = matinfo%vec_Rij(2,jst)/rcelly
-                matinfo%vec_Rij(3,jst) = matinfo%vec_Rij(3,jst)/rcellz
+                ! Store the displacement in lattice-fractional components.
+                ! Component-wise division by vector lengths is valid only
+                ! for an orthogonal cell.
+                matinfo%vec_Rij(:,jst) = matmul(lat_vec_inv,matinfo%vec_Rij(:,jst))
 
              enddo !neigh = 1, mat(np,range)%n_nab(ni)
 
@@ -700,7 +706,8 @@ contains
   subroutine dump_InfoMatGlobal(index,velocity,MDstep)
 
     ! Module usage
-    use global_module, ONLY: ni_in_cell,numprocs,rcellx,rcelly,rcellz,id_glob, &
+    use global_module, ONLY: ni_in_cell,numprocs,cell_vec_len,id_glob, &
+         lat_vec, &
          min_layer, io_lun, iprint_MD
     use GenComms, ONLY: cq_abort, inode, ionode, my_barrier, myid
     use group_module, ONLY: parts
@@ -743,6 +750,8 @@ contains
        flag_velocity = .false.
        call set_InfoMatGlobal(mat_global_tmp, step=step_local)
     endif
+    stored_lat_vec = lat_vec
+    stored_lat_vec_valid = .true.
 
     ! Open InfoGlobal.dat and write data.
     if(inode == ionode) then
@@ -755,7 +764,7 @@ contains
        write (lun,*) flag_velocity, flag_MDstep,'  = flag_velocity, flag_MDstep'
        write (lun,*) mat_global_tmp%ni_in_cell, mat_global_tmp%numprocs, ' # of atoms, # of process '
        write (lun,*) mat_global_tmp%npcellx,mat_global_tmp%npcelly,mat_global_tmp%npcellz,' npcellx,y,z'
-       write (lun,fmt='(3f25.15,a)') mat_global_tmp%rcellx,mat_global_tmp%rcelly,mat_global_tmp%rcellz,' rcellx,y,z'
+       write (lun,fmt='(3f25.15,a)') mat_global_tmp%cell_vec_len(1),mat_global_tmp%cell_vec_len(2),mat_global_tmp%cell_vec_len(3),' cell_vec_len(1),y,z'
        write (lun,*) mat_global_tmp%glob_to_node(1:mat_global_tmp%ni_in_cell)   
        write (lun,*) mat_global_tmp%MDstep,'  MD step'
 
@@ -808,7 +817,7 @@ contains
 
     ! Module usage
     use numbers, ONLY: zero
-    use global_module, ONLY: ni_in_cell,numprocs,rcellx,rcelly,rcellz,id_glob, atom_coord
+    use global_module, ONLY: ni_in_cell,numprocs,cell_vec_len,id_glob, atom_coord
     use GenComms, ONLY: cq_abort
     use group_module, ONLY: parts
 
@@ -831,9 +840,9 @@ contains
     mat_glob%ni_in_cell = ni_in_cell
     mat_glob%numprocs   = numprocs
 
-    mat_glob%rcellx     = rcellx
-    mat_glob%rcelly     = rcelly
-    mat_glob%rcellz     = rcellz
+    mat_glob%cell_vec_len(1)     = cell_vec_len(1)
+    mat_glob%cell_vec_len(2)     = cell_vec_len(2)
+    mat_glob%cell_vec_len(3)     = cell_vec_len(3)
 
     mat_glob%npcellx     = parts%ngcellx
     mat_glob%npcelly     = parts%ngcelly
@@ -988,7 +997,7 @@ contains
        if(ni_in_cell /= InfoGlob%ni_in_cell) &
             call cq_abort('Error in grab_InfoMatGlobal: ni_in_cell= ',ni_in_cell,InfoGlob%ni_in_cell)
        read(lun,*) InfoGlob%npcellx,InfoGlob%npcelly,InfoGlob%npcellz
-       read(lun,*) InfoGlob%rcellx,InfoGlob%rcelly,InfoGlob%rcellz
+       read(lun,*) InfoGlob%cell_vec_len(1),InfoGlob%cell_vec_len(2),InfoGlob%cell_vec_len(3)
        read(lun,*) InfoGlob%glob_to_node(1:InfoGlob%ni_in_cell)
        read(lun,*) InfoGlob%MDstep
 
@@ -1025,9 +1034,9 @@ contains
     call gcopy(InfoGlob%npcelly)
     call gcopy(InfoGlob%npcellz)
 
-    call gcopy(InfoGlob%rcellx)
-    call gcopy(InfoGlob%rcelly)
-    call gcopy(InfoGlob%rcellz)
+    call gcopy(InfoGlob%cell_vec_len(1))
+    call gcopy(InfoGlob%cell_vec_len(2))
+    call gcopy(InfoGlob%cell_vec_len(3))
 
     call gcopy(InfoGlob%glob_to_node, ni_in_cell)
     call gcopy(InfoGlob%MDstep)
@@ -1068,9 +1077,9 @@ contains
   subroutine set_atom_coord_diff(InfoGlob)
 
     use datatypes
-    use numbers,      only: one, half, very_small
+    use numbers,      only: zero, one, half, very_small
     use global_module,only: atom_coord, atom_coord_diff, io_lun,&
-         rcellx, rcelly, rcellz, ni_in_cell
+         cell_vec_len, ni_in_cell, mic_vector, lat_vec, invert_3x3
 
     implicit none
 
@@ -1078,36 +1087,47 @@ contains
     type(matrix_store_global), intent(in):: InfoGlob
 
     ! Local
-    real(double) :: scale_x, scale_y, scale_z, rms_change
+    real(double) :: scale_x, scale_y, scale_z, rms_change, lattice_change
+    real(double) :: old_lat_vec(3,3), old_lat_inv(3,3), old_frac(3)
+    real(double) :: affine_coord(3), det_old
     real(double) :: small_change = 0.3_double
     integer      :: ig
 
     ! Test for unit cell size change
-    scale_x = rcellx/InfoGlob%rcellx; scale_y = rcelly/InfoGlob%rcelly; scale_z = rcellz/InfoGlob%rcellz
+    scale_x = cell_vec_len(1)/InfoGlob%cell_vec_len(1); scale_y = cell_vec_len(2)/InfoGlob%cell_vec_len(2); scale_z = cell_vec_len(3)/InfoGlob%cell_vec_len(3)
     rms_change = (scale_x - one)**2 + (scale_y - one)**2 + (scale_z - one)**2
     rms_change = sqrt(rms_change)
+    lattice_change = zero
+    if (stored_lat_vec_valid) &
+         lattice_change = sqrt(sum((lat_vec-stored_lat_vec)**2))
     if(rms_change > small_change .and. inode == ionode) &
          write(io_lun,fmt='(4x,a,3f20.10)') 'WARNING!! Big change of the cell', scale_x, scale_y,scale_z
 
-    if(rms_change < very_small) then
+    if(rms_change < very_small .and. lattice_change < very_small) then
        do ig = 1, ni_in_cell
           atom_coord_diff(1:3,ig) = atom_coord(1:3,ig) - InfoGlob%atom_coord(1:3,ig)
        enddo
     else
+       ! Compare positions with the affine image of the old lattice.  The
+       ! in-memory snapshot is needed when angles change; lengths alone cannot
+       ! reconstruct a sheared cell.
+       if (stored_lat_vec_valid) then
+          old_lat_vec = stored_lat_vec
+       else
+          old_lat_vec(:,1) = lat_vec(:,1)/scale_x
+          old_lat_vec(:,2) = lat_vec(:,2)/scale_y
+          old_lat_vec(:,3) = lat_vec(:,3)/scale_z
+       end if
+       call invert_3x3(old_lat_vec, old_lat_inv, det_old)
        do ig = 1, ni_in_cell
-          atom_coord_diff(1,ig) = atom_coord(1,ig) - InfoGlob%atom_coord(1,ig)*scale_x
-          atom_coord_diff(2,ig) = atom_coord(2,ig) - InfoGlob%atom_coord(2,ig)*scale_y
-          atom_coord_diff(3,ig) = atom_coord(3,ig) - InfoGlob%atom_coord(3,ig)*scale_z
+          old_frac = matmul(old_lat_inv, InfoGlob%atom_coord(:,ig))
+          affine_coord = matmul(lat_vec, old_frac)
+          atom_coord_diff(:,ig) = atom_coord(:,ig) - affine_coord
        enddo
     endif
 
     do ig = 1, ni_in_cell
-       if((atom_coord_diff(1,ig)) > half*rcellx) atom_coord_diff(1,ig)=atom_coord_diff(1,ig)-rcellx
-       if((atom_coord_diff(1,ig)) < -half*rcellx) atom_coord_diff(1,ig)=atom_coord_diff(1,ig)+rcellx
-       if((atom_coord_diff(2,ig)) > half*rcelly) atom_coord_diff(2,ig)=atom_coord_diff(2,ig)-rcelly
-       if((atom_coord_diff(2,ig)) < -half*rcelly) atom_coord_diff(2,ig)=atom_coord_diff(2,ig)+rcelly
-       if((atom_coord_diff(3,ig)) > half*rcellz) atom_coord_diff(3,ig)=atom_coord_diff(3,ig)-rcellz
-       if((atom_coord_diff(3,ig)) < -half*rcellz) atom_coord_diff(3,ig)=atom_coord_diff(3,ig)+rcellz
+       call mic_vector(atom_coord_diff(:,ig))
     enddo
 
     return
@@ -1586,7 +1606,7 @@ contains
     use GenComms, ONLY: inode, ionode, cq_abort
     use global_module, ONLY: numprocs, id_glob
     use io_module, ONLY: get_file_name, get_file_name_2rank
-    use global_module, ONLY: rcellx, rcelly, rcellz
+    use global_module, ONLY: lat_vec
 
     implicit none
 
@@ -1648,9 +1668,7 @@ contains
 
            do jj=1,jmax
               Rij(1:3) = tmp_matrix_store%vec_Rij(1:3,ibeg+jj-1)
-               Rij(1) = Rij(1)*rcellx
-               Rij(2) = Rij(2)*rcelly
-               Rij(3) = Rij(3)*rcellz
+              Rij = matmul(lat_vec,Rij)
               Rij_2 = Rij(1)**2 + Rij(2)**2 + Rij(3)**2
               nspin_local=tmp_matrix_store%nspin
              do n2=1,tmp_matrix_store%beta_j(ibeg+jj-1)

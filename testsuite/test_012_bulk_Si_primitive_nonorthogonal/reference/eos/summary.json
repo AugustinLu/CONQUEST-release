@@ -1,0 +1,149 @@
+{
+  "model": "third-order Birch-Murnaghan",
+  "point_count": 9,
+  "equilibrium_energy_ha": -8.427232014383438,
+  "equilibrium_primitive_volume_bohr3": 292.95126368845365,
+  "equilibrium_volume_per_atom_bohr3": 146.47563184422683,
+  "equilibrium_conventional_lattice_bohr": 10.542698555279246,
+  "equilibrium_conventional_lattice_angstrom": 5.5789558168737585,
+  "bulk_modulus_ha_per_bohr3": 0.0027157546742433126,
+  "bulk_modulus_gpa": 79.90029019601732,
+  "bulk_modulus_derivative": 4.1454275929104245,
+  "energy_fit_rmse_mev_per_atom": 0.028135111326989534,
+  "reported_stress_to_pressure_sign": -1,
+  "pressure_stress_rmse_gpa": 0.15611939729220775,
+  "parameter_standard_errors": [
+    1.545619724070403e-06,
+    0.023126628794540575,
+    1.057724975659316e-05,
+    0.06204871185530946
+  ],
+  "points": [
+    {
+      "volume_ratio": 0.92,
+      "linear_scale": 0.972588826218856,
+      "volume_bohr3": 255.7449708800498,
+      "directory": "volume_0.920",
+      "atom_count": 2,
+      "energy_ha": -8.419138143084183,
+      "reported_mean_stress_gpa": -14.20400374,
+      "reported_diagonal_stress_gpa": [
+        -14.20400374,
+        -14.20400374,
+        -14.20400374
+      ]
+    },
+    {
+      "volume_ratio": 0.94,
+      "linear_scale": 0.9795861087155615,
+      "volume_bohr3": 261.3046441600604,
+      "directory": "volume_0.940",
+      "atom_count": 2,
+      "energy_ha": -8.421583638954269,
+      "reported_mean_stress_gpa": -11.62757009,
+      "reported_diagonal_stress_gpa": [
+        -11.62757009,
+        -11.62757009,
+        -11.62757009
+      ]
+    },
+    {
+      "volume_ratio": 0.96,
+      "linear_scale": 0.986484829732188,
+      "volume_bohr3": 266.8643174400417,
+      "directory": "volume_0.960",
+      "atom_count": 2,
+      "energy_ha": -8.423532268402425,
+      "reported_mean_stress_gpa": -8.99210674,
+      "reported_diagonal_stress_gpa": [
+        -8.99210674,
+        -8.99210674,
+        -8.99210674
+      ]
+    },
+    {
+      "volume_ratio": 0.98,
+      "linear_scale": 0.9932883883792687,
+      "volume_bohr3": 272.42399072006185,
+      "directory": "volume_0.980",
+      "atom_count": 2,
+      "energy_ha": -8.425020746465925,
+      "reported_mean_stress_gpa": -6.86828826,
+      "reported_diagonal_stress_gpa": [
+        -6.86828826,
+        -6.86828826,
+        -6.86828826
+      ]
+    },
+    {
+      "volume_ratio": 1.0,
+      "linear_scale": 1.0,
+      "volume_bohr3": 277.9836639999999,
+      "directory": "volume_1.000",
+      "atom_count": 2,
+      "energy_ha": -8.426099108747476,
+      "reported_mean_stress_gpa": -4.64170418,
+      "reported_diagonal_stress_gpa": [
+        -4.64170418,
+        -4.64170418,
+        -4.64170418
+      ]
+    },
+    {
+      "volume_ratio": 1.02,
+      "linear_scale": 1.006622709560113,
+      "volume_bohr3": 283.5433372799372,
+      "directory": "volume_1.020",
+      "atom_count": 2,
+      "energy_ha": -8.426794177692399,
+      "reported_mean_stress_gpa": -2.55941114,
+      "reported_diagonal_stress_gpa": [
+        -2.55941114,
+        -2.55941114,
+        -2.55941114
+      ]
+    },
+    {
+      "volume_ratio": 1.04,
+      "linear_scale": 1.0131594038201772,
+      "volume_bohr3": 289.10301056007984,
+      "directory": "volume_1.040",
+      "atom_count": 2,
+      "energy_ha": -8.427162910880831,
+      "reported_mean_stress_gpa": -0.9787508099999999,
+      "reported_diagonal_stress_gpa": [
+        -0.97875081,
+        -0.97875081,
+        -0.97875081
+      ]
+    },
+    {
+      "volume_ratio": 1.06,
+      "linear_scale": 1.0196128224222163,
+      "volume_bohr3": 294.66268383998664,
+      "directory": "volume_1.060",
+      "atom_count": 2,
+      "energy_ha": -8.427218143047785,
+      "reported_mean_stress_gpa": 0.64137165,
+      "reported_diagonal_stress_gpa": [
+        0.64137165,
+        0.64137165,
+        0.64137165
+      ]
+    },
+    {
+      "volume_ratio": 1.08,
+      "linear_scale": 1.0259855680060181,
+      "volume_bohr3": 300.2223571199705,
+      "directory": "volume_1.080",
+      "atom_count": 2,
+      "energy_ha": -8.426997430981292,
+      "reported_mean_stress_gpa": 1.60459453,
+      "reported_diagonal_stress_gpa": [
+        1.60459453,
+        1.60459453,
+        1.60459453
+      ]
+    }
+  ]
+}
