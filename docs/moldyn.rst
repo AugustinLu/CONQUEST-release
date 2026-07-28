@@ -228,6 +228,12 @@ Note that the NPT ensemble can also be generated correctly by thermostatting
 using the SVR thermostat, although the meaning of the parameter ``MD.tauT`` is
 different in this case, as in NVT dynamics.
 
+The NPT geometry bookkeeping retains the complete lattice for nonorthogonal
+cells.  ``MD.CellConstraint volume`` applies isotropic scaling to all lattice
+components and preserves cell shape.  ``MD.CellConstraint xyz`` applies the
+three existing diagonal Cartesian barostat strains to complete lattice rows;
+it does not introduce independent shear-barostat degrees of freedom.
+
 Postprocessing tools
 --------------------
 

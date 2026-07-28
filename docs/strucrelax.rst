@@ -121,11 +121,24 @@ coordinates* (``AtomMove.OptCellMethod 1``) using the following input:
    AtomMove.EnthalpyTolerance 1E-5
    AtomMove.StressTolerance 0.1
 
+For a general nonorthogonal cell, an unconstrained six-component strain
+relaxation additionally requires:
+
+::
+
+   AtomMove.FullStress T
+   AtomMove.CGLineMin backtrack
+   AtomMove.OptCell.Constraint none
+
+The lattice update is ``A(k) = (I + k D) A(0)`` with a symmetric Cartesian
+strain direction ``D``.  Fractional atomic coordinates and fractional
+reciprocal coordinates are preserved during each cell line-search step.
+
 Note that stress is in GPa and enthalpy is in Ha by default.
 
 It is possible to apply constraints to the cell when optimising it, using the
 flag ``AtomMove.OptCell.Constraint``.  The constraint takes three different possible
-forms: fixing one or two of the cell lengths (e.g. ``AtomMove.OptCell.Constraint a`` or
+forms: fixing one or two of the cell-vector lengths (e.g. ``AtomMove.OptCell.Constraint a`` or
 ``AtomMove.OptCell.Constraint a b``); fixing the ratio between two cell lengths
 (e.g. ``AtomMove.OptCell.Constraint c/a``); and varying only the volume but not the
 cell shape (``AtomMove.OptCell.Constraint volume``).  Fixing the ratio between two
@@ -140,10 +153,9 @@ Combined optimisation
 ---------------------
 
 For simple crystals, the fractional ionic coordinates vary trivially with
-changes in the simulation cell lengths; however for more complicated systems such as
-molecular crystals and amorphous materials, it is necessary simultaneously relax
-the ionic positions and simulation cell lengths (recalling that CONQUEST only
-allows *orthorhombic* unit cells). This can be done by setting
+changes in the simulation cell; however for more complicated systems such as
+molecular crystals and amorphous materials, it is necessary to relax
+simultaneously the ionic positions and simulation cell. This can be done by setting
 ``AtomMove.OptCellMethod 2`` or ``AtomMove.OptCellMethod 3``
 
 ::
@@ -171,7 +183,9 @@ relaxation (using either cg or sqnm) followed by a full simulation cell
 relaxation (using cg).  While this may be less efficient than optimising all
 degrees of freedom simultaneously, it is much more robust.  It is also possible
 to optimise cell vectors and atomic positions simultaneously, using ``AtomMove.OptCellMethod 3``,
-but this should be monitored carefully, as it can be unstable.
+but this legacy route is restricted to orthorhombic cells and should be
+monitored carefully, as it can be unstable.  A nonorthogonal method-3 input is
+rejected with a diagnostic directing the user to method 2.
 
 Go to :ref:`top <strucrelax>`.
 

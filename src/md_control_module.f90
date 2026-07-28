@@ -58,10 +58,10 @@
 module md_control
 
   use datatypes
-    use global_module, ONLY: cell_vec_len
   use numbers
   use global_module,    only: ni_in_cell, io_lun, iprint_MD, &
-                              temp_ion, flag_MDcontinue, flag_MDdebug
+                              temp_ion, flag_MDcontinue, flag_MDdebug, &
+                              cell_vec_len
   use move_atoms,       only: fac_Kelvin2Hartree
   use species_module,   only: species, mass
   use GenComms,         only: inode, ionode, cq_abort
@@ -1254,7 +1254,7 @@ contains
   !!  
   subroutine init_baro(baro, baro_type, dt, ndof, v, tau_P, ke_ions)
 
-    use global_module,    only: cell_vec_len, min_layer
+    use global_module,    only: lat_vec, min_layer
     use io_module, ONLY: return_prefix
 
     ! passed variables
@@ -1306,10 +1306,9 @@ contains
     baro%c8 = baro%c6/72.0_double
 
     baro%P_ext = target_pressure/HaBohr3ToGPa
-    baro%lat_ref = zero
-    baro%lat_ref(1,1) = cell_vec_len(1)
-    baro%lat_ref(2,2) = cell_vec_len(2)
-    baro%lat_ref(3,3) = cell_vec_len(3)
+    ! Store the complete Cartesian lattice (vectors are columns), not a
+    ! diagonal box reconstructed from vector lengths.
+    baro%lat_ref = lat_vec
     baro%lat = baro%lat_ref
     call baro%get_volume
     call baro%get_pressure_and_stress
@@ -1465,7 +1464,7 @@ contains
   !!  NAME
   !!   get_volume
   !!  PURPOSE
-  !!   Compute the volume of the cell (orthorhombic only!)
+  !!   Compute the determinant volume of the cell.
   !!  AUTHOR
   !!    Zamaan Raza 
   !!  CREATION DATE
@@ -1477,7 +1476,13 @@ contains
     ! passed variables
     class(type_barostat), intent(inout)         :: baro
 
-    baro%volume = baro%lat(1,1)*baro%lat(2,2)*baro%lat(3,3)
+    baro%volume = abs( &
+         baro%lat(1,1)*(baro%lat(2,2)*baro%lat(3,3) - &
+                        baro%lat(2,3)*baro%lat(3,2)) - &
+         baro%lat(1,2)*(baro%lat(2,1)*baro%lat(3,3) - &
+                        baro%lat(2,3)*baro%lat(3,1)) + &
+         baro%lat(1,3)*(baro%lat(2,1)*baro%lat(3,2) - &
+                        baro%lat(2,2)*baro%lat(3,1)))
 
     if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 2) then
       write(io_lun,'(4x,a)') "get_volume"
@@ -2224,9 +2229,7 @@ contains
         write(io_lun,'(6x,"expfac:   ",f16.8)') expfac
       end if
       ! Rescale the box
-      baro%lat(1,1) = baro%lat(1,1)*expfac
-      baro%lat(2,2) = baro%lat(2,2)*expfac
-      baro%lat(3,3) = baro%lat(3,3)*expfac
+      baro%lat = baro%lat*expfac
     else
       tr_vh = zero
       do i=1,3
@@ -2235,7 +2238,10 @@ contains
       do i=1,3
         baro%h(i,i) = baro%h(i,i) + half*baro%dt*baro%v_h(i,i)
         expfac_h(i) = exp(half*baro%dt*(baro%v_h(i,i) + tr_vh/md_ndof_ions))
-        baro%lat(i,i) = baro%lat(i,i)*expfac_h(i)
+        ! v_h is restricted to diagonal Cartesian strains in this
+        ! integrator.  Scale a Cartesian row of the complete lattice rather
+        ! than only its diagonal element.
+        baro%lat(i,:) = baro%lat(i,:)*expfac_h(i)
       end do
       if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 3) then
         write(io_lun,'(6x,"v_h:      ",3f16.8)') baro%v_h(1,1), &
@@ -2287,8 +2293,9 @@ contains
             baro%ke_stress(1,1)*HaBohr3ToGPa, &
             baro%ke_stress(2,2)*HaBohr3ToGPa, &
             baro%ke_stress(3,3)*HaBohr3ToGPa
-      write(lun,'("cell         : ",3f16.8)') &
-            baro%lat(1,1), baro%lat(2,2), baro%lat(3,3)
+      write(lun,'("cell row 1   : ",3f16.8)') baro%lat(1,:)
+      write(lun,'("cell row 2   : ",3f16.8)') baro%lat(2,:)
+      write(lun,'("cell row 3   : ",3f16.8)') baro%lat(3,:)
       if (flag_extended_system) then
         if (leqi(md_cell_constraint, 'volume')) then
           write(lun,'("eps     ",e14.6)') baro%eps
@@ -2331,7 +2338,8 @@ contains
   subroutine update_cell(baro)
 
     use units
-    use global_module,      only: cell_vec_len, &
+    use global_module,      only: cell_vec_len, cell_vol, lat_vec, &
+                                  lat_vec_inv, recip_lat_vec, invert_3x3, &
                                   flag_diagonalisation, min_layer
     use GenComms,           only: inode, ionode
     use density_module,     only: density
@@ -2352,7 +2360,9 @@ contains
     class(type_barostat), intent(inout)   :: baro
 
     ! local variables
-    real(double) :: orcellx, orcelly, orcellz, xvec, yvec, zvec, r2, scale
+    real(double) :: old_volume, det_new, xvec, yvec, zvec, r2, scale
+    real(double), dimension(3,3) :: old_lattice
+    real(double), dimension(3) :: fractional
     integer :: i, j
     character(len=20) :: subname = "update_cell: "
     character(len=120) :: prefix
@@ -2361,21 +2371,20 @@ contains
     if (inode==ionode .and. flag_MDdebug .and. iprint_MD + min_layer> 1) &
       write(io_lun,'(4x,a)') trim(prefix)//" starting"
 
-    orcellx = cell_vec_len(1)
-    orcelly = cell_vec_len(2)
-    orcellz = cell_vec_len(3)
-
-    cell_vec_len(1) = baro%lat(1,1)
-    cell_vec_len(2) = baro%lat(2,2)
-    cell_vec_len(3) = baro%lat(3,3)
-
-    lattice_vec(1,1) = cell_vec_len(1)
-    lattice_vec(2,2) = cell_vec_len(2)
-    lattice_vec(3,3) = cell_vec_len(3)
-
-    cell_vec_len(1) = cell_vec_len(1)
-    cell_vec_len(2) = cell_vec_len(2)
-    cell_vec_len(3) = cell_vec_len(3)
+    old_lattice = lat_vec
+    old_volume = abs(cell_vol)
+    lat_vec = baro%lat
+    call invert_3x3(lat_vec, lat_vec_inv, det_new)
+    if (det_new <= very_small) &
+         call cq_abort("update_cell: non-positive cell volume")
+    cell_vol = det_new
+    volume = det_new
+    do i = 1, 3
+       cell_vec_len(i) = sqrt(sum(lat_vec(:,i)*lat_vec(:,i)))
+    end do
+    recip_lat_vec = transpose(lat_vec_inv)
+    ! md.frames stores one complete lattice vector per output row.
+    lattice_vec = transpose(lat_vec)
 
     ! scale the integration grid and volume to the new cell.
     ! Constant number of grid points
@@ -2383,24 +2392,21 @@ contains
     r_super_y_squared = cell_vec_len(2) * cell_vec_len(2)
     r_super_z_squared = cell_vec_len(3) * cell_vec_len(3)
     call baro%get_volume
-    volume = baro%volume
-    ! volume = cell_vec_len(1) * cell_vec_len(2) * cell_vec_len(3)
-    ! baro%volume = volume
+    if (abs(baro%volume-volume) > 100.0_double*very_small*volume) &
+         call cq_abort("update_cell: inconsistent barostat volume")
     grid_point_volume = volume/(n_grid_x*n_grid_y*n_grid_z)
     one_over_grid_point_volume = one / grid_point_volume
-    scale = (orcellx*orcelly*orcellz)/volume
+    scale = old_volume/volume
     density = density * scale
     if(flag_diagonalisation) then
        do i = 1, nkp
-          kk(1,i) = kk(1,i) * orcellx / cell_vec_len(1)
-          kk(2,i) = kk(2,i) * orcelly / cell_vec_len(2)
-          kk(3,i) = kk(3,i) * orcellz / cell_vec_len(3)
+          fractional = matmul(transpose(old_lattice),kk(:,i))/(two*pi)
+          kk(:,i) = two*pi*matmul(transpose(lat_vec_inv),fractional)
        end do
     end if
     do j = 1, maxngrid
-       recip_vector(j,1) = recip_vector(j,1) * orcellx / cell_vec_len(1)
-       recip_vector(j,2) = recip_vector(j,2) * orcelly / cell_vec_len(2)
-       recip_vector(j,3) = recip_vector(j,3) * orcellz / cell_vec_len(3)
+       fractional = matmul(transpose(old_lattice),recip_vector(j,:))/(two*pi)
+       recip_vector(j,:) = two*pi*matmul(transpose(lat_vec_inv),fractional)
        xvec = recip_vector(j,1)/(two*pi)
        yvec = recip_vector(j,2)/(two*pi)
        zvec = recip_vector(j,3)/(two*pi)
@@ -2408,8 +2414,6 @@ contains
        if(j/=i0) hartree_factor(j) = one/r2 ! i0 notates gamma point
     end do
     if (inode == ionode .and. iprint_MD + min_layer > 1) then
-      write(io_lun,'(6x,a,3f12.6)') "cell scaling factors: ", cell_vec_len(1)/orcellx, &
-                                 cell_vec_len(2)/orcelly, cell_vec_len(3)/orcellz
       write(io_lun,'(6x,a,3f12.6)') "new cell dimensions:  ", cell_vec_len(1), cell_vec_len(2), &
                                  cell_vec_len(3)
     end if

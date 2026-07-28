@@ -1,0 +1,42 @@
+IO.Title                    nonorthogonal_npt_md_xyz
+IO.Coordinates              coords.dat
+IO.FractionalAtomicCoords   T
+IO.Iprint                   0
+
+General.NumberOfSpecies     1
+General.PAOFromFiles        T
+%block ChemicalSpeciesLabel
+1 28.086 Si Si.ion
+%endblock
+
+AtomMove.TypeOfRun          md
+AtomMove.NumSteps           1
+AtomMove.Timestep           0.1
+AtomMove.OutputFreq         1
+AtomMove.XyzFreq            1
+AtomMove.IonTemperature     10.0
+AtomMove.TargetPressure     0.0
+AtomMove.FullStress         T
+AtomMove.WriteExtXYZ        T
+
+MD.Ensemble                 npt
+MD.Thermostat               nhc
+MD.Barostat                 pr
+MD.CellConstraint           xyz
+MD.nNHC                     1
+MD.nYoshida                 1
+MD.nMTS                     1
+MD.tauT                     100.0
+MD.tauP                     200.0
+MD.PDrag                    10.0
+
+Basis.BasisSet              PAOs
+Grid.GridCutoff             80
+DM.SolutionMethod           diagon
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-7
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.MPMeshX                1
+Diag.MPMeshY                1
+Diag.MPMeshZ                1

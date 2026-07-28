@@ -900,7 +900,10 @@ AtomMove.CalcStress (*boolean*)
 
 AtomMove.FullStress (*boolean*)
     Toggle calculation of the off-diagonal elements of the stress tensor, which
-    can be expensive, but is required for calculating certain properties.
+    can be expensive, but is required for calculating certain properties.  It
+    is required together with ``AtomMove.CGLineMin backtrack`` for an
+    unconstrained relaxation of all six strain components of a nonorthogonal
+    cell.
 
     *default*: F
 
@@ -925,9 +928,13 @@ AtomMove.OptCellMethod (*integer*)
 
     Options:
 
-    1. Fixed fractional coordinates (only cell vectors)
-    2. Alternating atomic position and cell vector optimisation (recommended for simultaneous optimisation)
-    3. Simultaneous cell and atomic conjugate gradients relaxation; caution recommended (can be unstable)
+    1. Fixed fractional coordinates (only cell vectors).
+    2. Alternating atomic position and cell vector optimisation.  This is the
+       recommended simultaneous atom-and-cell method and supports general
+       nonorthogonal lattices.
+    3. Legacy simultaneous cell and atomic conjugate-gradient relaxation.
+       This method remains orthorhombic-only and stops with an explicit
+       diagnostic for a skew lattice; use method 2 instead.
 
 AtomMove.EnthalpyTolerance (*real*)
     Enthalpy tolerance for cell optimisation
@@ -947,7 +954,9 @@ AtomMove.TargetPressure (*real*)
 AtomMove.OptCell.Constraint (*string*)
     Applies a constraint to the relaxation.
 
-    none: Unconstrained relaxation.
+    none: Unconstrained relaxation.  With full stress and the backtracking line
+    minimizer, all six independent symmetric-strain components are varied for a
+    general cell.
 
     *Fixing a single cell dimension:*
 
@@ -970,8 +979,8 @@ AtomMove.OptCell.Constraint (*string*)
 
     *Global scaling factor:*
 
-    ``volume``: minimize the total energy by scaling each simulation cell dimension by
-    the same global scaling factor. Search directions are set by the mean stress.
+    ``volume``: minimize the total energy by scaling each simulation cell vector
+    by the same global scaling factor. Search directions are set by the mean stress.
 
 AtomMove.TestSpecificForce (*integer*)
     Label for which force contribution to test. Note that for PAOs non-local Pulay
@@ -1094,6 +1103,17 @@ MD.Barostat (*string*)
         Parrinello-Rahman (extended system) barostat
 
     *default*: none
+
+MD.CellConstraint (*string*)
+    values: volume/xyz
+
+    Select the barostat cell degrees of freedom. ``volume`` isotropically
+    scales the complete lattice and therefore preserves the shape of a
+    nonorthogonal cell. ``xyz`` applies the three diagonal Cartesian barostat
+    strains to the complete lattice; it does not provide independent shear
+    degrees of freedom.
+
+    *default*: volume
 
 MD.tauT (*real*)
     Coupling time constant for thermostat. Required for Berendsen thermostat, or
@@ -1800,4 +1820,3 @@ Go to :ref:`top <input_tags>`.
     :style: unsrt
 
 Go to :ref:`top <input_tags>`.
-
