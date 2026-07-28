@@ -22,6 +22,11 @@ coordination, force accumulation, and the complete stress tensor.
   the total DFT stress and the isolated analytic ion-ion stress with energy
   derivatives. The runner requires the largest Ewald error to remain below
   0.01 GPa and the largest total-stress error below 0.10 GPa.
+- `./run_equivalent_cell_invariance.sh` represents the same crystal with the
+  original monoclinic basis and with the determinant-one lattice change
+  `a2' = a1 + a2`. It runs both descriptions on one and two MPI ranks and
+  compares the Ewald energy, total energy, all atomic-force components, and
+  all six stress components.
 
 The input uses the canonical keyword `IO.FractionalAtomicCoords`. A future pDOS
 stage must include `IO.writeDOS T`.
@@ -66,13 +71,26 @@ from -358.70465487 to -358.70841529 Ha and the maximum stress from 8.2732 to
 0.0723 GPa. The run accepts six cell steps and rebuilds the explicit Ewald
 state 24 times.
 
+The determinant-one equivalent-cell test preserves the volume exactly and
+reproduces Cartesian atomic positions to `1.8e-15 a0`. The explicit Ewald
+energy is identical at the printed `1e-9 Ha` precision. One- and two-rank
+calculations agree within `3.7e-11 Ha` in total energy, with no printed force
+or stress difference. At a 200 Ha integration-grid cutoff, the deliberately
+unreduced basis differs from the reduced basis by `6.99e-5 Ha` in total
+energy, `3.40e-4 Ha/a0` in the largest force component, and `0.04596 GPa` in
+stress. These are finite-grid representation errors, not Ewald errors: raising
+the cutoff from 100 to 200 Ha reduces the respective differences from
+`2.80e-4 Ha`, `1.42e-3 Ha/a0`, and `0.2914 GPa`.
+
 ## What this validates
 
 This test now validates repeatable variable-cell Ewald setup, skew-cell
 real/reciprocal enumeration, a representative total atomic force, all six
 ionic Ewald stress components, all six total PBE stress components, and
-coupled method-2 atom/cell mechanics with converged inner cell cycles. The
-short two-cycle smoke run does **not** claim a fully converged HfO2 ground
-state: its final maximum force is 0.00141 Ha/a0. Equivalent unimodular-cell
-invariance, rank reproducibility, a production-quality fully converged
-relaxation, and HfO2 band/pDOS post-processing remain future acceptance gates.
+coupled method-2 atom/cell mechanics with converged inner cell cycles. It also
+validates exact Ewald invariance under a nontrivial unimodular lattice change
+and deterministic one-/two-rank execution, while quantifying the separately
+convergent finite-grid representation error. The short two-cycle smoke run
+does **not** claim a fully converged HfO2 ground state: its final maximum force
+is 0.00141 Ha/a0. A production-quality fully converged relaxation and HfO2
+band/pDOS post-processing remain future acceptance gates.

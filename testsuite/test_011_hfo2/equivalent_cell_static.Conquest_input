@@ -1,0 +1,31 @@
+IO.Title                    monoclinic_hfo2_equivalent_cell_invariance
+IO.Coordinates              coords.dat
+IO.FractionalAtomicCoords   T
+IO.Iprint                   3
+AtomMove.TypeOfRun          static
+AtomMove.FullStress         T
+
+General.NumberOfSpecies     2
+General.DifferentFunctional T
+General.FunctionalType      101
+General.PAOFromFiles        T
+General.NeutralAtom         F
+
+%block ChemicalSpeciesLabel
+1 178.4900 Hf HfCQ.ion
+2 15.9994 O  OCQ.ion
+%endblock
+
+Basis.BasisSet              PAOs
+# The tighter grid reduces the expected representation dependence caused by
+# sampling one physical lattice with two differently shaped finite grids.
+Grid.GridCutoff             200
+DM.SolutionMethod           diagon
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-9
+
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.MPMeshX                2
+Diag.MPMeshY                2
+Diag.MPMeshZ                2
