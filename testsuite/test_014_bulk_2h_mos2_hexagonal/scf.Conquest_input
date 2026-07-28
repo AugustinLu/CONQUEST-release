@@ -1,0 +1,25 @@
+IO.Title                    bulk_2h_mos2_relaxed_scf
+IO.Coordinates              coords.dat
+IO.FractionalAtomicCoords   T
+IO.DumpChargeDensity        T
+
+General.NumberOfSpecies     2
+General.DifferentFunctional T
+General.FunctionalType      101
+General.PAOFromFiles        T
+%block ChemicalSpeciesLabel
+1 95.9500 Mo Mo.ion
+2 32.0600 S  S.ion
+%endblock
+
+AtomMove.TypeOfRun          static
+Basis.BasisSet              PAOs
+Grid.GridCutoff             100
+DM.SolutionMethod           diagon
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-9
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.MPMeshX                5
+Diag.MPMeshY                5
+Diag.MPMeshZ                3

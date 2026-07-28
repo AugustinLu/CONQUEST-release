@@ -1,0 +1,33 @@
+IO.Title                    bulk_2h_mos2_sulfur_internal_relax
+IO.Coordinates              coords.dat
+IO.FractionalAtomicCoords   T
+IO.Iprint                   2
+
+General.NumberOfSpecies     2
+General.DifferentFunctional T
+General.FunctionalType      101
+General.PAOFromFiles        T
+
+%block ChemicalSpeciesLabel
+1 95.9500 Mo Mo.ion
+2 32.0600 S  S.ion
+%endblock
+
+AtomMove.TypeOfRun          cg
+AtomMove.OptCell            F
+AtomMove.NumSteps           30
+AtomMove.MaxForceTol        2.0e-4
+AtomMove.ReuseDM            T
+AtomMove.CGLineMin          backtrack
+
+Basis.BasisSet              PAOs
+Grid.GridCutoff             100
+DM.SolutionMethod           diagon
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-8
+
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.MPMeshX                4
+Diag.MPMeshY                4
+Diag.MPMeshZ                2

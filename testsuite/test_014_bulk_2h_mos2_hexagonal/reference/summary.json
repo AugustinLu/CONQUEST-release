@@ -1,0 +1,80 @@
+{
+  "spacegroup_number": 194,
+  "spacegroup_international": "P6_3/mmc",
+  "bravais_lattice_extended": "hP2",
+  "path": [
+    [
+      "GAMMA",
+      "M"
+    ],
+    [
+      "M",
+      "K"
+    ],
+    [
+      "K",
+      "GAMMA"
+    ],
+    [
+      "GAMMA",
+      "A"
+    ],
+    [
+      "A",
+      "L"
+    ],
+    [
+      "L",
+      "H"
+    ],
+    [
+      "H",
+      "A"
+    ],
+    [
+      "L",
+      "M"
+    ],
+    [
+      "H",
+      "K"
+    ]
+  ],
+  "band_kpoints": 309,
+  "indirect_path_gap_ev": 0.8804395124717243,
+  "minimum_direct_path_gap_ev": 1.7051838262615004,
+  "vbm": {
+    "segment": [
+      "GAMMA",
+      "M"
+    ],
+    "fraction_from_segment_start": 0.0,
+    "cartesian_k_bohr_inverse": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "cbm": {
+    "segment": [
+      "K",
+      "GAMMA"
+    ],
+    "fraction_from_segment_start": 0.47058823529411764,
+    "cartesian_k_bohr_inverse": [
+      0.18568,
+      0.32161,
+      0.0
+    ]
+  },
+  "total_valence_electrons_from_scf": 52.0,
+  "integrated_states_in_exported_dos_window_at_fermi": 36.00173,
+  "relax_initial_max_force_ha_per_bohr": 0.02736402,
+  "relax_final_max_force_ha_per_bohr": 0.00019569,
+  "sulfur_z_initial": 0.615,
+  "sulfur_z_final": 0.6211886929879329,
+  "valence_minus2_to_0ev_s_p_weight": 1.5797492167,
+  "valence_minus2_to_0ev_mo_d_weight": 2.1712414961,
+  "conduction_0_to_2ev_s_p_weight": 2.8737799187,
+  "conduction_0_to_2ev_mo_d_weight": 5.483547840200001
+}

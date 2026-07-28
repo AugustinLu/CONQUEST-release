@@ -1,0 +1,82 @@
+{
+  "source": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_014_bulk_2h_mos2_hexagonal/results/workflow/scf/coords.dat",
+  "recipe": "HPKOT",
+  "spacegroup_number": 194,
+  "spacegroup_international": "P6_3/mmc",
+  "bravais_lattice_extended": "hP2",
+  "path": [
+    [
+      "GAMMA",
+      "M"
+    ],
+    [
+      "M",
+      "K"
+    ],
+    [
+      "K",
+      "GAMMA"
+    ],
+    [
+      "GAMMA",
+      "A"
+    ],
+    [
+      "A",
+      "L"
+    ],
+    [
+      "L",
+      "H"
+    ],
+    [
+      "H",
+      "A"
+    ],
+    [
+      "L",
+      "M"
+    ],
+    [
+      "H",
+      "K"
+    ]
+  ],
+  "point_coords": {
+    "GAMMA": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "A": [
+      0.0,
+      0.0,
+      0.5
+    ],
+    "K": [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.0
+    ],
+    "H": [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.5
+    ],
+    "H_2": [
+      0.3333333333333333,
+      0.3333333333333333,
+      -0.5
+    ],
+    "M": [
+      0.5000000000000001,
+      -5.173521982088044e-17,
+      0.0
+    ],
+    "L": [
+      0.5000000000000001,
+      -5.173521982088044e-17,
+      0.5
+    ]
+  }
+}

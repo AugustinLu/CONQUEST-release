@@ -1,0 +1,34 @@
+IO.Title                    bulk_2h_mos2_pdos
+IO.Coordinates              coords.dat
+IO.FractionalAtomicCoords   T
+
+General.NumberOfSpecies     2
+General.DifferentFunctional T
+General.FunctionalType      101
+General.PAOFromFiles        T
+General.LoadRho             T
+%block ChemicalSpeciesLabel
+1 95.9500 Mo Mo.ion
+2 32.0600 S  S.ion
+%endblock
+
+AtomMove.TypeOfRun          static
+Basis.BasisSet              PAOs
+Grid.GridCutoff             100
+DM.SolutionMethod           diagon
+minE.SelfConsistent         F
+IO.writeDOS                 T
+IO.write_proj_DOS           T
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.MPMeshX                6
+Diag.MPMeshY                6
+Diag.MPMeshZ                3
+
+Process.Job                  pdos
+Process.n_DOS                3001
+Process.sigma_DOS            0.008
+Process.WFRangeRelative      T
+Process.min_DOS_E           -1.20
+Process.max_DOS_E            0.80
+Process.pDOS_l_resolved      T
