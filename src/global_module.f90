@@ -495,10 +495,51 @@ contains
 
   subroutine mic_vector(r)
     real(double), dimension(3), intent(inout) :: r
-    real(double), dimension(3) :: f
+    real(double), dimension(3) :: f, shifted, best, candidate
+    real(double) :: best_sq, candidate_sq, coefficient_bound, rounding_guard
+    integer, dimension(3) :: nearest, lower, upper
+    integer :: i, n1, n2, n3
+
+    ! Component-wise fractional rounding is not the Euclidean minimum-image
+    ! convention for a sufficiently skewed or unreduced lattice.  Start with
+    ! that inexpensive candidate, then enumerate a rigorously bounded integer
+    ! box.  If |A(f-n)| <= |best|, then
+    !
+    !   |f_i-n_i| = |row_i(A^-1) A(f-n)|
+    !             <= ||row_i(A^-1)|| |best| .
+    !
+    ! Consequently the bounds below contain every lattice translation that
+    ! can improve on the initial candidate.  This is an exact three-
+    ! dimensional closest-vector search without assuming a reduced cell.
     f = matmul(lat_vec_inv, r)
-    f = f - anint(f)
-    r = matmul(lat_vec, f)
+    nearest = nint(f)
+    shifted = f - real(nearest, double)
+    best = matmul(lat_vec, shifted)
+    best_sq = dot_product(best, best)
+
+    do i = 1, 3
+       coefficient_bound = sqrt(best_sq) * &
+            sqrt(dot_product(lat_vec_inv(i,:), lat_vec_inv(i,:)))
+       rounding_guard = 16.0_double * epsilon(one) * &
+            (one + abs(f(i)) + coefficient_bound)
+       lower(i) = ceiling(f(i) - coefficient_bound - rounding_guard)
+       upper(i) = floor(f(i) + coefficient_bound + rounding_guard)
+    end do
+
+    do n3 = lower(3), upper(3)
+       do n2 = lower(2), upper(2)
+          do n1 = lower(1), upper(1)
+             shifted = f - real((/ n1, n2, n3 /), double)
+             candidate = matmul(lat_vec, shifted)
+             candidate_sq = dot_product(candidate, candidate)
+             if (candidate_sq < best_sq) then
+                best = candidate
+                best_sq = candidate_sq
+             end if
+          end do
+       end do
+    end do
+    r = best
   end subroutine mic_vector
 
   subroutine fractional_recip_to_cart(k)
