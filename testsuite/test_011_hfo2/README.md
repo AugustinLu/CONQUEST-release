@@ -10,11 +10,9 @@ coordination, force accumulation, and the complete stress tensor.
 ## Maintained checks
 
 - `./run_ewald_cell_smoke.sh` runs two outer method-2 atom/cell cycles with
-  `General.NeutralAtom F`. It checks that explicit ionic Ewald is accepted,
-  coupled relaxation is entered, and the complete cell-dependent Ewald state
-  is rebuilt after lattice trials. The four-rank reference run survived 31
-  rebuilds, including rejected large strains and restoration of the original
-  cell.
+  `General.NeutralAtom F`. It requires accepted downhill full-lattice steps,
+  convergence of at least one cell cycle below the stress threshold, and
+  repeated complete Ewald-state rebuilds for trial lattices.
 - `./run_ewald_force_fd.sh` uses CONQUEST's full-force finite-difference
   harness for the x force on a representative Hf atom. The reference analytic
   and numerical forces are 0.007207741844 and 0.007170249319 Ha/a0,
@@ -23,7 +21,7 @@ coordination, force accumulation, and the complete stress tensor.
   strains to a deliberately symmetry-broken monoclinic cell. It compares both
   the total DFT stress and the isolated analytic ion-ion stress with energy
   derivatives. The runner requires the largest Ewald error to remain below
-  0.01 GPa.
+  0.01 GPa and the largest total-stress error below 0.10 GPa.
 
 The input uses the canonical keyword `IO.FractionalAtomicCoords`. A future pDOS
 stage must include `IO.writeDOS T`.
@@ -46,19 +44,35 @@ The maximum error is 0.00155 GPa and the RMS error is 0.00102 GPa. This is
 strong evidence that the generalized Ewald energy and all six ionic stress
 components use the skew lattice consistently.
 
-The total DFT stress has a separate xz residual: analytic -0.40078 GPa versus
--0.94183 GPa from the energy derivative. Step-size checks at 1e-3 and 2.5e-4
-give -0.94201 and -0.94712 GPa, so this is not finite-difference noise. The
-isolated Ewald xz derivative agrees to 0.00014 GPa; therefore the remaining
-0.54 GPa discrepancy belongs to cancellation among electronic stress terms,
-not ionic Ewald.
+The same test exposed and now guards an independent electronic-stress defect:
+the full GGA XC tensor was calculated but only its diagonal was accumulated.
+After retaining the off-diagonal terms, analytic and finite-difference total
+stresses agree to 0.04825 GPa at worst and 0.02501 GPa RMS. In particular,
+the monoclinic-plane xz result changes from -0.40078 to -0.93768 GPa, versus
+-0.94183 GPa from the energy derivative (0.00415 GPa error).
+
+The coupled cell smoke test exposed a second, independent variable-cell
+defect. For SIESTA/ABINIT-format pseudopotentials, the energy shift reported
+as the core-correction energy is proportional to `1 / cell volume`. The
+pseudopotential grid was rebuilt after a lattice trial, but this scalar was
+left at its old-cell value. Its missing 0.07374454 Ha change at a
+representative strain almost exactly produced the apparent uphill slope.
+Recomputing it after each cell update makes the same trial agree with a
+cold-start calculation and restores downhill line searches.
+
+In the current two-cycle reference, the first cell cycle lowers the energy
+from -358.70465487 to -358.70841529 Ha and the maximum stress from 8.2732 to
+0.0687 GPa. After the next atomic relaxation, the second cell cycle reaches
+0.0723 GPa. The run accepts six cell steps and rebuilds the explicit Ewald
+state 24 times.
 
 ## What this validates
 
 This test now validates repeatable variable-cell Ewald setup, skew-cell
-real/reciprocal enumeration, a representative total atomic force, and all six
-ionic Ewald stress components. It does **not** yet validate converged
-atom-plus-cell HfO2 relaxation, the remaining electronic xz stress, equivalent
-unimodular cell invariance, rank reproducibility, or HfO2 band/pDOS
-post-processing. Those remain explicit future acceptance gates rather than
-being hidden by a smoke-test pass.
+real/reciprocal enumeration, a representative total atomic force, all six
+ionic Ewald stress components, all six total PBE stress components, and
+coupled method-2 atom/cell mechanics with converged inner cell cycles. The
+short two-cycle smoke run does **not** claim a fully converged HfO2 ground
+state: its final maximum force is 0.00141 Ha/a0. Equivalent unimodular-cell
+invariance, rank reproducibility, a production-quality fully converged
+relaxation, and HfO2 band/pDOS post-processing remain future acceptance gates.

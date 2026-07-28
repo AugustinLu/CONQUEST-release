@@ -49,4 +49,5 @@ MPLCONFIGDIR="$RUN_DIR/.matplotlib" "$PYTHON" \
   --root "$RUN_DIR" \
   --summary "$RUN_DIR/summary.json" \
   --image "$RUN_DIR/monoclinic_hfo2_ewald_six_strain_validation.png" \
-  --ewald-tolerance-gpa 0.01
+  --ewald-tolerance-gpa 0.01 \
+  --total-tolerance-gpa 0.10

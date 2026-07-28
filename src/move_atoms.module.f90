@@ -3788,6 +3788,10 @@ contains
   !!    Added scaling of electron density after atom move
   !!   2017/11/17 14:51 dave
   !!    Bug fix: removed erroneous spin scaling on electron density
+  !!   2026/07/29
+  !!    Recompute the volume-dependent TM pseudopotential energy shift
+  !!    after a cell change.  Leaving this scalar at its old-cell value
+  !!    gave variable-cell line searches the ionic Ewald slope alone.
   !!  SOURCE
   !!
   subroutine update_H(fixed_potential)
@@ -3801,7 +3805,7 @@ contains
                                       matSFcoeff,matSFcoeff_tran
     use ion_electrostatic,      only: ewald, screened_ion_interaction
     use pseudopotential_data,   only: init_pseudo
-    use pseudo_tm_module,       only: set_tm_pseudo
+    use pseudo_tm_module,       only: set_tm_pseudo, get_energy_shift
     use pseudopotential_common, only: pseudo_type, OLDPS, SIESTA,      &
                                       STATE, ABINIT, core_correction
     use global_module,          only: iprint_MD, flag_self_consistent, &
@@ -3846,8 +3850,18 @@ contains
        call init_pseudo(core_correction)
     case (SIESTA)
        call set_tm_pseudo
+       if (flag_neutral_atom) then
+          core_correction = zero
+       else
+          call get_energy_shift(core_correction)
+       end if
     case (ABINIT)
        call set_tm_pseudo
+       if (flag_neutral_atom) then
+          core_correction = zero
+       else
+          call get_energy_shift(core_correction)
+       end if
     end select
     ! (0) Prepare SF-PAO coefficients for contracted SFs
     if (atomf.ne.sf) then

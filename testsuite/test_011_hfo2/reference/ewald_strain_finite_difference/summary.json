@@ -7,17 +7,17 @@
   "analytic_stress_gpa": [
     [
       -5.52364148,
-      1.94646297,
-      -0.40077876
+      2.01687058,
+      -0.9376806
     ],
     [
-      1.94646297,
+      2.01687058,
       -8.44329862,
-      0.8994902
+      0.93939483
     ],
     [
-      -0.40077876,
-      0.8994902,
+      -0.9376806,
+      0.93939483,
       -6.48913244
     ]
   ],
@@ -39,8 +39,8 @@
     ]
   ],
   "stress_antisymmetry_max_gpa": 0.0,
-  "maximum_absolute_error_gpa": 0.5410550226154848,
-  "rms_absolute_error_gpa": 0.22448732375432806,
+  "maximum_absolute_error_gpa": 0.04824572117618686,
+  "rms_absolute_error_gpa": 0.02500861424862429,
   "ewald_maximum_absolute_error_gpa": 0.0015473796574951848,
   "ewald_rms_absolute_error_gpa": 0.00101899991881878,
   "components": [
@@ -91,10 +91,10 @@
     },
     {
       "component": "xy",
-      "analytic_gpa": 1.94646297,
+      "analytic_gpa": 2.01687058,
       "finite_difference_gpa": 2.010146159465484,
-      "absolute_error_gpa": 0.06368318946548412,
-      "relative_error": 0.032717390696358394,
+      "absolute_error_gpa": 0.006724420534515829,
+      "relative_error": 0.0033340862825793362,
       "ewald_analytic_gpa": 22.89408656,
       "ewald_finite_difference_gpa": 22.89409103964195,
       "ewald_absolute_error_gpa": 4.479641948051949e-06,
@@ -106,10 +106,10 @@
     },
     {
       "component": "xz",
-      "analytic_gpa": -0.40077876,
+      "analytic_gpa": -0.9376806,
       "finite_difference_gpa": -0.9418337826154848,
-      "absolute_error_gpa": 0.5410550226154848,
-      "relative_error": 1.3500092235813215,
+      "absolute_error_gpa": 0.004153182615484807,
+      "relative_error": 0.004429208213846812,
       "ewald_analytic_gpa": -289.69574397,
       "ewald_finite_difference_gpa": -289.6958843071533,
       "ewald_absolute_error_gpa": 0.0001403371532546771,
@@ -121,10 +121,10 @@
     },
     {
       "component": "yz",
-      "analytic_gpa": 0.8994902,
+      "analytic_gpa": 0.93939483,
       "finite_difference_gpa": 0.9430130515253008,
-      "absolute_error_gpa": 0.043522851525300776,
-      "relative_error": 0.04838613197264492,
+      "absolute_error_gpa": 0.00361822152530078,
+      "relative_error": 0.0038516515204802433,
       "ewald_analytic_gpa": 11.01813678,
       "ewald_finite_difference_gpa": 11.018122322404428,
       "ewald_absolute_error_gpa": 1.4457595572281434e-05,

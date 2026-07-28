@@ -228,6 +228,9 @@ contains
   !!    Secure ASE printing when using ordern
   !!   2025/01/20 17:07 dave
   !!    Add constraints on stress when constraining cell optimisation
+  !!   2026/07/29
+  !!    Accumulate off-diagonal GGA XC stress in full-stress SCF, non-SCF,
+  !!    and partial-core-correction paths.
   !!  SOURCE
   !!
   subroutine force(fixed_potential, vary_mu, n_cg_L_iterations, &
@@ -258,7 +261,7 @@ contains
                                       flag_perform_cdft, flag_dft_d2,  &
                                       nspin, spin_factor, &
                                       flag_analytic_blip_int, flag_DFTplusU, &
-                                      flag_neutral_atom, flag_stress, &
+                                      flag_neutral_atom, flag_stress, flag_full_stress, &
                                       cell_vec_len, cell_vol, flag_mix_L_SC_min, &
                                       flag_atomic_stress, non_atomic_stress, &
                                       flag_heat_flux, cell_constraint_flag, &
@@ -415,9 +418,20 @@ contains
          if(flag_surface_dipole_correction) then
             GPV_stress(dir1,dir1) = GPV_stress(dir1,dir1) + surface_dipole_energy_elec
          end if
-         ! XC_GGA_stress is zero for LDA
+         ! XC_GGA_stress is zero for LDA.  The XC energy is the Jacobian
+         ! contribution and is diagonal; the GGA gradient contribution is a
+         ! full tensor and must retain its off-diagonal elements.
          if(flag_self_consistent .or. flag_mix_L_SC_min) then
-            XC_stress(dir1,dir1) = xc_energy + spin_factor*XC_GGA_stress(dir1,dir1)
+            if(flag_full_stress) then
+               do dir2 = 1,3
+                  XC_stress(dir1,dir2) = &
+                       spin_factor*XC_GGA_stress(dir1,dir2)
+               end do
+            else
+               XC_stress(dir1,dir1) = &
+                    spin_factor*XC_GGA_stress(dir1,dir1)
+            end if
+            XC_stress(dir1,dir1) = XC_stress(dir1,dir1) + xc_energy
          else ! The rest of nonSCF XC found later (nonSC or PCC routines)
             XC_stress(dir1,dir1) = delta_E_xc
          end if
@@ -3971,24 +3985,42 @@ contains
        call get_xc_potential(density_out, potential(:,:),    &
             dVxc_drho(:,1,1), h_energy, nsize) ! NB dVxc_drho is a dummy here
        if (flag_stress) then
-          XC_stress(1,1) = XC_stress(1,1) + spin_factor*XC_GGA_stress(1,1) * &
-               mix_input_output_XC_GGA_stress
-          XC_stress(2,2) = XC_stress(2,2) + spin_factor*XC_GGA_stress(2,2) * &
-               mix_input_output_XC_GGA_stress
-          XC_stress(3,3) = XC_stress(3,3) + spin_factor*XC_GGA_stress(3,3) * &
-               mix_input_output_XC_GGA_stress
+          if(flag_full_stress) then
+             do dir1 = 1,3
+                do dir2 = 1,3
+                   XC_stress(dir1,dir2) = XC_stress(dir1,dir2) + &
+                        spin_factor*XC_GGA_stress(dir1,dir2) * &
+                        mix_input_output_XC_GGA_stress
+                end do
+             end do
+          else
+             do dir1 = 1,3
+                XC_stress(dir1,dir1) = XC_stress(dir1,dir1) + &
+                     spin_factor*XC_GGA_stress(dir1,dir1) * &
+                     mix_input_output_XC_GGA_stress
+             end do
+          end if
        end if
        ! Find XC potential for input density
        call get_xc_potential(density, potential(:,:),    &
             dVxc_drho(:,1,1), h_energy, nsize) ! NB dVxc_drho is a dummy here
        ! And now add XC_GGA_stress for density_in scaled by half
        if (flag_stress) then
-          XC_stress(1,1) = XC_stress(1,1) + spin_factor*XC_GGA_stress(1,1) * &
-               (one - mix_input_output_XC_GGA_stress)
-          XC_stress(2,2) = XC_stress(2,2) + spin_factor*XC_GGA_stress(2,2) * &
-               (one - mix_input_output_XC_GGA_stress)
-          XC_stress(3,3) = XC_stress(3,3) + spin_factor*XC_GGA_stress(3,3) * &
-               (one - mix_input_output_XC_GGA_stress)
+          if(flag_full_stress) then
+             do dir1 = 1,3
+                do dir2 = 1,3
+                   XC_stress(dir1,dir2) = XC_stress(dir1,dir2) + &
+                        spin_factor*XC_GGA_stress(dir1,dir2) * &
+                        (one - mix_input_output_XC_GGA_stress)
+                end do
+             end do
+          else
+             do dir1 = 1,3
+                XC_stress(dir1,dir1) = XC_stress(dir1,dir1) + &
+                     spin_factor*XC_GGA_stress(dir1,dir1) * &
+                     (one - mix_input_output_XC_GGA_stress)
+             end do
+          end if
        end if
        jacobian = zero
        do spin = 1, nspin
@@ -4575,12 +4607,21 @@ contains
           end do
           call get_xc_potential(density_wk, xc_potential,     &
                xc_epsilon, xc_energy, size)
-          XC_stress(1,1) = XC_stress(1,1) + spin_factor*XC_GGA_stress(1,1) * &
-               mix_input_output_XC_GGA_stress
-          XC_stress(2,2) = XC_stress(2,2) + spin_factor*XC_GGA_stress(2,2) * &
-               mix_input_output_XC_GGA_stress
-          XC_stress(3,3) = XC_stress(3,3) + spin_factor*XC_GGA_stress(3,3) * &
-               mix_input_output_XC_GGA_stress
+          if(flag_full_stress) then
+             do dir1 = 1,3
+                do dir2 = 1,3
+                   XC_stress(dir1,dir2) = XC_stress(dir1,dir2) + &
+                        spin_factor*XC_GGA_stress(dir1,dir2) * &
+                        mix_input_output_XC_GGA_stress
+                end do
+             end do
+          else
+             do dir1 = 1,3
+                XC_stress(dir1,dir1) = XC_stress(dir1,dir1) + &
+                     spin_factor*XC_GGA_stress(dir1,dir1) * &
+                     mix_input_output_XC_GGA_stress
+             end do
+          end if
        end if
     end if
     density_wk = zero
@@ -4593,12 +4634,21 @@ contains
     ! And now add XC_GGA_stress for density_in scaled by half
     if((.not.flag_self_consistent).and.(.not.flag_mix_L_SC_min)) then
        if (flag_stress) then
-          XC_stress(1,1) = XC_stress(1,1) + spin_factor*XC_GGA_stress(1,1) * &
-               (one - mix_input_output_XC_GGA_stress)
-          XC_stress(2,2) = XC_stress(2,2) + spin_factor*XC_GGA_stress(2,2) * &
-               (one - mix_input_output_XC_GGA_stress)
-          XC_stress(3,3) = XC_stress(3,3) + spin_factor*XC_GGA_stress(3,3) * &
-               (one - mix_input_output_XC_GGA_stress)
+          if(flag_full_stress) then
+             do dir1 = 1,3
+                do dir2 = 1,3
+                   XC_stress(dir1,dir2) = XC_stress(dir1,dir2) + &
+                        spin_factor*XC_GGA_stress(dir1,dir2) * &
+                        (one - mix_input_output_XC_GGA_stress)
+                end do
+             end do
+          else
+             do dir1 = 1,3
+                XC_stress(dir1,dir1) = XC_stress(dir1,dir1) + &
+                     spin_factor*XC_GGA_stress(dir1,dir1) * &
+                     (one - mix_input_output_XC_GGA_stress)
+             end do
+          end if
        end if
     end if
     if(PRESENT(xc_energy_ret)) xc_energy_ret = xc_energy

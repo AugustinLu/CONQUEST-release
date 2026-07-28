@@ -138,6 +138,7 @@ def analyse(
     summary_path: Path,
     image: Path,
     ewald_tolerance_gpa: float | None,
+    total_tolerance_gpa: float | None,
 ):
     manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
     delta = float(manifest["delta"])
@@ -273,6 +274,15 @@ def analyse(
             f"{summary['ewald_maximum_absolute_error_gpa']:.6f} GPa exceeds "
             f"{ewald_tolerance_gpa:.6f} GPa"
         )
+    if (
+        total_tolerance_gpa is not None
+        and summary["maximum_absolute_error_gpa"] > total_tolerance_gpa
+    ):
+        raise SystemExit(
+            "Total stress validation failed: maximum error "
+            f"{summary['maximum_absolute_error_gpa']:.6f} GPa exceeds "
+            f"{total_tolerance_gpa:.6f} GPa"
+        )
 
 
 def main():
@@ -287,6 +297,7 @@ def main():
     analyse_parser.add_argument("--summary", type=Path, required=True)
     analyse_parser.add_argument("--image", type=Path, required=True)
     analyse_parser.add_argument("--ewald-tolerance-gpa", type=float)
+    analyse_parser.add_argument("--total-tolerance-gpa", type=float)
     args = parser.parse_args()
     if args.command == "prepare":
         prepare(args.base, args.root, args.delta)
@@ -296,6 +307,7 @@ def main():
             args.summary,
             args.image,
             args.ewald_tolerance_gpa,
+            args.total_tolerance_gpa,
         )
 
 

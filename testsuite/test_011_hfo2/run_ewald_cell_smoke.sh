@@ -48,11 +48,28 @@ if ! grep -q "set_ewald: Ewald" "${output_file}"; then
   echo "FAIL: Ewald state was not reported" >&2
   exit 1
 fi
+if grep -q "No resolvable downhill full-lattice step" "${output_file}"; then
+  echo "FAIL: full-lattice line search did not find a downhill step" >&2
+  exit 1
+fi
 
 set_ewald_calls=$(grep -c "set_ewald: Ewald" "${output_file}")
 if [ "${set_ewald_calls}" -lt 2 ]; then
   echo "FAIL: Ewald state was not rebuilt after a lattice trial" >&2
   exit 1
 fi
+accepted_cell_steps=$(grep -c "back_lm_lattice: exit after" "${output_file}")
+if [ "${accepted_cell_steps}" -lt 1 ]; then
+  echo "FAIL: no full-lattice line-search step was accepted" >&2
+  exit 1
+fi
+converged_cell_cycles=$(grep -c \
+  "cell_cg_run:Maximum stress below threshold" "${output_file}")
+if [ "${converged_cell_cycles}" -lt 1 ]; then
+  echo "FAIL: no coupled cell cycle reached the stress threshold" >&2
+  exit 1
+fi
 
-echo "PASS: coupled monoclinic HfO2 reached ${set_ewald_calls} Ewald setups."
+echo "PASS: coupled monoclinic HfO2 accepted ${accepted_cell_steps} cell steps,"
+echo "      converged ${converged_cell_cycles} cell cycles, and rebuilt Ewald"
+echo "      state ${set_ewald_calls} times."

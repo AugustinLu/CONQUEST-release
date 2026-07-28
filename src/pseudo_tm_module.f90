@@ -48,7 +48,7 @@ module pseudo_tm_module
   private
   public :: init_pseudo_tm, loc_pp_derivative_tm, &
        nonloc_pp_derivative_tm, set_tm_pseudo, deallocate_pseudo_tm, &
-       loc_HF_stress, loc_G_stress, make_neutral_atom
+       loc_HF_stress, loc_G_stress, make_neutral_atom, get_energy_shift
   !public
   ! pseudofunctions is arranged like 
   !  (n_pts in block, ncf, naba atoms, iblock)
