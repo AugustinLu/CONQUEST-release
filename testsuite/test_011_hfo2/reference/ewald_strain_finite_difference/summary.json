@@ -1,0 +1,138 @@
+{
+  "electrostatics": "explicit ionic Ewald (General.NeutralAtom F)",
+  "strain_parameterization": "normal tensor strains; engineering shear with eps_ij=eps_ji=gamma/2",
+  "delta": 0.0005,
+  "base_energy_ha": -358.7014410003055,
+  "base_volume_bohr3": 938.7948259907554,
+  "analytic_stress_gpa": [
+    [
+      -5.52364148,
+      1.94646297,
+      -0.40077876
+    ],
+    [
+      1.94646297,
+      -8.44329862,
+      0.8994902
+    ],
+    [
+      -0.40077876,
+      0.8994902,
+      -6.48913244
+    ]
+  ],
+  "analytic_ion_ion_stress_gpa": [
+    [
+      2733.10034753,
+      22.89408656,
+      -289.69574397
+    ],
+    [
+      22.89408656,
+      2751.66933628,
+      11.01813678
+    ],
+    [
+      -289.69574397,
+      11.01813678,
+      2643.32756679
+    ]
+  ],
+  "stress_antisymmetry_max_gpa": 0.0,
+  "maximum_absolute_error_gpa": 0.5410550226154848,
+  "rms_absolute_error_gpa": 0.22448732375432806,
+  "ewald_maximum_absolute_error_gpa": 0.0015473796574951848,
+  "ewald_rms_absolute_error_gpa": 0.00101899991881878,
+  "components": [
+    {
+      "component": "xx",
+      "analytic_gpa": -5.52364148,
+      "finite_difference_gpa": -5.487777366024785,
+      "absolute_error_gpa": 0.03586411397521516,
+      "relative_error": 0.0064928388464515555,
+      "ewald_analytic_gpa": 2733.10034753,
+      "ewald_finite_difference_gpa": 2733.101782562636,
+      "ewald_absolute_error_gpa": 0.00143503263598177,
+      "ewald_relative_error": 5.250566951479335e-07,
+      "minus_energy_ha": -358.70135163748154,
+      "plus_energy_ha": -358.70152674683743,
+      "minus_ewald_energy_ha": -259.402977346,
+      "plus_ewald_energy_ha": -259.315766867
+    },
+    {
+      "component": "yy",
+      "analytic_gpa": -8.44329862,
+      "finite_difference_gpa": -8.43535241635218,
+      "absolute_error_gpa": 0.007946203647820838,
+      "relative_error": 0.000941125501471466,
+      "ewald_analytic_gpa": 2751.66933628,
+      "ewald_finite_difference_gpa": 2751.6708836596576,
+      "ewald_absolute_error_gpa": 0.0015473796574951848,
+      "ewald_relative_error": 5.623421524866419e-07,
+      "minus_energy_ha": -358.70130461339534,
+      "plus_energy_ha": -358.70157377685257,
+      "minus_ewald_energy_ha": -259.403277377,
+      "plus_ewald_energy_ha": -259.315474377
+    },
+    {
+      "component": "zz",
+      "analytic_gpa": -6.48913244,
+      "finite_difference_gpa": -6.440886718823813,
+      "absolute_error_gpa": 0.04824572117618686,
+      "relative_error": 0.007434849207082429,
+      "ewald_analytic_gpa": 2643.32756679,
+      "ewald_finite_difference_gpa": 2643.328892134835,
+      "ewald_absolute_error_gpa": 0.0013253448346404184,
+      "ewald_relative_error": 5.013925823237597e-07,
+      "minus_energy_ha": -358.7013369778821,
+      "plus_energy_ha": -358.7015424999814,
+      "minus_ewald_energy_ha": -259.401542572,
+      "plus_ewald_energy_ha": -259.317196654
+    },
+    {
+      "component": "xy",
+      "analytic_gpa": 1.94646297,
+      "finite_difference_gpa": 2.010146159465484,
+      "absolute_error_gpa": 0.06368318946548412,
+      "relative_error": 0.032717390696358394,
+      "ewald_analytic_gpa": 22.89408656,
+      "ewald_finite_difference_gpa": 22.89409103964195,
+      "ewald_absolute_error_gpa": 4.479641948051949e-06,
+      "ewald_relative_error": 1.9566807945413608e-07,
+      "minus_energy_ha": -358.7014723117435,
+      "plus_energy_ha": -358.70140817003806,
+      "minus_ewald_energy_ha": -259.359716618,
+      "plus_ewald_energy_ha": -259.358986091
+    },
+    {
+      "component": "xz",
+      "analytic_gpa": -0.40077876,
+      "finite_difference_gpa": -0.9418337826154848,
+      "absolute_error_gpa": 0.5410550226154848,
+      "relative_error": 1.3500092235813215,
+      "ewald_analytic_gpa": -289.69574397,
+      "ewald_finite_difference_gpa": -289.6958843071533,
+      "ewald_absolute_error_gpa": 0.0001403371532546771,
+      "ewald_relative_error": 4.844294615153544e-07,
+      "minus_energy_ha": -358.701425454885,
+      "plus_energy_ha": -358.7014555078365,
+      "minus_ewald_energy_ha": -259.354734913,
+      "plus_ewald_energy_ha": -259.363978812
+    },
+    {
+      "component": "yz",
+      "analytic_gpa": 0.8994902,
+      "finite_difference_gpa": 0.9430130515253008,
+      "absolute_error_gpa": 0.043522851525300776,
+      "relative_error": 0.04838613197264492,
+      "ewald_analytic_gpa": 11.01813678,
+      "ewald_finite_difference_gpa": 11.018122322404428,
+      "ewald_absolute_error_gpa": 1.4457595572281434e-05,
+      "ewald_relative_error": 1.3121633776161412e-06,
+      "minus_energy_ha": -358.7014556296862,
+      "plus_energy_ha": -358.70142553910546,
+      "minus_ewald_energy_ha": -259.35952901,
+      "plus_ewald_energy_ha": -259.359177433
+    }
+  ]
+}

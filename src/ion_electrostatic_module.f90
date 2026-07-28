@@ -329,6 +329,9 @@ contains
 !!    Removing call to obsolete_erfcc (only in a redundant test loop)
 !!   2016/01/29 14:57 dave
 !!    Name change: only one ewald routine left, so removed prefix mikes_
+!!   2026/07/29
+!!    Make setup repeatable for variable cells, preserve the requested
+!!    accuracy across rebuilds, and account for the integer neighbour cache.
 !!  SOURCE
 !!  
   subroutine set_ewald(inode,ionode)
@@ -343,7 +346,7 @@ contains
     use numbers
     use primary_module, ONLY : bundle
     use species_module, ONLY : charge, species
-    use memory_module, ONLY: reg_alloc_mem, reg_dealloc_mem, type_dbl
+    use memory_module, ONLY: reg_alloc_mem, reg_dealloc_mem, type_dbl, type_int
 
 
     implicit none
@@ -358,7 +361,8 @@ contains
          partition_radius_squared, partition_diameter, total_charge
     real(double) :: argument, const_phi_0, const_phi_1, const_zeta_0, &
          const_zeta_1, distance, dummy1, dummy2, dummy3, g1, g2, g3, &
-         g_squared, lambda, rsq, sep, vol_prefac, v1, v2, v3
+         g_squared, lambda, rsq, scaled_ewald_accuracy, sep, vol_prefac, &
+         v1, v2, v3
     real(double) :: gaussian_self_stress
     real(double), dimension(3) :: rr, vert
 !    real(double), dimension(3,3) :: abs_sep, rel_sep
@@ -366,6 +370,27 @@ contains
     real(double), dimension(3) :: abs_sep, rel_sep
     real(double), dimension(3,3) :: real_cell_vec, recip_cell_vec, &
          part_cell_vec, part_cell_dual
+
+    ! set_ewald is called both during initialisation and whenever a variable
+    ! cell changes.  Release the cell-dependent cache before reconstructing
+    ! it.  The ion-ion covering set itself is deallocated by updateIndices3
+    ! before this routine is called during a rebuild.
+    if(allocated(ewald_g_vector_x)) then
+       call reg_dealloc_mem(area_general,4*size(ewald_g_vector_x),type_dbl)
+       deallocate(ewald_g_vector_x,ewald_g_vector_y,ewald_g_vector_z,&
+            ewald_g_factor,STAT=stat)
+       if(stat/=0) call cq_abort("set_ewald: error releasing reciprocal cache",stat)
+    end if
+    if(allocated(partition_neighbour_list)) then
+       call reg_dealloc_mem(area_general,size(partition_neighbour_list),type_int)
+       deallocate(partition_neighbour_list,STAT=stat)
+       if(stat/=0) call cq_abort("set_ewald: error releasing neighbour cache",stat)
+    end if
+    if(allocated(ion_interaction_force)) then
+       call reg_dealloc_mem(area_general,size(ion_interaction_force),type_dbl)
+       deallocate(ion_interaction_force,STAT=stat)
+       if(stat/=0) call cq_abort("set_ewald: error releasing force cache",stat)
+    end if
 
     ! ------------ setting primitive translation vectors of cell ------------
     !   The Ewald implementation below is formulated for general primitive
@@ -409,17 +434,22 @@ contains
     mean_square_charge = mean_square_charge/real(ni_in_cell,double)
     mean_number_density = real(ni_in_cell,double)/ewald_real_cell_volume
     mean_interparticle_distance = (three/(four*pi*mean_number_density))**one_third
-    ! Rescale ewald_accuracy to a dimensionless number
-    ewald_accuracy = ewald_accuracy*mean_interparticle_distance/mean_square_charge
+    ! Rescale the requested accuracy to a dimensionless number.  Keep the
+    ! input value immutable: set_ewald may be called many times in a
+    ! variable-cell calculation.
+    scaled_ewald_accuracy = ewald_accuracy*mean_interparticle_distance/&
+         mean_square_charge
     ! --- miscellaneous constants used for making Ewald gamma and
     ! the real-space and recip-space cutoffs
     const_zeta_0 = (pi**five_sixths)/(six**one_third)
     const_zeta_1 = (two**two_thirds)*(pi**five_sixths)/(three**one_third)
     argument = min(exp(-one),&
-         &(const_zeta_0*ewald_accuracy)/(real(ni_in_cell,double)**one_third))
+         &(const_zeta_0*scaled_ewald_accuracy)/&
+         (real(ni_in_cell,double)**one_third))
     const_phi_0 = sqrt(-log(argument))
     argument = min(exp(-one),&
-         &(const_zeta_1*ewald_accuracy)/(real(ni_in_cell,double)**five_sixths))
+         &(const_zeta_1*scaled_ewald_accuracy)/&
+         (real(ni_in_cell,double)**five_sixths))
     const_phi_1 = sqrt(-log(argument))
     if(inode == ionode.AND.iprint_gen>1) then
        write (unit=io_lun, &
@@ -523,20 +553,20 @@ contains
        ewald_gamma = (pi*(mean_number_density**two_thirds)/&
             real(ni_in_cell,double)**one_third)* (const_phi_0/&
             const_phi_1)
-       argument = min(exp(-one), (ewald_accuracy*ewald_gamma)/(two*&
+       argument = min(exp(-one), (scaled_ewald_accuracy*ewald_gamma)/(two*&
             sqrt(pi)*mean_interparticle_distance*mean_number_density))
        ewald_real_cutoff = (one/sqrt(ewald_gamma))*sqrt(-&
             log(argument))
-       argument = min(exp(-one), (pi*ewald_accuracy)/&
+       argument = min(exp(-one), (pi*scaled_ewald_accuracy)/&
             (mean_interparticle_distance*real(ni_in_cell,double)*&
             sqrt(ewald_gamma)))
        ewald_recip_cutoff = two*sqrt(ewald_gamma)*sqrt(-log(argument))
 
     case(1)
-       ewald_gamma = (one/lambda**2)*log(one/ewald_accuracy) 
+       ewald_gamma = (one/lambda**2)*log(one/scaled_ewald_accuracy)
        ewald_real_cutoff = lambda
        ewald_recip_cutoff = sqrt(four*ewald_gamma*log(one/&
-            ewald_accuracy))
+            scaled_ewald_accuracy))
 
     end select
 
@@ -760,7 +790,7 @@ contains
          call cq_abort("set_ewald: error allocating partition_neighbour_list ", &
          bundle%groups_on_node,n_partition_neighbours)
     call reg_alloc_mem(area_general,bundle%groups_on_node*&
-         n_partition_neighbours,type_dbl)
+         n_partition_neighbours,type_int)
 
     do ip = 1, bundle%groups_on_node
 

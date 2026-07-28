@@ -3550,6 +3550,8 @@ contains
   !!    processes if an empty bundle is found
   !!   2019/11/18 14:37 dave
   !!    Updates to rebuild covering sets if cell varies during run
+  !!   2026/07/29
+  !!    Rebuild all cell-dependent Ewald state after a variable-cell reindex.
   !! SOURCE
   !!
   subroutine updateIndices3(fixed_potential,velocity)
@@ -3584,7 +3586,7 @@ contains
     use primary_module, ONLY: deallocate_primary_set, bundle, make_prim, domain
     use construct_module, ONLY: init_primary
     use sfc_partitions_module, ONLY: sfc_partitions_to_processors
-    use ion_electrostatic, ONLY: ewald_real_cutoff, ion_ion_cutoff
+    use ion_electrostatic, ONLY: ion_ion_cutoff, set_ewald
     use species_module, ONLY: species
     use matrix_data,    ONLY: rcut,max_range
     use dimens,         ONLY: r_core_squared,r_h, r_dft_d2
@@ -3681,8 +3683,10 @@ contains
           call make_cs(inode-1,ion_ion_cutoff,ion_ion_CS,parts,bundle,&
                ni_in_cell, x_atom_cell,y_atom_cell,z_atom_cell)
        else
-          call make_cs(inode-1,ewald_real_cutoff,ion_ion_CS,parts,bundle,&
-               ni_in_cell, x_atom_cell,y_atom_cell,z_atom_cell)
+          ! Ewald cutoffs, reciprocal vectors, real-space neighbours and
+          ! force storage all depend on the current lattice.  Rebuild them
+          ! together after the primary sets have been reconstructed.
+          call set_ewald(inode,ionode)
        end if
        if (flag_dft_d2) call make_cs(inode-1, r_dft_d2, D2_CS, parts, bundle, ni_in_cell, &
                x_atom_cell, y_atom_cell, z_atom_cell)

@@ -17,4 +17,6 @@ coord_next.dat
 eigenvalues.dat
 fort.*
 hilbert_make_blk.dat
+trajectory.xsf
+ewald_cell_smoke/*.ion
 .DS_Store

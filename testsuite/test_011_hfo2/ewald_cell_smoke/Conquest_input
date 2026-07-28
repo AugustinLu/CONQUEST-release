@@ -1,0 +1,38 @@
+IO.Title monoclinic_hfo2_ewald_cell_smoke
+IO.Coordinates coords.in
+IO.FractionalAtomicCoords T
+IO.Iprint 2
+
+General.NumberOfSpecies 2
+General.DifferentFunctional T
+General.FunctionalType 101
+General.PAOFromFiles T
+General.NeutralAtom F
+
+%block ChemicalSpeciesLabel
+1 178.4900 Hf HfCQ.ion
+2 15.9994 O  OCQ.ion
+%endblock
+
+AtomMove.TypeOfRun cg
+AtomMove.OptCell T
+AtomMove.OptCellMethod 2
+AtomMove.FullStress T
+AtomMove.ReuseDM T
+AtomMove.CGLineMin backtrack
+AtomMove.NumSteps 2
+AtomMove.MaxForceTol 5.0e-4
+AtomMove.EnthalpyTolerance 1.0e-5
+AtomMove.StressTolerance 0.1
+
+Basis.BasisSet PAOs
+Grid.GridCutoff 100
+
+DM.SolutionMethod diagon
+minE.SelfConsistent T
+minE.SCTolerance 1.0e-8
+
+Diag.MPMesh T
+Diag.MPMeshX 2
+Diag.MPMeshY 2
+Diag.MPMeshZ 2

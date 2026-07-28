@@ -1711,10 +1711,9 @@ contains
     sqnm_trust_step       = fdf_double ('AtomMove.MaxSQNMStep',0.2_double   )
     LBFGS_history         = fdf_integer('AtomMove.LBFGSHistory', 5          )
     flag_opt_cell         = fdf_boolean('AtomMove.OptCell',          .false.)
-    ! At present (2023/07/26 just before v1.2 release) neutral atom is required for cell opt
-    if(flag_opt_cell.and.(.not.flag_neutral_atom)) &
-         call cq_abort("You must use neutral atom for cell optimisation")
-    ! This can be removed when ewald update is implemented
+    ! Ionic Ewald state is rebuilt by updateIndices3 whenever the cell changes,
+    ! so both neutral-atom and explicit ionic electrostatics support cell
+    ! optimisation.
     flag_variable_cell    = flag_opt_cell
     optcell_method        = fdf_integer('AtomMove.OptCellMethod', 1)
     cell_constraint_flag  = fdf_string(20,'AtomMove.OptCell.Constraint','none')
