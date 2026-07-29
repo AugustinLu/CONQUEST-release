@@ -55,6 +55,8 @@
 !!    Added variables to enable simulations with a variable temperature
 !!   2026/07/29 lu
 !!    Preserved full lattice geometry during variable-cell MD
+!!   2026/07/29 lu
+!!    Added symmetric full-cell and in-plane xy Parrinello-Rahman constraints
 !!  SOURCE
 !!
 module md_control
@@ -224,8 +226,8 @@ module md_control
     real(double)        :: G_eps        ! box force
     real(double)        :: mu           ! box scaling factor
 
-    ! Fully flexible cell variables
-    real(double), dimension(3,3)  :: h    ! bookkeeping variable for ortho-ssm
+    ! Symmetric flexible-cell variables
+    real(double), dimension(3,3)  :: h    ! integrated symmetric cell strain
     real(double), dimension(3,3)  :: v_h  ! hdot = v_h x h
     real(double), dimension(3,3)  :: G_h
     real(double), dimension(3,3)  :: c_g
@@ -266,6 +268,98 @@ module md_control
 
 contains
 
+  logical function cell_component_active(i, j)
+
+    integer, intent(in) :: i, j
+
+    select case(md_cell_constraint)
+    case('xyz')
+      cell_component_active = (i == j)
+    case('xy')
+      cell_component_active = (i <= 2 .and. j <= 2)
+    case('full')
+      cell_component_active = .true.
+    case default
+      cell_component_active = .false.
+    end select
+
+  end function cell_component_active
+
+
+  subroutine project_cell_matrix(matrix)
+
+    real(double), dimension(3,3), intent(inout) :: matrix
+    real(double), dimension(3,3) :: symmetric_matrix
+    integer :: i, j
+
+    symmetric_matrix = half*(matrix + transpose(matrix))
+    matrix = zero
+    do j=1,3
+      do i=1,3
+        if (cell_component_active(i,j)) matrix(i,j) = symmetric_matrix(i,j)
+      end do
+    end do
+
+  end subroutine project_cell_matrix
+
+
+  subroutine symmetric_matrix_exp(matrix, exponential)
+
+    use GenBlas, only: syev
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+
+    real(double), dimension(3,3), intent(in)  :: matrix
+    real(double), dimension(3,3), intent(out) :: exponential
+    real(double), dimension(3,3) :: eigenvectors
+    real(double), dimension(3) :: eigenvalues
+    integer :: i, info
+
+    if (.not. all(ieee_is_finite(matrix))) &
+      call cq_abort('symmetric_matrix_exp: non-finite cell strain generator')
+    eigenvectors = half*(matrix + transpose(matrix))
+    call syev('U', 3, eigenvectors, 3, eigenvalues, info)
+    if (info /= 0) call cq_abort('symmetric_matrix_exp: eigensolver failed', info)
+    if (maxval(eigenvalues) > log(huge(one)) - two) &
+      call cq_abort('symmetric_matrix_exp: unstable cell strain in one MD step')
+
+    exponential = zero
+    do i=1,3
+      exponential = exponential + exp(eigenvalues(i))* &
+                    spread(eigenvectors(:,i), 2, 3)* &
+                    spread(eigenvectors(:,i), 1, 3)
+    end do
+
+  end subroutine symmetric_matrix_exp
+
+
+  subroutine build_flexible_cell_force(baro)
+
+    class(type_barostat), intent(inout) :: baro
+    real(double), dimension(3,3) :: stress_drive
+    real(double) :: kinetic_trace_correction
+    integer :: i
+
+    stress_drive = half*(baro%total_stress + transpose(baro%total_stress))
+    do i=1,3
+      stress_drive(i,i) = stress_drive(i,i) - baro%P_ext
+    end do
+
+    kinetic_trace_correction = zero
+    do i=1,3
+      kinetic_trace_correction = kinetic_trace_correction + &
+                                 baro%ke_stress(i,i)
+    end do
+    kinetic_trace_correction = two*kinetic_trace_correction/md_ndof_ions
+    baro%G_h = baro%volume*stress_drive/baro%box_mass
+    do i=1,3
+      baro%G_h(i,i) = baro%G_h(i,i) + &
+                      kinetic_trace_correction/baro%box_mass
+    end do
+    call project_cell_matrix(baro%G_h)
+
+  end subroutine build_flexible_cell_force
+
+
   !!****m* md_control/init_thermo *
   !!  NAME
   !!   init_thermo
@@ -299,6 +393,8 @@ contains
     character(len=120) :: prefix
 
     prefix = return_prefix(subname, min_layer)
+    if (md_ndof_ions <= zero) &
+      call cq_abort('Molecular dynamics requires at least one movable ionic degree of freedom')
     if (inode==ionode .and. iprint_MD + min_layer > 1) &
       write(io_lun,'(4x,a)') trim(prefix)//" starting"
     th%T_int = two*ke_ions/fac_Kelvin2Hartree/md_ndof_ions
@@ -320,8 +416,12 @@ contains
       th%cell_ndof = 1
     case('xyz')
       th%cell_ndof = 3
+    case('xy')
+      th%cell_ndof = 3
+    case('full')
+      th%cell_ndof = 6
     case default
-      call cq_abort('MD.CellConstraint must be "fixed", "volume" or "xyz"')
+      call cq_abort('MD.CellConstraint must be "fixed", "volume", "xyz", "xy" or "full"')
     end select
 
     select case(th%baro_type)
@@ -329,10 +429,15 @@ contains
       md_cell_constraint = 'fixed'
       th%cell_nhc = .false.
     case('pr')
+      if (leqi(md_cell_constraint, 'fixed')) &
+        call cq_abort('The PR barostat requires a non-fixed MD.CellConstraint')
       ! For NPT stochastic velocity rescaling we also need to thermostat the box
       th%ke_target = th%ke_target +  &
                      half*th%cell_ndof*fac_Kelvin2Hartree*th%T_ext
-    case('default')
+    case('mttk')
+      if (.not. leqi(md_cell_constraint, 'volume')) &
+        call cq_abort('The MTTK barostat supports only MD.CellConstraint volume')
+    case default
       call cq_abort("MD.Barostat must be 'none', 'pr' or 'mttk'")
     end select
 
@@ -431,8 +536,10 @@ contains
         select case (md_cell_constraint)
         case('volume')
           ndof_baro = one
-        case('xyz')
+        case('xyz', 'xy')
           ndof_baro = three
+        case('full')
+          ndof_baro = 6.0_double
         end select
         th%m_nhc_cell(1) = (ndof_baro**2)*th%T_ext*fac_Kelvin2Hartree/omega_baro**2
       end if
@@ -984,7 +1091,7 @@ contains
     real(double), dimension(:,:), intent(inout) :: v  ! ion velocities
 
     ! local variables
-    integer         :: i_mts, i_ys, i_nhc, i
+    integer         :: i_mts, i_ys, i_nhc, i, j
     real(double)    :: v_sfac   ! ionic velocity scaling factor
     real(double)    :: box_sfac ! box velocity scaling factor
     real(double)    :: fac
@@ -1028,9 +1135,12 @@ contains
           select case(md_cell_constraint)
           case('volume')
             baro%v_eps = baro%v_eps*fac
-          case('xyz')
+          case('xyz', 'xy', 'full')
             do i=1,3
-              baro%v_h(i,i) = baro%v_h(i,i)*fac
+              do j=1,3
+                if (cell_component_active(i,j)) &
+                  baro%v_h(i,j) = baro%v_h(i,j)*fac
+              end do
             end do
           end select
           box_sfac = box_sfac*fac
@@ -1279,11 +1389,14 @@ contains
     baro%ndof = ndof
     baro%e_barostat = zero
 
+    baro%cell_ndof = 0
     select case(md_cell_constraint)
     case('volume')
       baro%cell_ndof = 1
-    case('xyz')
+    case('xyz', 'xy')
       baro%cell_ndof = 3
+    case('full')
+      baro%cell_ndof = 6
     end select
 
     if (md_tau_P < zero) md_tau_P = dt*ten*ten
@@ -1294,7 +1407,10 @@ contains
         (baro%ndof+baro%cell_ndof)*temp_ion*fac_Kelvin2Hartree/omega_P**2
 
       if (leqi(baro%baro_type, 'pr')) then
-        if (leqi(md_cell_constraint, 'xyz')) &
+        ! Retain the established PR normalization by the three Cartesian
+        ! spatial dimensions.  cell_ndof controls thermostat equipartition,
+        ! but is not the spatial normalization of the barostat inertia.
+        if (.not. leqi(md_cell_constraint, 'volume')) &
           baro%box_mass = baro%box_mass/three
       end if
     else
@@ -1515,7 +1631,7 @@ contains
     integer, optional                           :: final_call
 
     ! local variables
-    integer                                     :: i
+    integer                                     :: i, j
     character(len=20) :: subname = "get_barostat_E: "
     character(len=120) :: prefix
 
@@ -1529,8 +1645,12 @@ contains
         if (leqi(md_cell_constraint, 'volume')) then
           baro%e_barostat = three*half*baro%box_mass*baro%v_eps**2
         else
-          do i=1,3
-            baro%e_barostat = baro%e_barostat + half*baro%box_mass*baro%v_h(i,i)**2
+          do j=1,3
+            do i=1,3
+              if (cell_component_active(i,j)) &
+                baro%e_barostat = baro%e_barostat + &
+                  half*baro%box_mass*baro%v_h(i,j)**2
+            end do
           end do
         end if
       end select
@@ -1564,7 +1684,6 @@ contains
 
     ! local variables
     integer                                     :: i
-    real(double)                                :: tr_ke_stress
 
     if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 3) &
       write(io_lun,'(4x,a)') "update_G_box"
@@ -1578,15 +1697,7 @@ contains
         baro%G_eps = (two*th%ke_ions/md_ndof_ions + &
                      (baro%P_int - baro%P_ext)*baro%volume)/baro%box_mass
       else
-        tr_ke_stress = zero
-        do i=1,3
-          tr_ke_stress = tr_ke_stress + baro%ke_stress(i,i)
-        end do
-        do i=1,3
-          baro%G_h(i,i) = (two*tr_ke_stress/md_ndof_ions + &
-                          (baro%total_stress(i,i) - baro%P_ext)*baro%volume)/ &
-                           baro%box_mass
-        end do
+        call build_flexible_cell_force(baro)
       end if
     end select
 
@@ -1598,8 +1709,9 @@ contains
         if (leqi(md_cell_constraint, 'volume')) then
           write(io_lun,'(6x,a,e16.8)') "G_eps: ", baro%G_eps
         else
-          write(io_lun,'(6x,a,3e16.8)') "G_h:   ", baro%G_h(1,1), &
-                                         baro%G_h(2,2), baro%G_h(3,3)
+          do i=1,3
+            write(io_lun,'(6x,a,3e16.8)') "G_h:   ", baro%G_h(i,:)
+          end do
         end if
       end select
     end if
@@ -1682,7 +1794,7 @@ contains
     real(double), intent(in)              :: dtfac  ! Trotter epxansion factor
 
     ! local variables
-    integer                               :: i
+    integer                               :: i, j
 
     if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 4) &
       write(io_lun,'(4x,a)') "propagate_v_box_lin"
@@ -1690,9 +1802,13 @@ contains
     if (leqi(md_cell_constraint, 'volume')) then
       baro%v_eps = baro%v_eps + dtfac*dt*baro%G_eps
     else
-      do i=1,3
-        baro%v_h(i,i) = baro%v_h(i,i) + dt*dtfac*baro%G_h(i,i)
+      do j=1,3
+        do i=1,3
+          if (cell_component_active(i,j)) &
+            baro%v_h(i,j) = baro%v_h(i,j) + dt*dtfac*baro%G_h(i,j)
+        end do
       end do
+      call project_cell_matrix(baro%v_h)
     end if
 
     if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 4) then
@@ -1700,8 +1816,9 @@ contains
       if (leqi(md_cell_constraint, 'volume')) then
         write(io_lun,'(6x,a,e16.8)') "v_eps       ", baro%v_eps
       else
-        write(io_lun,'(6x,a,3e16.8)') "v_h         ", &
-          baro%v_h(1,1), baro%v_h(2,2), baro%v_h(3,3)
+        do i=1,3
+          write(io_lun,'(6x,a,3e16.8)') "v_h         ", baro%v_h(i,:)
+        end do
       end if
     end if
 
@@ -1754,7 +1871,7 @@ contains
     class(type_barostat), intent(inout)   :: baro
 
     ! local variables
-    integer                               :: i
+    integer                               :: i, j
 
     if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 4) &
       write(io_lun,'(4x,a)') "apply_box_drag"
@@ -1762,8 +1879,11 @@ contains
     if (leqi(md_cell_constraint, 'volume')) then    
       baro%v_eps = baro%v_eps*baro%p_drag
     else
-      do i=1,3
-        baro%v_h(i,i) = baro%v_h(i,i)*baro%p_drag
+      do j=1,3
+        do i=1,3
+          if (cell_component_active(i,j)) &
+            baro%v_h(i,j) = baro%v_h(i,j)*baro%p_drag
+        end do
       end do
     end if
 
@@ -1788,11 +1908,18 @@ contains
     type(type_thermostat), intent(in)     :: th
 
     ! local variables
-    integer :: i
+    integer :: i, j
 
-    do i=1,3
-      baro%v_h(i,i) = baro%v_h(i,i)*th%lambda
-    end do
+    if (leqi(md_cell_constraint, 'volume')) then
+      baro%v_eps = baro%v_eps*th%lambda
+    else
+      do j=1,3
+        do i=1,3
+          if (cell_component_active(i,j)) &
+            baro%v_h(i,j) = baro%v_h(i,j)*th%lambda
+        end do
+      end do
+    end if
 
   end subroutine scale_box_velocity
   !!***
@@ -2110,7 +2237,7 @@ contains
 
     ! local variables
     integer                                 :: i
-    real(double)                            :: tr_ke_stress
+    integer                                 :: j
 
     if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 1) &
       write(io_lun,'(4x,a)') "integrate_box"
@@ -2121,17 +2248,16 @@ contains
       baro%v_eps = baro%v_eps + baro%G_eps*baro%dt*half
       baro%v_eps = baro%v_eps*baro%p_drag
     else
-      tr_ke_stress = zero
-      do i=1,3
-        tr_ke_stress = tr_ke_stress + baro%ke_stress(i,i)
+      call build_flexible_cell_force(baro)
+      do j=1,3
+        do i=1,3
+          if (cell_component_active(i,j)) then
+            baro%v_h(i,j) = baro%v_h(i,j) + baro%G_h(i,j)*baro%dt*half
+            baro%v_h(i,j) = baro%v_h(i,j)*baro%p_drag
+          end if
+        end do
       end do
-      do i=1,3
-        baro%G_h(i,i) = (two*tr_ke_stress/md_ndof_ions + &
-                        (baro%total_stress(i,i) - baro%P_ext)*baro%volume) / &
-                         baro%box_mass
-        baro%v_h(i,i) = baro%v_h(i,i) + baro%G_h(i,i)*baro%dt*half
-        baro%v_h(i,i) = baro%v_h(i,i)*baro%p_drag
-      end do
+      call project_cell_matrix(baro%v_h)
     end if
 
     if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 3) then 
@@ -2139,10 +2265,12 @@ contains
         write(io_lun,'(6x,a,e16.8)') "v_eps: ", baro%v_eps
         write(io_lun,'(6x,a,e16.8)') "G_eps: ", baro%G_eps
       else
-        write(io_lun,'(6x,a,3e16.8)') "v_h:   ", baro%v_h(1,1), &
-                                       baro%v_h(2,2), baro%v_h(3,3)
-        write(io_lun,'(6x,a,3e16.8)') "G_h:   ", baro%G_h(1,1), &
-                                       baro%G_h(2,2), baro%G_h(3,3)
+        do i=1,3
+          write(io_lun,'(6x,a,3e16.8)') "v_h:   ", baro%v_h(i,:)
+        end do
+        do i=1,3
+          write(io_lun,'(6x,a,3e16.8)') "G_h:   ", baro%G_h(i,:)
+        end do
       end if
     end if
 
@@ -2168,6 +2296,7 @@ contains
 
     ! local variables
     real(double)                            :: expfac, const
+    real(double), dimension(3,3)            :: generator, exp_generator
     integer                                 :: i
 
     if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 1) &
@@ -2182,16 +2311,21 @@ contains
       if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 3) &
         write(io_lun,'(6x,"expfac: ",f16.8)') expfac
     else
+      const = (baro%v_h(1,1) + baro%v_h(2,2) + baro%v_h(3,3))/ &
+              md_ndof_ions
+      generator = baro%v_h
       do i=1,3
-        const = const + baro%v_h(i,i)
+        generator(i,i) = generator(i,i) + const
       end do
-      const = const/md_ndof_ions
-      do i=1,3
-        expfac = exp(-quarter*baro%dt*baro%odnf*(baro%v_h(i,i)+const))
-        v(i,:) = v(i,:)*expfac**2
-      if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 3) &
-        write(io_lun,'(6x,"expfac ",i2,": ",f16.8)') i, expfac
-      end do
+      generator = -half*baro%dt*baro%odnf*generator
+      call symmetric_matrix_exp(generator, exp_generator)
+      v = matmul(exp_generator, v)
+      if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 3) then
+        do i=1,3
+          write(io_lun,'(6x,"velocity exp row ",i2,": ",3f16.8)') &
+            i, exp_generator(i,:)
+        end do
+      end if
     end if
 
   end subroutine couple_box_particle_velocity
@@ -2213,9 +2347,9 @@ contains
     class(type_barostat), intent(inout)     :: baro
 
     ! local variables
-    real(double)                            :: expfac, tr_vh
-    real(double), dimension(3)              :: expfac_h
-    integer                                 :: i
+    real(double)                            :: expfac, tr_vh, trace_correction
+    real(double), dimension(3,3)            :: generator, exp_generator
+    integer                                 :: i, j
 
     if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 1) &
       write(io_lun,'(4x,a)') "propagate_box_ssm"
@@ -2233,22 +2367,27 @@ contains
       ! Rescale the box
       baro%lat = baro%lat*expfac
     else
-      tr_vh = zero
-      do i=1,3
-        tr_vh = tr_vh + baro%v_h(i,i)
+      tr_vh = baro%v_h(1,1) + baro%v_h(2,2) + baro%v_h(3,3)
+      trace_correction = tr_vh/md_ndof_ions
+      do j=1,3
+        do i=1,3
+          if (cell_component_active(i,j)) &
+            baro%h(i,j) = baro%h(i,j) + half*baro%dt*baro%v_h(i,j)
+        end do
       end do
+      generator = baro%v_h
       do i=1,3
-        baro%h(i,i) = baro%h(i,i) + half*baro%dt*baro%v_h(i,i)
-        expfac_h(i) = exp(half*baro%dt*(baro%v_h(i,i) + tr_vh/md_ndof_ions))
-        ! v_h is restricted to diagonal Cartesian strains in this
-        ! integrator.  Scale a Cartesian row of the complete lattice rather
-        ! than only its diagonal element.
-        baro%lat(i,:) = baro%lat(i,:)*expfac_h(i)
+        if (cell_component_active(i,i)) &
+          generator(i,i) = generator(i,i) + trace_correction
       end do
+      generator = half*baro%dt*generator
+      call symmetric_matrix_exp(generator, exp_generator)
+      baro%lat = matmul(exp_generator, baro%lat)
       if (inode==ionode .and. flag_MDdebug .and. iprint_MD > 3) then
-        write(io_lun,'(6x,"v_h:      ",3f16.8)') baro%v_h(1,1), &
-                                                 baro%v_h(2,2), baro%v_h(3,3)
-        write(io_lun,'(6x,"expfac_h: ",3f16.8)') expfac_h
+        do i=1,3
+          write(io_lun,'(6x,"v_h row ",i2,":      ",3f16.8)') i, baro%v_h(i,:)
+          write(io_lun,'(6x,"cell exp row ",i2,": ",3f16.8)') i, exp_generator(i,:)
+        end do
       end if
     end if
 
@@ -2274,7 +2413,7 @@ contains
     character(len=*), intent(in)          :: filename
 
     ! local variables
-    integer                               :: lun
+    integer                               :: lun, i
 
     if (inode==ionode) then
       call io_assign(lun)
@@ -2295,6 +2434,10 @@ contains
             baro%ke_stress(1,1)*HaBohr3ToGPa, &
             baro%ke_stress(2,2)*HaBohr3ToGPa, &
             baro%ke_stress(3,3)*HaBohr3ToGPa
+      do i=1,3
+        write(lun,'("total_stress row ",i1,": ",3e16.8)') &
+          i, baro%total_stress(i,:)*HaBohr3ToGPa
+      end do
       write(lun,'("cell row 1   : ",3f16.8)') baro%lat(1,:)
       write(lun,'("cell row 2   : ",3f16.8)') baro%lat(2,:)
       write(lun,'("cell row 3   : ",3f16.8)') baro%lat(3,:)
@@ -2306,12 +2449,15 @@ contains
           write(lun,'("e_barostat  ",e14.6)') baro%e_barostat
           write(lun,'("mu      ",e14.6)') baro%mu
         else
-          write(lun,'("h       ",3e14.6)') baro%h(1,1), baro%h(2,2), &
-                                           baro%h(3,3)
-          write(lun,'("v_h     ",3e14.6)') baro%v_h(1,1), baro%v_h(2,2), &
-                                           baro%v_h(3,3)
-          write(lun,'("G_h     ",3e14.6)') baro%G_h(1,1), baro%G_h(2,2), &
-                                           baro%G_h(3,3)
+          do i=1,3
+            write(lun,'("h row   ",i1,1x,3e14.6)') i, baro%h(i,:)
+          end do
+          do i=1,3
+            write(lun,'("v_h row ",i1,1x,3e14.6)') i, baro%v_h(i,:)
+          end do
+          do i=1,3
+            write(lun,'("G_h row ",i1,1x,3e14.6)') i, baro%G_h(i,:)
+          end do
           write(lun,'("e_barostat  ",3e14.6)') baro%e_barostat
         end if
       else
@@ -2665,6 +2811,9 @@ contains
           read(lun,*) baro%G_h(1,:)
           read(lun,*) baro%G_h(2,:)
           read(lun,*) baro%G_h(3,:)
+          call project_cell_matrix(baro%h)
+          call project_cell_matrix(baro%v_h)
+          call project_cell_matrix(baro%G_h)
         end if
       end if
 

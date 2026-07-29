@@ -231,8 +231,16 @@ different in this case, as in NVT dynamics.
 The NPT geometry bookkeeping retains the complete lattice for nonorthogonal
 cells.  ``MD.CellConstraint volume`` applies isotropic scaling to all lattice
 components and preserves cell shape.  ``MD.CellConstraint xyz`` applies the
-three existing diagonal Cartesian barostat strains to complete lattice rows;
-it does not introduce independent shear-barostat degrees of freedom.
+three diagonal Cartesian barostat strains to the complete lattice.
+``MD.CellConstraint xy`` enables the two in-plane normal strains and the
+in-plane shear strain while fixing the Cartesian vacuum direction, which is
+suited to a two-dimensional slab lying in the xy plane.
+``MD.CellConstraint full`` propagates all six components of the symmetric
+Cartesian strain-rate tensor.  The symmetric constraint excludes rigid cell
+rotation while allowing the lattice lengths and angles to respond to the
+complete stress tensor.  The ``xy`` and ``full`` constraints require the
+Parrinello-Rahman (``pr``) barostat; the MTTK implementation remains
+isotropic.
 
 Postprocessing tools
 --------------------

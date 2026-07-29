@@ -1105,13 +1105,19 @@ MD.Barostat (*string*)
     *default*: none
 
 MD.CellConstraint (*string*)
-    values: volume/xyz
+    values: fixed/volume/xyz/xy/full
 
-    Select the barostat cell degrees of freedom. ``volume`` isotropically
-    scales the complete lattice and therefore preserves the shape of a
-    nonorthogonal cell. ``xyz`` applies the three diagonal Cartesian barostat
-    strains to the complete lattice; it does not provide independent shear
-    degrees of freedom.
+    Select the barostat cell degrees of freedom. ``fixed`` disables cell
+    motion. ``volume`` isotropically scales the complete lattice and therefore
+    preserves the shape of a nonorthogonal cell. ``xyz`` applies the three
+    diagonal Cartesian barostat strains to the complete lattice. ``xy`` applies
+    a symmetric in-plane strain with xx, yy and xy components while keeping the
+    Cartesian z direction fixed; the slab and vacuum direction must therefore
+    be aligned with z. ``full`` applies all six independent components of a
+    symmetric Cartesian strain-rate tensor, allowing a general cell to change
+    both lengths and angles without introducing a rigid-rotation degree of
+    freedom. ``xy`` and ``full`` are available with ``MD.Barostat pr``; MTTK
+    supports only ``volume``.
 
     *default*: volume
 

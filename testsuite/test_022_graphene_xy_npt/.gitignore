@@ -1,0 +1,4 @@
+results/
+results.previous.*/
+__pycache__/
+.DS_Store
