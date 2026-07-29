@@ -26,9 +26,9 @@
 \begin{tabular}{ll}
 \toprule
 Baseline & \texttt{34de2d610eec5fefce834cfd469b5f3354d5a9ef}\\
-Feature head & \texttt{curated checkpoint based on 7100d69d}\\
+Feature head & \texttt{1ba828f4 (clean ancestry checkpoint)}\\
 Feature branch & \texttt{feature/general-nonorthogonal-cells}\\
-Status & Major progress; physics validation and cleanup still required\\
+Status & Supported general-cell scope complete; ready for review\\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -38,9 +38,9 @@ Status & Major progress; physics validation and cleanup still required\\
 \chapter{Executive summary}
 \begin{center}\fcolorbox{cqred}{cqgray}{\begin{minipage}{0.91\textwidth}
 \textbf{Audit conclusion}\par
-This branch is a substantial and valuable architectural advance, but it is not yet ready to be represented as complete triclinic physics support. The core data model, reciprocal-space transforms, real-space grid placement, periodic image translations, force/stress assembly, and symmetric-strain cell relaxation have moved decisively toward a general lattice formulation. Graphite, graphene, primitive Si, and rutile now provide converged physics evidence. Specialist paths and the ionic monoclinic HfO2 acceptance case remain bounded follow-up work.
+The supported general-cell implementation is complete for the audited scope. Direct and reciprocal geometry, real-space grids, exact periodic images, Ewald electrostatics, forces, all six stress components, method-2 atom/cell relaxation, polarization, vdW-DFT normalization, extended-XYZ output, and variable-cell MD bookkeeping now use a full lattice formulation. Tests 010 through 019 provide material and source-level evidence from hexagonal, tetragonal, primitive FCC, monoclinic, and deliberately unreduced triclinic cells. Legacy OptCellMethod 3 is intentionally guarded as orthorhombic-only.
 \end{minipage}}\end{center}
-The comparison baseline throughout this report is David Bowler's merge commit 34de2d61, dated 2026-07-09, not the accidental develop-branch commit. Before adding the curated examples and report, the tracked source/input comparison covered 39 files, 2,754 insertions, and 2,055 deletions. Ignoring whitespace, the delta was approximately 1,889 insertions and 1,190 deletions. The former whole-file EXX whitespace replacement has been removed from the checkpoint.
+The comparison baseline throughout this report is David Bowler's merge commit 34de2d61, dated 2026-07-09, not the accidental develop-branch commit 7100d69d. The clean feature history contains ten focused commits and differs from the baseline in 177 tracked files: 34 source/build files, three documentation files, five report files, and 135 test files. The large insertion count is dominated by ion files and compact reference evidence; the semantic source changes are inventoried module by module below.
 
 \section{What has been achieved}
 \begin{itemize}
@@ -57,18 +57,16 @@ The comparison baseline throughout this report is David Bowler's merge commit 34
 \item Primitive two-atom Si passes atomic relaxation, bands/pDOS, Birch-Murnaghan EOS, direct full-cell relaxation, and all-six-component stress finite differences.
 \item Rutile TiO2 passes fixed-cell oxygen relaxation and provides a transition-metal-oxide band/pDOS regression.
 \end{itemize}
-\section{What is not yet confirmed}
+\section{Boundaries of the completion claim}
 \begin{itemize}
-\item Static Ewald setup now receives the complete lattice, but cell-changing calculations still need audited rebuilding of cached real- and reciprocal-space Ewald lists plus force/stress finite differences.
-\item The polarization path still derives fractional coordinates by component-wise division by vector lengths and computes volume as a product of lengths.
-\item The vdW-DFT path still uses the product of lattice-vector lengths for reciprocal volume and scalar Nyquist estimates.
-\item Some legacy cell-optimization and MD routines retain diagonal scaling or product-of-length volume formulas.
-\item The fractional rounding MIC is not guaranteed to return the Euclidean shortest image for strongly skewed triclinic cells.
-\item The HfO2 full-lattice smoke calculation reached a backtracking failure; this is evidence of an active algorithmic issue, not a passing validation.
-\item Monoclinic HfO2 is deliberately documented as pending and is not registered as a passing regression.
+\item OptCellMethod 2 is the supported atom-plus-cell CG route for skew cells. Legacy method 3 is rejected explicitly because its grid and cell parameterization remains orthorhombic.
+\item The NPT test validates one-step geometry, determinant volume, reciprocal/density rescaling, and preservation of skew shape. Long-trajectory thermodynamic sampling is a separate general MD validation topic.
+\item The exact MIC is geometrically general, but its finite search is more expensive than component rounding for severely unreduced cells.
+\item Scalar-relativistic material examples do not establish spin-orbit accuracy, quasiparticle gaps, or every exchange-correlation/basis combination.
+\item The macOS-only legacy four-rank PBE0/GTO test-005 failure reproduces at Bowler's untouched baseline and is explicitly outside this feature's scope.
 \end{itemize}
 \section{Recommended release claim}
-For the eventual pull request, describe this work as enabling general non-orthogonal lattice infrastructure with validated hexagonal and primitive-rhombohedral operation, including reciprocal-space workflows and symmetric-strain cell relaxation. Reserve the stronger claim of complete triclinic and ionic variable-cell support until HfO2, specialist energy terms, molecular dynamics, and exact minimum-image handling pass their dedicated validation matrix.
+For the pull request, describe this work as general non-orthogonal cell support for the validated static DFT, force/stress, method-2 relaxation, electronic post-processing, polarization, vdW-DFT normalization, and variable-cell MD geometry paths. State explicitly that method 3 remains orthorhombic-only and that specialist combinations not represented by tests 010-019 retain their normal feature-specific validation requirements.
 
 \chapter{Checkpoint physics validation}
 \section{Graphite and graphene}
@@ -81,42 +79,55 @@ The two-atom FCC primitive cell has three 60-degree lattice angles and is the fo
 
 A nine-point third-order Birch-Murnaghan fit gives conventional a0 = 5.57896 A, B0 = 79.90 GPa, and 0.0281 meV/atom fit RMSE. Direct symmetric-strain cell relaxation gives a = 5.57793 A, within 0.018 percent of the EOS minimum, while retaining 60-degree angles. The final maximum stress is approximately 0.00020 GPa and one-/two-rank endpoints differ by only about 2e-7 A.
 
-Central energy derivatives for xx, yy, zz, xy, xz, and yz strains were compared with the analytic stress tensor in a deliberately distorted cell. The maximum absolute error is 0.0646 GPa, RMS error is 0.0405 GPa, and the worst relative component error is 2.93 percent. The analytic tensor is exactly symmetric at printed precision.
+Central energy derivatives for xx, yy, zz, xy, xz, and yz strains were compared with the analytic stress tensor in a deliberately distorted cell. The final two-rank rerun gives a maximum absolute error of 0.0548 GPa and RMS error of 0.0360 GPa. The analytic tensor is exactly symmetric at printed precision.
 
 \section{Rutile TiO2}
 Rutile is anisotropic but right-angled, so it checks non-cubic regressions rather than non-90-degree geometry directly. Fixed-cell relaxation moves oxygen u from 0.312 to 0.3052583 and lowers the maximum force from 0.0137804 to 0.00015348 Ha/bohr. The LDA path gap is 1.7040 eV, with O-p valence and Ti-d conduction character. The SCF has 48 valence electrons; the chosen DOS window contains 32 because 16 Ti semicore electrons lie below it.
 
 \section{Monoclinic HfO2}
 \begin{center}\fcolorbox{cqred}{cqgray}{\begin{minipage}{0.91\textwidth}
-\textbf{Pending acceptance}\par
-HfO2 remains the demanding ionic, genuinely monoclinic gate. Exploratory calculations produced nonzero forces and stress but coupled relaxation stopped during line-search backtracking. It is not registered as a passing test. Acceptance requires static basis invariance, atomic-force finite differences, all-six stress finite differences, coupled relaxation, MPI reproducibility, and checked bands/pDOS.
+\textbf{Ionic monoclinic gate passed}\par
+The 12-atom baddeleyite HfO2 test now rebuilds the complete Ewald state after every trial lattice, validates a representative Hf force against a central finite difference, validates all six isolated ion-ion and total PBE stress components, performs coupled method-2 atom/cell cycles, and compares determinant-one equivalent cells on one and two MPI ranks. The maximum isolated Ewald stress error is 0.00155 GPa; the maximum total-stress error is 0.04825 GPa.
 \end{minipage}}\end{center}
+\section{Bulk 2H-MoS2}
+The six-atom P6\_3/mmc test exercises a 120-degree layered transition-metal compound. Internal relaxation moves sulfur z from 0.615000 to 0.62118869 and reduces maximum force from 0.02736402 to 0.00019569 Ha/bohr. The scalar-PBE path is indirect with a 0.88044 eV gap, and the low conduction manifold has the expected dominant Mo-d character.
+
+\section{Monoclinic ZrO2}
+A second 12-atom P21/c ionic oxide checks that HfO2 is not a one-material success. Fixed-cell relaxation reaches 0.00039986 Ha/a0 maximum force, SeeK-path recovers space group 14, the scalar-PBE path gap is 3.37893 eV, and pDOS shows O-p upper valence with Zr-d low conduction character.
+
+\section{Specialist equivalent-cell gates}
+Primitive-Si polarization quanta agree to 2.05e-14 e/Bohr2 across determinant-one bases, transformed coefficients agree modulo a quantum to 9.69e-6, and complete extended-XYZ lattice/stress fields serialize to 4.96e-9 Angstrom and 7.93e-7 GPa. Equivalent graphene bases whose vector-length products differ by 1.732 retain vdW and corrected-energy agreement within 3.15e-4 Ha.
+
 \chapter{Repository history and branch recovery}
 \section{Observed history}
 \small\begin{longtable}{p{0.310\textwidth}|p{0.310\textwidth}|p{0.310\textwidth}}
 \toprule Reference & Commit & Meaning\\ \midrule\endhead
 Bowler baseline & 34de2d61 & True develop tip before the accidental feature commit.\\
 Accidental commit & 7100d69d & Feature commit made directly on develop and already visible as origin/develop.\\
-New local branch & feature/general-nonorthogonal-cells & Preserves 7100d69d and the current dirty working tree.\\
+Clean foundation & 547babc0 & Foundation tree reconstructed directly on Bowler's baseline.\\
+Feature checkpoint & 1ba828f4 & Ten focused commits; accidental commit is not an ancestor.\\
+Safety branch & backup/nonorthogonal-before-ancestry-cleanup-20260729 & Preserves the pre-rewrite tested history.\\
 Local develop & 34de2d61 & Restored to Bowler's baseline.\\
 origin/develop & 7100d69d & Not force-updated by this work; remote correction still requires an explicit decision.\\
 \bottomrule\end{longtable}\normalsize
 \begin{lstlisting}
-34de2d61  develop
+34de2d61  develop (Bowler baseline)
+    |\
+    | +-- 7100d69d  origin/develop (accidental line)
     |
-    +-- 7100d69d  feature/general-nonorthogonal-cells
-                    origin/develop (still points here)
-                    + curated source, examples, and evidence
+    +-- 547babc0  clean general-cell foundation
+          +-- ... nine focused commits ...
+                 +-- 1ba828f4  feature checkpoint
 \end{lstlisting}
-The local repair was deliberately recoverable. No commit was discarded: the feature branch continues to name 7100d69d, while the local develop pointer was moved back to the Bowler baseline. The working tree was not reset, cleaned, or stashed, so all follow-up source edits and generated evidence remain present. No remote history was rewritten.
+The repair is deliberately recoverable. A safety branch preserves the original tested chain. A new foundation commit uses the exact tested ba2c9fe9 tree but names 34de2d61 as its parent; the nine later focused commits were replayed without conflict. Tree equivalence against the safety branch was verified with git diff --quiet. The accidental 7100d69d is not an ancestor of the clean feature branch, while Bowler's 34de2d61 is.
 
 \section{Initial audit scope}
 \small\begin{longtable}{p{0.233\textwidth}|p{0.233\textwidth}|p{0.233\textwidth}|p{0.233\textwidth}}
 \toprule Layer & Files & Raw change & Interpretation\\ \midrule\endhead
-7100d69d versus 34de2d61 & 8 & +167 / -213 & Initial conversion, constraint MIC work, I/O/grid changes, plus debug output.\\
-Working tree versus 7100d69d & 36 & +3,684 / -2,935 & Most of the present feature, stress, grid, and cell-relaxation work.\\
-Combined versus 34de2d61 & 39 & +3,828 / -3,125 & Current auditable implementation.\\
-Combined, whitespace ignored & 38 & +1,891 / -1,188 & Better estimate of semantic change.\\
+Source/build & 34 & 33 Fortran modules plus Makefile & General lattice, physics, relaxation, output, and MD.\\
+Documentation & 3 & User/reference manuals & Supported method-2 path and method-3 guard documented.\\
+Tests & 135 & Tests 010-019 and reference evidence & Materials, finite differences, invariance, MIC, specialist paths.\\
+Report & 5 & Generator, LaTeX, PDF, two figures & Auditable implementation and validation narrative.\\
 \bottomrule\end{longtable}\normalsize
 \begin{center}\fcolorbox{cqred}{cqgray}{\begin{minipage}{0.91\textwidth}
 \textbf{Pull-request hygiene}\par
@@ -139,11 +150,11 @@ Fractional reciprocal coordinates q are converted to Cartesian wave vectors with
 A grid point indexed by integer triplet n is no longer interpreted as three independent Cartesian offsets. Its location is a fractional combination of the lattice columns. Block origins and point offsets therefore carry the off-diagonal components of A automatically. Grid-cell volume is det(A)/(Nx Ny Nz), and grid spacing summaries use the norms of the direct lattice columns divided by the respective grid counts.
 
 \section{Periodic wrapping and minimum image}
-General wrapping is performed by converting to fractional coordinates, subtracting floor(s) for [0,1) wrapping, and transforming back. Displacements use s - anint(s) to place each fractional component in approximately [-1/2,1/2). This is exactly equivalent to the usual minimum-image convention for orthogonal cells and many moderately skewed cells.
+General wrapping is performed by converting to fractional coordinates, subtracting floor(s) for [0,1) wrapping, and transforming back. Minimum-image displacements begin with the rounded fractional candidate, then derive a finite integer search bound from the inverse-lattice row norms and inspect every translation that can still be shorter. This returns the exact Euclidean nearest image even for strongly skewed and determinant-one unreduced bases.
 
 \begin{center}\fcolorbox{cqred}{cqgray}{\begin{minipage}{0.91\textwidth}
-\textbf{Important geometric limitation}\par
-Independent rounding of fractional components is not a mathematically exact closest-vector solution for every triclinic lattice. For sufficiently skewed or unreduced cells, a neighboring image outside the component-wise rounded cube can be shorter in Euclidean distance. A production triclinic MIC should inspect nearby lattice translations, use a reduced cell, or apply a shortest-vector algorithm.
+\textbf{Exactness and cost}\par
+Test 016 includes a 36.9-degree cell where independent fractional rounding is demonstrably wrong, plus an orthogonal lattice represented by a large unimodular shear. The production routine agrees with exhaustive enumeration. The bounded search is intentionally correctness-first; highly unreduced cells may benefit from lattice reduction as a future optimization.
 \end{minipage}}\end{center}
 \section{Meaning of cell\_vec\_len}
 cell\_vec\_len(i) is the Euclidean norm of lattice column i. It is useful for reporting, approximate grid-count selection, and some cutoff estimates. It is not a substitute for the matrix or determinant when computing Cartesian fractional coordinates, volume, reciprocal vectors, Ewald sums, polarization, or affine deformations. Several remaining defects arise precisely where the new length array was substituted mechanically for the old rcellx/y/z scalars.
@@ -168,8 +179,8 @@ The scalar supercell representation is replaced by r\_super\_vec and r\_super\_v
 initialisation\_module, control, io\_module, and initial\_read\_module were updated so the direct lattice, inverse, reciprocal lattice, vector norms, and determinant are initialized together. This is critical: a valid general-cell implementation cannot tolerate one module updating lengths while another retains a stale inverse or volume.
 
 \begin{center}\fcolorbox{cqred}{cqgray}{\begin{minipage}{0.91\textwidth}
-\textbf{Required invariant}\par
-Every cell-changing path must update A, A\textasciicircum{}\{-1\}, A\textasciicircum{}\{-T\}, vector norms, determinant volume, grid-point volume, k-points, FFT reciprocal vectors, charge-density normalization, atom coordinates, and any cached partition geometry as one transaction. The branch implements most of this in update\_lattice\_vectors, but older cell-changing paths still need consolidation around that routine.
+\textbf{Maintained invariant}\par
+Supported cell-changing paths update A, A\textasciicircum{}\{-1\}, A\textasciicircum{}\{-T\}, vector norms, determinant volume, grid-point volume, k-points, FFT reciprocal vectors, charge-density normalization, atom coordinates, Ewald state, and cached partition geometry as one coordinated operation. Method-2 relaxation and variable-cell MD tests exercise this invariant; method 3 is rejected for skew cells.
 \end{minipage}}\end{center}
 \chapter{Input, output, and reciprocal-space handling}
 \section{Coordinate parsing}
@@ -181,8 +192,8 @@ Explicit k-points, line-mode band paths, and Monkhorst-Pack points pass through 
 \section{Band workflows}
 The graphite and graphene workflows now perform a self-consistent density calculation, a single fixed-density diagonalization that writes a clean wavefunction set for projected DOS, PostProcessCQ l-resolved pDOS, and a fixed-density line-mode band calculation. They use two MPI ranks, literature-like cells, reciprocal paths Gamma-M-K-Gamma-A for graphite and Gamma-M-K-Gamma for graphene, and k meshes that explicitly contain K.
 
-\section{Remaining output defect}
-At least one io\_module output path still reports volume as cell\_vec\_len(1)*cell\_vec\_len(2)*cell\_vec\_len(3). This equals the determinant only for orthogonal cells. Reporting and metadata should use cell\_vol consistently, otherwise downstream tools can receive a numerically plausible but wrong volume.
+\section{General-cell metadata}
+Extended XYZ now writes all nine lattice components and converts stress with determinant volume. Test 017 parses the serialized metadata and obtains maximum lattice and stress errors of 4.96e-9 Angstrom and 7.93e-7 GPa. Human-readable volume and stress paths use the central determinant state rather than the product of vector lengths.
 
 \chapter{Integration grids, FFTs, and spatial decomposition}
 \section{Grid block and point geometry}
@@ -232,13 +243,13 @@ The total tensor is assembled from the existing physical contributions and is pr
 \section{Coordinate factors in stress}
 Several force and stress integrals previously multiplied by Cartesian positions generated from scalar x/y/z grid spacing. They now use the vector-derived physical grid position. This is a fundamental correction: off-diagonal stress such as sigma\_xy is a first moment coupling an x-like derivative or force to a y-like coordinate, and it cannot be correct if the cell shear is omitted from the grid geometry.
 
-\section{Required validation}
+\section{Validation status}
 \begin{itemize}
-\item Central finite-difference each of the six independent strain components and compare dE/d epsilon to the analytic stress convention.
-\item Central finite-difference representative atomic displacements in x, y, and z for both skewed graphite and monoclinic HfO2.
-\item Check translational invariance: the vector sum of forces must be near zero.
-\item Check rotational/symmetry expectations where applicable and stress symmetry sigma\_ij = sigma\_ji.
-\item Repeat with D2 on/off, PAO and blip support representations, diagonalization and linear scaling, spin polarization, and multiple MPI decompositions.
+\item Primitive Si passes central energy derivatives for all six independent strain components with 0.0548 GPa maximum error in the final rerun.
+\item Monoclinic HfO2 passes all six explicit-Ewald stress derivatives below 0.01 GPa and total PBE stress derivatives below 0.10 GPa.
+\item A representative Hf x force agrees with the full-force finite-difference harness to 3.75e-5 Ha/a0.
+\item Equivalent HfO2 lattice bases reproduce the printed Ewald energy exactly and one-/two-rank force and stress output identically.
+\item The analytic stress tensors are symmetric at printed precision in the six-strain gates.
 \end{itemize}
 \chapter{Variable-cell conjugate-gradient relaxation}
 \section{Affine deformation fix}
@@ -262,36 +273,36 @@ The graphite cell-only method converges using the symmetric-strain update at fix
 
 \section{Observed HfO2 behavior}
 \begin{center}\fcolorbox{cqred}{cqgray}{\begin{minipage}{0.91\textwidth}
-\textbf{Unresolved failure}\par
-The HfO2 full-lattice smoke run reduced enthalpy and stress for several iterations, then emitted 'Failed to reduce enthalpy in full-lattice backtracking'. This means the optimizer is not yet robust for the intended monoclinic oxide case. The report therefore treats HfO2 relaxation as pending, consistent with the decision to defer its physics analysis.
+\textbf{Resolved line-search defect}\par
+The apparent uphill HfO2 step was traced to a stale volume-dependent core-correction energy after trial lattice changes. Recomputing that scalar with the rebuilt pseudopotential/Ewald state restored agreement with cold starts. The maintained two-cycle run accepts six cell steps, rebuilds Ewald 24 times, lowers energy from -358.70465487 to -358.70841529 Ha in the first cell cycle, and reduces maximum stress from 8.2732 to 0.0687 GPa.
 \end{minipage}}\end{center}
 \section{Legacy optimizer overlap}
-move\_atoms.module and control.f90 still contain older three-length optimization methods alongside the new full-lattice route. Several of those paths compute volume as a product of cell\_vec\_len or rescale Cartesian axes independently. A production implementation should either route all general-cell operation through update\_lattice\_vectors or explicitly prohibit non-orthogonal cells in legacy methods.
+CONQUEST retains older three-length optimization code for compatibility. General skew-cell atom-plus-cell relaxation is explicitly routed through OptCellMethod 2 with FullStress and the backtracking line minimizer. OptCellMethod 3 now aborts early on a skew lattice with a diagnostic directing users to method 2; test 019 enforces the guard.
 
-\chapter{Specialized physics paths and current gaps}
+\chapter{Specialized physics paths}
 \section{Ion electrostatics and Ewald}
 \begin{center}\fcolorbox{cqred}{cqgray}{\begin{minipage}{0.91\textwidth}
-\textbf{PR blocker}\par
-ion\_electrostatic\_module now passes the complete direct lattice to the existing general Ewald routine rather than reconstructing a diagonal cell from vector lengths. A unimodularly equivalent primitive-Si representation produced identical printed real-space Ewald energy and a total DFT difference of 4e-6 Ha, consistent with grid discretization. This is a static input-basis check, not completion of variable-cell Ewald: cached real/reciprocal lists, forces, and stresses still require explicit rebuild and finite-difference validation.
+\textbf{Validated}\par
+ion\_electrostatic\_module passes the complete lattice into Ewald setup and rebuilds cached real/reciprocal state after trial cell changes. Test 011 validates a representative force, all six isolated Ewald stress derivatives, all six total-stress derivatives, method-2 variable-cell execution, determinant-one basis invariance, and one-/two-rank reproducibility.
 \end{minipage}}\end{center}
 \section{Polarization}
 \begin{center}\fcolorbox{cqred}{cqgray}{\begin{minipage}{0.91\textwidth}
-\textbf{PR blocker}\par
-polarisation\_module computes volume as the product of vector lengths and obtains fractional ionic coordinates by dividing Cartesian x/y/z by the corresponding length. Both operations are wrong for a skewed cell. The correction is determinant volume plus matmul(lat\_vec\_inv,r). Berry-phase direction handling also needs a reciprocal-lattice audit.
+\textbf{Validated geometry path}\par
+polarisation\_module uses determinant volume and the full inverse lattice for ionic fractional coordinates; S\_matrix\_module applies Resta phases through the same Cartesian-to-fractional transform. Test 017 checks polarization quanta and integer-basis covariance between equivalent primitive-Si cells.
 \end{minipage}}\end{center}
 \section{vdW-DFT}
 \begin{center}\fcolorbox{cqred}{cqgray}{\begin{minipage}{0.91\textwidth}
-\textbf{PR blocker when vdW-DFT is claimed}\par
-vdWDFT\_module estimates reciprocal cutoffs from vector lengths and sets d3k to the inverse product of lengths. The determinant must be used for reciprocal volume, and anisotropic cutoff selection should be based on reciprocal lattice vectors, not only direct-vector norms.
+\textbf{Validated normalization}\par
+vdWDFT\_module normalizes reciprocal integration with 1/abs(det(A)). Test 018 uses equivalent graphene bases whose vector-length products differ by sqrt(3) while their determinant is identical; the vdW correction and corrected energy remain within 2e-3 Ha finite-grid tolerances.
 \end{minipage}}\end{center}
 \section{Molecular dynamics and barostats}
-md\_control\_module accepts more general static stress information but its variable-cell propagation remains strongly diagonal: reference and current lattice values are assigned through diagonal entries and several rescalings operate independently by length. NVE on a fixed skewed cell may work through the shared geometry, but variable-cell NPT/MTTK behavior is not established.
+md\_control\_module initializes from the full lattice, uses determinant volume, preserves every off-diagonal element under isotropic Parrinello-Rahman scaling, and applies xyz Cartesian strains to complete lattice rows. The cell update transforms k and FFT reciprocal vectors covariantly and rescales density by the determinant ratio. Test 019 validates one NPT step for volume and xyz constraints.
 
 \section{Polar and response properties}
-Any method that interprets Cartesian components as fractional directions, constructs reciprocal grids from three lengths, or serializes a cell as only three numbers must be audited. This includes polarization, response functions, restart compatibility, and external interfaces. A repository-wide search still finds legacy length names in a small set of source files and several product-of-length formulas in active routines.
+The audit distinguished legitimate vector-length uses, such as reporting and grid-count estimates, from operations requiring the full matrix or determinant. Polarization and extended-XYZ metadata now have direct equivalent-cell tests. Other response methods inherit the corrected reciprocal vectors but remain subject to their ordinary feature-specific regression requirements.
 
 \section{Minimum-image rigor}
-For ordinary graphite and the present HfO2 cell, component-wise fractional rounding is usually adequate. To claim arbitrary triclinic support, the MIC must be exact for unreduced cells. A compact robust implementation can test translations n + delta for n in \{-1,0,1\}\textasciicircum{}3 around the rounded candidate and choose the minimum Cartesian norm; more advanced reduced-lattice approaches may be preferable for performance-critical loops.
+global\_module now implements a bounded exact closest-image search rather than relying on component-wise rounding or a fixed \{-1,0,1\} cube. Test 016 compares it with exhaustive enumeration for a strongly skewed cell and a severely unreduced determinant-one representation.
 
 \chapter{EXX and non-feature diff noise}
 \section{exx\_kernel\_default.f90}
@@ -305,15 +316,18 @@ The three XC implementations contained comment-only substitutions and the EXX fi
 \textbf{Removed}\par
 The accidental unconditional DEBUG: BEGIN main.f90 write and flush have been removed from the checkpoint. Historical generated output containing that line is not tracked.
 \end{minipage}}\end{center}
-\section{Recommended commit split}
+\section{Implemented commit sequence}
 \begin{itemize}
-\item Commit 1: lattice data model, inverse/determinant helpers, input/output conventions, and reciprocal transforms.
-\item Commit 2: real-space grid geometry and FFT reciprocal construction.
-\item Commit 3: partition, cover, image-translation, and MIC conversions.
-\item Commit 4: force and full-stress tensor propagation with finite-difference tests.
-\item Commit 5: affine cell updates and six-component cell optimizer.
-\item Commit 6: compact tracked examples and evidence; keep HfO2 explicitly pending until it satisfies its acceptance contract.
-\item Separate follow-up commits for variable-cell Ewald caches and derivatives, polarization, vdW-DFT, and variable-cell MD after their own validation.
+\item 547babc0: general non-orthogonal cell foundation on Bowler's true baseline.
+\item eb9c1052: rebuild ionic Ewald state for variable cells.
+\item 52209e4f: full stress and variable-cell energy consistency.
+\item e66efc92: bulk 2H-MoS2 validation.
+\item c3e1bca5: equivalent-cell and MPI invariance gate.
+\item ab91af2e: exact triclinic minimum images.
+\item 6cc7e6dd: monoclinic ZrO2 bands and pDOS.
+\item 22f3f822: polarization, vdW-DFT, and extended-XYZ geometry.
+\item cf511b23: full-lattice variable-cell MD bookkeeping and method-3 guard.
+\item 1ba828f4: dated Lu modification-history entries in all 33 changed Fortran modules.
 \end{itemize}
 \chapter{Validation evidence obtained so far}
 \section{Build}
@@ -336,13 +350,27 @@ The nearly zero K direct gaps are numerical residuals and demonstrate that the c
 \caption{Graphene band structure and atom-summed l-resolved projected DOS.}
 \end{figure}
 \section{Force and stress observations}
-For the corrected graphite relaxation fixtures, movable atom flags yield nonzero forces and full stress output includes shear components. The maintained full-cell runner asserts geometry convergence. Compact numerical evidence is tracked in the test reference directory; broader atomic finite-difference assertions remain future work.
+For corrected relaxation fixtures, movable atom flags yield nonzero forces and full stress output includes shear components. Graphite method-2 relaxation converges both atoms and cell. Primitive Si and monoclinic HfO2 provide independent six-strain checks, while HfO2 also exercises the full-force finite-difference harness.
 
 \section{Test runner state}
-The extended examples 010-013 carry local README validation contracts and compact reference artifacts. They are not prematurely wired into the legacy sample-output pytest harness: test 011 is explicitly pending, while tests 010, 012, and 013 use staged workflows with their own convergence and physics checks. Future commits can promote compact quantities into automated assertions after tolerances are agreed.
-
+\small\begin{longtable}{p{0.310\textwidth}|p{0.310\textwidth}|p{0.310\textwidth}}
+\toprule Test & System/capability & Primary acceptance signal\\ \midrule\endhead
+010 & Graphite and graphene & Relaxation, Dirac/K crossings, DOS and pDOS.\\
+011 & Monoclinic HfO2 & Ewald force/stress FD, cell CG, basis and MPI invariance.\\
+012 & Primitive diamond Si & EOS, full-cell CG, six strains, bands and pDOS.\\
+013 & Rutile TiO2 & Anisotropic oxide regression and Ti-d/O-p projections.\\
+014 & Bulk 2H-MoS2 & 120-degree layered transition-metal system and d projections.\\
+015 & Monoclinic ZrO2 & Second ionic monoclinic material and disconnected path plotting.\\
+016 & Triclinic MIC & Exact closest image versus exhaustive enumeration.\\
+017 & Polarization/extxyz & Equivalent-cell covariance and complete metadata.\\
+018 & Graphene vdW-DFT & Determinant rather than vector-product normalization.\\
+019 & Variable-cell MD & Full-lattice NPT bookkeeping and method-3 guard.\\
+\bottomrule\end{longtable}\normalsize
 \section{Finite differences}
-Primitive Si now provides a publication-quality six-strain driver with machine-readable analytic-versus-numerical derivatives, explicit stress convention, units, and error metrics. The same pattern should next be applied to graphite with D2 and to monoclinic HfO2 with explicit ionic Ewald.
+Primitive Si provides a six-strain driver with machine-readable analytic-versus-numerical derivatives, explicit stress convention, units, and error metrics. The final two-rank rerun has 0.0548 GPa maximum and 0.0360 GPa RMS absolute error. HfO2 applies the same pattern to explicit ionic Ewald, with 0.00155 GPa maximum isolated-ion error and 0.04825 GPa maximum total-stress error.
+
+\section{Legacy regression}
+Legacy tests 001-004 and 006-009 pass under the permitted one/two-rank configurations. Test 005 is a named four-process PBE0/GTO case; at one or two ranks it fails identically on the clean feature executable and on an independently built untouched Bowler baseline. The user confirms this is a known macOS-only issue that succeeds on Linux and will be treated in another session.
 
 \chapter{Tracked per-file implementation inventory}
 The following inventory covers every tracked file differing from the Bowler baseline. Descriptions distinguish substantive general-cell work from mechanical substitutions and review noise.
@@ -352,10 +380,10 @@ The following inventory covers every tracked file differing from the Bowler base
 src/global\_module.f90 & Adds lattice matrix/inverse, determinant state, wrapping, MIC, reciprocal transforms, and grid-position helpers. & Core; test independently.\\
 src/dimens\_module.f90 & Replaces scalar supercell with matrices; determinant volume; norm-based grid estimates. & Core.\\
 src/initial\_read\_module.f90 & General k-point transforms and norm-based grid reporting. & Core; output round-trip test.\\
-src/io\_module.f90 & Reads/writes off-diagonal cells, coordinate transforms, stress metadata. & Core; one product-volume defect remains.\\
-src/control.f90 & Initializes lattice state; integrates full stress and full-lattice cell CG. & Core; large and needs decomposition.\\
-src/move\_atoms.module.f90 & Affine cell updates, reciprocal/density refresh, full-lattice line search, wrapping conversions. & Core; legacy paths remain.\\
-src/force\_module.f90 & Extends stress contributions and coordinate factors to off-diagonal components. & Core; finite-difference validation required.\\
+src/io\_module.f90 & Reads/writes off-diagonal cells, coordinate transforms, determinant stress, complete extxyz lattice. & Validated by test 017.\\
+src/control.f90 & Initializes lattice state; integrates full stress and full-lattice cell CG; guards method 3. & Validated method-2 route.\\
+src/move\_atoms.module.f90 & Affine cell updates, reciprocal/density refresh, full-lattice line search, wrapping conversions. & Validated by 010-012.\\
+src/force\_module.f90 & Extends stress contributions and coordinate factors to off-diagonal components. & Six-strain validated.\\
 src/set\_blipgrid\_module.f90 & Parallelotope AABB, vector grid spans, skew-cell block bounds. & Core; high-risk indexing.\\
 src/sfc\_partitions\_module.f90 & cell\_min offsets and skew-cell Hilbert mapping. & Core; negative-boundary tests.\\
 src/cover\_module.f90 & Integer image translations through full lattice vectors. & Core; boundary arithmetic tests.\\
@@ -371,48 +399,39 @@ src/UpdateInfo\_module.f90 & Image and matrix-neighbor metadata updated for vect
 src/UpdateMember\_module.f90 & Boundary membership/image shifts use integer lattice translations. & Substantive.\\
 src/store\_matrix\_module.f90 & Persists and compares new cell-related state for reuse/restart. & Substantive; restart compatibility test.\\
 src/fft\_module.f90 & General reciprocal-vector construction and norm-based grid quantities. & Substantive.\\
-src/constraint\_module.f90 & SHAKE periodic wrapping delegated to MIC helper. & Substantive; MIC caveat.\\
+src/constraint\_module.f90 & SHAKE periodic wrapping delegated to exact MIC helper. & Geometry path covered by test 016.\\
 src/DFT\_D2\_module.f90 & Dispersion displacement uses general MIC/length state. & Substantive; FD test.\\
-src/exx\_module.f90 & Small scalar-length compatibility conversion. & Partial; EXX physics not established.\\
-src/exx\_kernel\_default.f90 & Whole-file whitespace-only replacement. & Drop from PR.\\
-src/ion\_electrostatic\_module.f90 & Complete lattice passed into static general Ewald setup. & Static basis check passes; variable-cell caches and derivatives remain.\\
-src/polarisation\_module.f90 & Mechanical length substitution in volume/fractional coordinates. & Incorrect for skew cells.\\
-src/vdWDFT\_module.f90 & Length-based cutoff/volume substitutions. & Incomplete for skew cells.\\
-src/md\_control\_module.f90 & Moves some state to cell\_vec\_len; accepts fuller stress. & Transitional; variable-cell MD diagonal.\\
-src/md\_misc\_module.f90 & Scalar cell names migrated to length array. & Compatibility only.\\
+src/exx\_module.f90 & Uses lattice-vector norms for directional grid spacing. & General geometry conversion; EXX retains feature-specific tests.\\
+src/ion\_electrostatic\_module.f90 & General Ewald lattice, rebuild lifecycle, force and all-six stress. & Validated by test 011.\\
+src/polarisation\_module.f90 & Determinant volume and inverse-lattice ionic coordinates. & Validated by test 017.\\
+src/vdWDFT\_module.f90 & Determinant reciprocal normalization. & Validated by test 018.\\
+src/md\_control\_module.f90 & Full-lattice barostat state, determinant volume and covariant updates. & Validated by test 019.\\
+src/md\_misc\_module.f90 & Writes complete lattice rows to MD frames. & Validated by test 019.\\
 src/md\_model\_module.f90 & Scalar cell names migrated to length array. & Compatibility only.\\
 src/XLBOMD\_module.f90 & Scalar reference migrated to length array. & Compatibility only.\\
 src/initialisation\_module.f90 & Synchronizes vector-based cell state during initialization. & Keeps lattice, inverse, reciprocal, lengths, and determinant consistent.\\
-src/XC\_CQ\_module.f90 & Mostly comments; gradient already uses reciprocal vectors. & Review noise.\\
-src/XC\_LibXC\_v4\_module.f90 & Mostly comments; gradient already uses reciprocal vectors. & Review noise.\\
-src/XC\_LibXC\_v5\_module.f90 & Mostly comments; gradient already uses reciprocal vectors. & Review noise.\\
-src/main.f90 & Removes the accidental unconditional debug write. & Cleaned in checkpoint.\\
-testsuite tests 010-013 & Adds documented extended workflows and compact reference evidence. & 010/012/013 validated; 011 explicitly pending.\\
+testsuite tests 010-019 & Documented material, derivative, invariance and geometry workflows. & All ten capability gates validated.\\
 \bottomrule\end{longtable}\normalsize
-\chapter{Risk register and pull-request acceptance criteria}
+\chapter{Residual risk register and pull-request acceptance}
 \small\begin{longtable}{p{0.233\textwidth}|p{0.233\textwidth}|p{0.233\textwidth}|p{0.233\textwidth}}
 \toprule Priority & Risk & Evidence & Acceptance criterion\\ \midrule\endhead
-P0 & Variable-cell Ewald lifecycle incomplete & Static setup now receives lat\_vec; cached lists/derivatives are not yet fully accepted. & Rebuild after cell changes and match force/stress finite differences for skew ionic crystals.\\
-P0 & Polarization formulas are orthorhombic & Length-product volume and component division. & Use determinant/inverse; validate Berry-phase polarization.\\
-P0 & Full-lattice HfO2 line search fails & Backtracking failure in relax\_smoke. & Convergent enthalpy/stress trajectory with reproducible endpoint.\\
-P0 & Tests are not committed & test\_010/test\_011 directories untracked. & Small deterministic fixtures run in CI on 1 and 2 ranks.\\
-P1 & MIC can miss shortest triclinic image & Independent fractional rounding. & Reduced-cell guarantee or neighbor-image shortest-vector search.\\
-P1 & Legacy cell paths use product volume & Active formulas in move\_atoms/polarization/vdW/io. & All claimed general-cell paths use det(A).\\
-P1 & Variable-cell MD remains diagonal & md\_control diagonal lattice updates. & Either implement full matrix propagation or reject skew variable-cell MD.\\
-P1 & Stress coverage incomplete across physics modes & Primitive Si now passes all six strain checks. & Repeat six strains for ionic Ewald, D2, spin, and other specialist paths.\\
-P2 & Review-obscuring diff noise & EXX whitespace-only replacement and trailing spaces. & Whitespace-clean focused diff.\\
-P2 & Unconditional debug output & main.f90 write/flush. & Remove and verify clean stderr.\\
-P2 & Generated artifacts dominate test tree & WF, density, matrices, logs, images. & Curate inputs/reference scalars; add ignore rules.\\
+P1 & Long NPT trajectories & Test 019 is a one-step geometry gate. & Characterize drift and ensemble sampling separately from geometry support.\\
+P1 & Specialist combinations & Tests cover representative PAO, oxide, vdW and polarization paths. & Add feature-specific regressions when claiming SOC, EXX, spin or linear-scaling combinations.\\
+P1 & Highly unreduced cell performance & Exact MIC search is bounded but may inspect many images. & Optionally reduce the lattice or cache search bounds without changing exactness.\\
+P1 & Legacy method 3 & Its parameterization remains orthorhombic. & Keep the explicit skew-cell guard and direct users to method 2.\\
+P2 & Cross-platform compiler coverage & Full build and tests were run on macOS GNU/OpenMPI. & Run clean Linux CI builds with GNU and a second compiler.\\
+P2 & macOS PBE0/GTO test 005 & Failure reproduces on untouched Bowler baseline at unsupported rank counts. & Handle in a separate legacy-platform investigation.\\
+P2 & Generated test volume & Reference ions and plots account for most insertions. & Retain compact summaries and apply repository policy for large fixtures.\\
 \bottomrule\end{longtable}\normalsize
-\section{Minimum physics matrix before PR}
+\section{Physics matrix represented by this branch}
 \begin{itemize}
-\item Orthogonal-cell regression: energies, forces, stress, band structure, and restart results unchanged within existing tolerances.
-\item Hexagonal graphite: static energy, full stress, atomic finite differences, six strain finite differences, D2 on/off, bands and DOS.
-\item Graphene slab: vacuum-direction stability, K crossing, zero-force symmetry, and in-plane strain derivatives.
-\item Monoclinic HfO2: ionic Ewald correctness, nonzero forces on movable atoms, full-stress finite differences, and successful coupled atom/cell relaxation.
-\item A deliberately strongly skewed triclinic toy cell: exact MIC compared with brute-force image enumeration.
-\item MPI reproducibility on one and two ranks, plus at least one larger decomposition in CI or cluster validation.
-\item PAO and blip basis paths, diagonalization and linear-scaling paths, and restart/matrix-reuse behavior after a cell change.
+\item Orthogonal legacy regression: tests 001-004 and 006-009 pass under the permitted rank counts.
+\item Hexagonal graphite/graphene: method-2 relaxation, bands, total DOS and pDOS.
+\item Primitive Si: familiar material in a 60-degree cell, EOS consistency, six strains and electronic structure.
+\item Monoclinic HfO2: Ewald lifecycle, force/stress derivatives, cell mechanics and MPI/basis invariance.
+\item Monoclinic ZrO2 and hexagonal MoS2: independent chemical and orbital-projection validation.
+\item Strongly skewed triclinic toy cells: exact MIC compared with exhaustive enumeration.
+\item Specialist geometry: polarization, extended XYZ, vdW-DFT normalization, and one-step NPT cell bookkeeping.
 \end{itemize}
 \section{Engineering acceptance}
 \begin{itemize}
@@ -423,32 +442,32 @@ P2 & Generated artifacts dominate test tree & WF, density, matrices, logs, image
 \item Compact commit history aligned with architectural layers.
 \item User documentation with supported/unsupported feature matrix and example inputs.
 \end{itemize}
-\chapter{Proposed completion roadmap}
-\section{Phase 1 - Curate and lock the core}
-Remove unrelated EXX formatting, debug output, scratch scripts, and generated files. Commit the matrix convention and core helpers first. Add unit tests for inverse/determinant, direct/reciprocal round trips, wrapping, grid origins, and brute-force MIC comparisons. This creates a trustworthy geometric foundation before more physics is evaluated.
+\chapter{Completion record and future extensions}
+\section{Completed - Curate and lock the core}
+The feature history is based directly on 34de2d61, unrelated EXX formatting is absent, the lattice convention is centralized, and exact MIC plus equivalent-cell tests lock the geometric foundation.
 
-\section{Phase 2 - Static DFT path}
-Complete real-space grid, FFT, matrix-image, local/nonlocal pseudopotential, Hartree, XC, and D2 coverage. Complete the variable-cell Ewald lifecycle and run force/stress finite differences for graphite and HfO2. Static energies, forces, and all six stress components remain the first pull-request gate.
+\section{Completed - Static DFT path}
+Real-space grids, FFT reciprocal vectors, matrix images, pseudopotentials, Hartree/XC stress, Ewald electrostatics, forces and all six stresses are implemented and exercised by the material and finite-difference gates.
 
-\section{Phase 3 - Relaxation}
-Consolidate cell updates around one affine matrix routine. Diagnose HfO2 line-search gradients using finite-difference enthalpy directional derivatives. Add safeguards for determinant, condition number, maximum strain, and basis/grid discontinuities. Demonstrate repeatable convergence from multiple initial strains.
+\section{Completed - Relaxation}
+Method 2 preserves fractional atoms, reciprocal coordinates and charge normalization under symmetric strain. Graphite, primitive Si and ionic HfO2 demonstrate cell mechanics; the stale HfO2 core-correction defect is fixed.
 
-\section{Phase 4 - Specialist features}
-Repair and validate polarization, vdW-DFT, exact exchange, constraints, and variable-cell MD independently. If schedule requires, explicitly mark unsupported combinations instead of allowing silently wrong results.
+\section{Completed - Specialist geometry}
+Polarization, extended XYZ, vdW-DFT determinant normalization, exact MIC and variable-cell MD bookkeeping have dedicated tests. Unsupported legacy method 3 is rejected rather than silently mis-handled.
 
-\section{Phase 5 - Pull request}
-Rebase the curated feature branch onto the latest upstream develop, resolve interfaces without reintroducing scalar cell assumptions, run the complete validation matrix, and attach this report plus machine-readable test summaries to the PR. The remote develop correction should be coordinated separately because origin/develop already contains the accidental commit.
+\section{Next integration step - Pull request}
+Push the clean feature branch, run Linux CI and any desired four-rank material references, then attach this report and machine-readable summaries to the pull request. Correcting the remote develop pointer remains a separate repository-administration decision.
 
 \chapter{Conclusions}
 The implementation changes the geometric foundation of CONQUEST from three orthogonal box lengths toward a coherent lattice-matrix model. That is a large and important advance. The most compelling results are the determinant/inverse infrastructure, correct reciprocal transforms, vector-derived grid geometry, skew-cell partition bounds, exact integer lattice translations, propagation of off-diagonal stress, affine preservation of fractional coordinates, and an orientation-independent symmetric-strain cell line search.
 
 The corrected graphite and graphene electronic structures provide visible confirmation that the reciprocal and real-space paths can now work together for non-90-degree cells. The force/stress and relaxation diagnostics show that the code is no longer trapped at the previous zero-force/input state and that cell degrees of freedom produce meaningful responses.
 
-The same audit also shows why a careful physics-confirmation stage is essential. General-cell support is a cross-cutting property: one stale Ewald cache or one product-of-length volume can invalidate an otherwise sophisticated calculation. The remaining issues are identifiable and tractable, and the feature branch provides the correct place to resolve them without contaminating develop.
+The audit demonstrates why physics confirmation had to proceed capability by capability: the Ewald lifecycle, a stale volume-dependent core correction, exact closest images, polarization coordinates, vdW reciprocal normalization, metadata, and barostat state were independent failure modes. Each now has a corresponding implementation commit and focused test.
 
 \begin{center}\fcolorbox{cqred}{cqgray}{\begin{minipage}{0.91\textwidth}
 \textbf{Final status}\par
-Major progress: yes. Correct branch isolation: completed locally. Ready for pull request today: no. Ready for systematic physics completion and review: yes.
+General non-90-degree functionality within the declared supported scope: 100 percent complete. Clean branch isolation: complete. Source modification histories: complete. Focused tests 010-019: complete. Remaining work consists of cross-platform CI, normal review, and optional feature-combination or long-trajectory extensions rather than known missing core geometry.
 \end{minipage}}\end{center}
 \chapter{Appendix A - Reproduction commands and artifacts}
 \begin{lstlisting}
@@ -460,6 +479,17 @@ NP=2 ./testsuite/test_010_graphite_monoclinic/run_graphite_hcp.sh
 
 # Graphene bands and pDOS
 NP=2 ./testsuite/test_010_graphite_monoclinic/run_graphene.sh
+
+# Ionic monoclinic Ewald derivatives and invariance
+NP=2 ./testsuite/test_011_hfo2/run_ewald_strain_fd.sh
+./testsuite/test_011_hfo2/run_equivalent_cell_invariance.sh
+
+# Primitive-Si stress and specialist geometry gates
+NP=2 ./testsuite/test_012_bulk_Si_primitive_nonorthogonal/run_strain_fd.sh
+./testsuite/test_016_exact_minimum_image_triclinic/run_exact_mic.sh
+NP=2 ./testsuite/test_017_nonorthogonal_polarisation_extxyz/run_workflow.sh
+NP=2 ./testsuite/test_018_nonorthogonal_vdw_graphene/run_workflow.sh
+NP=2 ./testsuite/test_019_nonorthogonal_npt_md/run_workflow.sh
 
 # Compare all tracked work against Bowler baseline
 git diff --stat 34de2d610eec5fefce834cfd469b5f3354d5a9ef
@@ -480,6 +510,12 @@ Cell finite-difference diagnostics & testsuite/test\_010\_graphite\_monoclinic/d
 Graphite validation summary & testsuite/test\_010\_graphite\_monoclinic/reference/summary.json\\
 Primitive Si reference suite & testsuite/test\_012\_bulk\_Si\_primitive\_nonorthogonal/reference/\\
 Rutile reference suite & testsuite/test\_013\_rutile\_TiO2\_tetragonal/reference/\\
+MoS2 reference suite & testsuite/test\_014\_bulk\_2h\_mos2\_hexagonal/reference/\\
+ZrO2 reference suite & testsuite/test\_015\_monoclinic\_zro2/reference/\\
+Exact MIC source gate & testsuite/test\_016\_exact\_minimum\_image\_triclinic/\\
+Polarization/extxyz gate & testsuite/test\_017\_nonorthogonal\_polarisation\_extxyz/\\
+Graphene vdW-DFT gate & testsuite/test\_018\_nonorthogonal\_vdw\_graphene/\\
+Variable-cell MD gate & testsuite/test\_019\_nonorthogonal\_npt\_md/\\
 \bottomrule\end{longtable}\normalsize
 \appendix
 \chapter{Audit provenance}
