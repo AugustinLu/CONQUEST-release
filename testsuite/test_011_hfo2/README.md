@@ -9,6 +9,13 @@ coordination, force accumulation, and the complete stress tensor.
 
 ## Maintained checks
 
+- `./run_workflow.sh` performs a 3x3x3 SCF calculation with the bundled DZP
+  Hf and O PAOs, a fixed-density l-resolved pDOS calculation (including the
+  required `IO.writeDOS T`), and an HPKOT/SeeK-path band calculation. The path
+  is generated from the actual monoclinic cell and must be identified as
+  `P2_1/c` (space group 14). Disconnected path branches are plotted
+  consecutively at zero visual width, so the figure contains no artificial
+  white k-distance gaps.
 - `./run_ewald_cell_smoke.sh` runs two outer method-2 atom/cell cycles with
   `General.NeutralAtom F`. It requires accepted downhill full-lattice steps,
   convergence of at least one cell cycle below the stress threshold, and
@@ -28,8 +35,23 @@ coordination, force accumulation, and the complete stress tensor.
   compares the Ewald energy, total energy, all atomic-force components, and
   all six stress components.
 
-The input uses the canonical keyword `IO.FractionalAtomicCoords`. A future pDOS
-stage must include `IO.writeDOS T`.
+The input uses the canonical keyword `IO.FractionalAtomicCoords`. The
+maintained pDOS stage includes the required `IO.writeDOS T`.
+
+## Electronic reference
+
+The scalar-relativistic PBE/DZP reference follows
+`Gamma-Z-D-B-Gamma-A-E-Z-C2-Y2-Gamma`, the HPKOT path returned for the mP1
+setting. It contains 231 sampled k points and gives a 4.000 eV indirect gap
+along the path and a 4.091 eV minimum direct gap on the maintained 3x3x3
+mesh. The upper valence window is
+strongly O-p dominated, while the low conduction window is strongly Hf-d
+dominated. These are code-regression checks, not claims of experimental
+accuracy: spin-orbit coupling is not enabled and PBE gaps are functional- and
+basis-dependent.
+
+The corresponding plot and machine-readable metrics are stored under
+`reference/electronic/`.
 
 ## Quantitative reference
 
@@ -92,5 +114,6 @@ validates exact Ewald invariance under a nontrivial unimodular lattice change
 and deterministic one-/two-rank execution, while quantifying the separately
 convergent finite-grid representation error. The short two-cycle smoke run
 does **not** claim a fully converged HfO2 ground state: its final maximum force
-is 0.00141 Ha/a0. A production-quality fully converged relaxation and HfO2
-band/pDOS post-processing remain future acceptance gates.
+is 0.00141 Ha/a0. A production-quality fully converged relaxation remains a
+future acceptance gate. HfO2 band and pDOS post-processing are now maintained
+and quantitatively checked.

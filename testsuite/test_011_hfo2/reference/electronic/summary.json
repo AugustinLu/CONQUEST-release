@@ -1,0 +1,57 @@
+{
+  "spacegroup_number": 14,
+  "spacegroup_international": "P2_1/c",
+  "bravais_lattice_extended": "mP1",
+  "path": [
+    [
+      "GAMMA",
+      "Z"
+    ],
+    [
+      "Z",
+      "D"
+    ],
+    [
+      "D",
+      "B"
+    ],
+    [
+      "B",
+      "GAMMA"
+    ],
+    [
+      "GAMMA",
+      "A"
+    ],
+    [
+      "A",
+      "E"
+    ],
+    [
+      "E",
+      "Z"
+    ],
+    [
+      "Z",
+      "C_2"
+    ],
+    [
+      "C_2",
+      "Y_2"
+    ],
+    [
+      "Y_2",
+      "GAMMA"
+    ]
+  ],
+  "band_kpoints": 231,
+  "indirect_path_gap_ev": 3.9995960196885,
+  "minimum_direct_path_gap_ev": 4.091330470840725,
+  "total_valence_electrons_from_scf": 96.0,
+  "valence_minus5_to_0ev_o_p_weight": 13.778347584999995,
+  "valence_minus5_to_0ev_hf_d_weight": 0.8319194053999995,
+  "conduction_0_to_5ev_o_p_weight": 2.7652579453999997,
+  "conduction_0_to_5ev_hf_d_weight": 23.225639475999998,
+  "basis": "DZP",
+  "spin_orbit": false
+}
