@@ -4249,7 +4249,7 @@ contains
     use units
     use global_module, only: iprint_gen, ni_in_cell, x_atom_cell,  &
                              y_atom_cell, z_atom_cell, id_glob,    &
-                             atom_coord, cell_vec_len, lat_vec, &
+                             atom_coord, cell_vec_len, &
                              area_general, iprint_MD,              &
                              IPRINT_TIME_THRES1,                   &
                              cell_stress_tol, min_layer
@@ -4280,8 +4280,7 @@ contains
     real(double)   :: energy0, energy1, max, g0, dE, gg, ggold, gamma, gg1, &
                       press, rcellx_ref, rcelly_ref, rcellz_ref, &
                       enthalpy0, enthalpy1, dH, volume, max_stress, &
-                      stress_diff, dRMSstress, grad_f_dot_p, RMSstress, newRMSstress, &
-                      maximum_cell_cosine
+                      stress_diff, dRMSstress, grad_f_dot_p, RMSstress, newRMSstress
     integer        :: i,j,k,iter,length, jj, stat
     logical        :: done
     type(cq_timer) :: tmr_l_iter
@@ -4295,16 +4294,8 @@ contains
 
     prefix = return_prefix(subname, min_layer)
     prefixGO = return_prefix("GeomOpt", min_layer)
-    maximum_cell_cosine = maxval((/ &
-         abs(dot_product(lat_vec(:,1),lat_vec(:,2))) / &
-              (cell_vec_len(1)*cell_vec_len(2)), &
-         abs(dot_product(lat_vec(:,1),lat_vec(:,3))) / &
-              (cell_vec_len(1)*cell_vec_len(3)), &
-         abs(dot_product(lat_vec(:,2),lat_vec(:,3))) / &
-              (cell_vec_len(2)*cell_vec_len(3)) /))
-    if (maximum_cell_cosine > 1.0e-10_double) &
-         call cq_abort("AtomMove.OptCellMethod 3 is orthorhombic-only; "// &
-              "use the general-cell AtomMove.OptCellMethod 2")
+    call cq_abort("AtomMove.OptCellMethod 3 is disabled because its legacy "// &
+         "cell state is not synchronized; use AtomMove.OptCellMethod 2")
     allocate(cg(3,ni_in_cell+1), STAT=stat)
     allocate(force(3,ni_in_cell+1), STAT=stat)
     allocate(force_old(3,ni_in_cell+1), STAT=stat)

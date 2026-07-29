@@ -127,8 +127,8 @@ MD analysis
     --dump                Dump secondary data used to generate plots (default:
                           False)
 
-The script ``md_analysis.py`` script performs various analyses of the trajectory
-by parsing the `md.frames`` file. So far, these include the radial distribution
+The script ``md_analysis.py`` performs various analyses of the trajectory
+by parsing the ``md.frames`` file. So far, these include the radial distribution
 function, the velocity autocorrelation function, the mean squared deviation, and
 plotting the stress. For example, the command,
 
@@ -137,6 +137,12 @@ plotting the stress. For example, the command,
 computes the radial distribution function of the simulation in the first example
 from every 20th time step (every 10 fs in this case), stopping after 400 steps,
 with a cutoff of 8.0 A, and the histogram is divided into 100 bins.
+
+The RDF implementation uses the determinant volume and an exact closest-image
+search for complete 3x3 lattices. Mean-squared displacement for variable-cell
+trajectories is unwrapped in scaled coordinates and mapped to the initial
+lattice, separating diffusion from affine barostat motion. These definitions
+therefore support nonorthorhombic trajectories.
 
 .. image:: rdf.jpg
 

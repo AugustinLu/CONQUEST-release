@@ -61,6 +61,8 @@
 !!    Removed the places related to flag_MDold
 !!   2026/07/29 lu
 !!    Added symmetric-strain method-2 atom/cell optimisation for skew cells
+!!   2026/07/29 lu
+!!    Rejected singular trial lattices before using their inverse
 !!  SOURCE
 !!
 module move_atoms
@@ -5023,6 +5025,8 @@ contains
     r_super_y_squared = cell_vec_len(2) * cell_vec_len(2)
     r_super_z_squared = cell_vec_len(3) * cell_vec_len(3)
     call invert_3x3(lat_vec, lat_vec_inv, det_new)
+    if (abs(det_new) < 1.0e-12_double) &
+         call cq_abort("update_cell_dims: singular trial lattice")
     volume = abs(det_new)
     cell_vol = volume
     grid_point_volume = volume/(n_grid_x*n_grid_y*n_grid_z)

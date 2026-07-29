@@ -181,11 +181,11 @@ we recommend using ``AtomMove.OptCellMethod 2``,
 which uses a simple but robust double-loop minimisation: a full ionic 
 relaxation (using either cg or sqnm) followed by a full simulation cell 
 relaxation (using cg).  While this may be less efficient than optimising all
-degrees of freedom simultaneously, it is much more robust.  It is also possible
-to optimise cell vectors and atomic positions simultaneously, using ``AtomMove.OptCellMethod 3``,
-but this legacy route is restricted to orthorhombic cells and should be
-monitored carefully, as it can be unstable.  A nonorthogonal method-3 input is
-rejected with a diagnostic directing the user to method 2.
+degrees of freedom simultaneously, it is much more robust.  The legacy
+simultaneous-vector route selected by ``AtomMove.OptCellMethod 3`` is disabled
+because its three-length representation does not synchronize the authoritative
+lattice matrix.  The code stops with a diagnostic directing the user to method
+2.
 
 Go to :ref:`top <strucrelax>`.
 

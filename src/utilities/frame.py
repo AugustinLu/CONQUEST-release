@@ -1,6 +1,9 @@
 import re
-import scipy as sp
+import numpy as np
 from pdb import set_trace
+
+# 2026/07/29 lu
+# Use NumPy directly; current SciPy no longer exports NumPy's array helpers.
 
 # Regular expressions
 cell_re = re.compile('cell_vectors(.*?)end cell_vectors', re.M | re.S)
@@ -16,12 +19,12 @@ class Frame:
   def __init__(self, nat, step):
     self.step = step
     self.nat = nat
-    self.species = sp.zeros(nat)
-    self.r = sp.zeros((nat, 3), dtype='float')
-    self.v = sp.zeros((nat, 3), dtype='float')
-    self.f = sp.zeros((nat, 3), dtype='float')
-    self.lat = sp.zeros((3, 3), dtype='float')
-    self.stress = sp.zeros((3, 3), dtype='float')
+    self.species = np.zeros(nat)
+    self.r = np.zeros((nat, 3), dtype='float')
+    self.v = np.zeros((nat, 3), dtype='float')
+    self.f = np.zeros((nat, 3), dtype='float')
+    self.lat = np.zeros((3, 3), dtype='float')
+    self.stress = np.zeros((3, 3), dtype='float')
     self.ke = 0.
     self.pe = 0.
     self.E = 0.

@@ -64,12 +64,16 @@ set +e
 guard_status=$?
 set -e
 if (( guard_status == 0 )); then
-  echo "ERROR: legacy method 3 unexpectedly accepted a skew cell." >&2
+  echo "ERROR: disabled legacy method 3 unexpectedly ran." >&2
   exit 1
 fi
-grep -q "OptCellMethod 3 is orthorhombic-only" \
+grep -q "OptCellMethod 3 is disabled" \
   "$guard_directory/Conquest_out"
 
 "$PYTHON" "$SCRIPT_DIR/analyse_npt_cell.py" \
   --root "$RESULTS_DIR" --source "$SCRIPT_DIR" \
   --summary "$RESULTS_DIR/summary.json"
+
+MPLCONFIGDIR="$RESULTS_DIR/.matplotlib" "$PYTHON" \
+  "$SCRIPT_DIR/test_md_analysis_triclinic.py" \
+  --utilities "$RELEASE_DIR/src/utilities"

@@ -80,6 +80,8 @@
 !!    Removed redundant code (old SFC routines)
 !!   2026/07/29 lu
 !!    Added general lattice input/output and complete extended-XYZ cells
+!!   2026/07/29 lu
+!!    Rejected singular lattices during coordinate initialization
 module io_module
 
   use datatypes,              only: double
@@ -409,6 +411,8 @@ second:   do
           end do second
           ! Wrap coordinates
           call invert_3x3(lat_vec, lat_vec_inv, cell_vol)
+          if (abs(cell_vol) < 1.0e-12_double) &
+               call cq_abort("read_atomic_positions: singular PDB lattice")
           do i = 1, ni_in_cell
              call wrap_into_cell(atom_coord(1,i), atom_coord(2,i), atom_coord(3,i))
           end do
@@ -440,6 +444,8 @@ second:   do
           ! Set lat_vec (since we read it here)
           lat_vec = r_super_vec
           call invert_3x3(lat_vec, lat_vec_inv, cell_vol)
+          if (abs(cell_vol) < 1.0e-12_double) &
+               call cq_abort("read_atomic_positions: singular coordinate-file lattice")
 
           allocate(flag_move_atom(3,ni_in_cell),atom_coord(3,ni_in_cell),&
                    species_glob(ni_in_cell),STAT=stat)
@@ -515,6 +521,8 @@ second:   do
     call gcopy(flag_move_atom, 3, ni_in_cell)
     ! Compute the inverse matrix and cell volume
     call invert_3x3(lat_vec, lat_vec_inv, cell_vol)
+    if (abs(cell_vol) < 1.0e-12_double) &
+         call cq_abort("read_atomic_positions: singular distributed lattice")
     cell_vol = abs(cell_vol)
     ! Compute lengths of cell vectors
     cell_vec_len(1) = sqrt(sum(lat_vec(:,1)**2))

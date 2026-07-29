@@ -1,13 +1,17 @@
 program test_exact_mic
   use datatypes, only: double
-  use global_module, only: lat_vec, lat_vec_inv, invert_3x3, mic_vector
+  use global_module, only: io_lun, lat_vec, lat_vec_inv, invert_3x3, &
+       mic_max_candidate_count, mic_vector
   implicit none
 
   real(double) :: determinant
   real(double) :: fractional(3), displacement(3), rounded(3), brute(3)
+  real(double) :: singular(3,3), singular_inverse(3,3)
   real(double) :: rounded_sq, exact_sq, brute_sq
   integer :: ix, iy, iz
+  logical :: inverse_is_valid
 
+  io_lun = 6
   lat_vec(:,1) = (/ 1.0_double, 0.0_double, 0.0_double /)
   lat_vec(:,2) = (/ 0.8_double, 0.6_double, 0.0_double /)
   lat_vec(:,3) = (/ 0.0_double, 0.0_double, 1.0_double /)
@@ -60,6 +64,38 @@ program test_exact_mic
         end do
      end do
   end do
+
+  ! Exercise the rate-limited diagnostic on a deliberately extreme,
+  ! determinant-one basis b2=8*a1+a2.
+  lat_vec(:,1) = (/ 1.0_double, 0.0_double, 0.0_double /)
+  lat_vec(:,2) = (/ 8.0_double, 1.0_double, 0.0_double /)
+  lat_vec(:,3) = (/ 0.0_double, 0.0_double, 1.0_double /)
+  call invert_3x3(lat_vec, lat_vec_inv, determinant)
+  fractional = (/ 0.49_double, 0.49_double, 0.10_double /)
+  displacement = matmul(lat_vec, fractional)
+  call brute_force(displacement, 17, brute, brute_sq)
+  call mic_vector(displacement)
+  call assert_close(displacement, brute, 2.0e-13_double, &
+       "instrumented extreme-basis comparison")
+  if (mic_max_candidate_count <= 1000) then
+     error stop "minimum-image candidate counter did not record extreme search"
+  end if
+
+  ! 2026/07/29 lu
+  ! A failed inversion must be explicit and deterministic.  In particular,
+  ! callers must never receive an uninitialised matrix for a singular cell.
+  singular(:,1) = (/ 1.0_double, 0.0_double, 0.0_double /)
+  singular(:,2) = (/ 2.0_double, 0.0_double, 0.0_double /)
+  singular(:,3) = (/ 0.0_double, 0.0_double, 1.0_double /)
+  singular_inverse = huge(1.0_double)
+  call invert_3x3(singular, singular_inverse, determinant, inverse_is_valid)
+  if (inverse_is_valid) error stop "singular matrix reported as invertible"
+  if (abs(determinant) > tiny(1.0_double)) then
+     error stop "incorrect determinant for singular matrix"
+  end if
+  if (any(singular_inverse /= 0.0_double)) then
+     error stop "singular inverse was not initialised to zero"
+  end if
 
   write(*,'(a)') "PASS: exact triclinic minimum-image convention"
 

@@ -163,6 +163,10 @@
 !!    Added DFT+U flag
 !!   2026/07/29 lu
 !!    Added full direct/inverse/reciprocal lattice and exact triclinic MIC
+!!   2026/07/29 lu
+!!    Defined inverse output explicitly for singular lattice matrices
+!!   2026/07/29 lu
+!!    Added bounded-search diagnostics for exact minimum-image calculations
 !!  SOURCE
 !!
 module global_module
@@ -189,6 +193,10 @@ module global_module
   real(double), target, dimension(3,3) :: recip_lat_vec
   real(double), target :: cell_vol
   real(double), dimension(3), target :: cell_vec_len
+  integer, parameter :: mic_count_kind = selected_int_kind(18)
+  integer(mic_count_kind), parameter :: mic_warning_threshold = 1000_mic_count_kind
+  integer(mic_count_kind), save :: mic_max_candidate_count = 0_mic_count_kind
+  logical, save :: mic_search_warning_issued = .false.
   real(double), allocatable, dimension(:), target :: x_atom_cell ! position of atom in sim cell (CC)
   real(double), allocatable, dimension(:), target :: y_atom_cell
   real(double), allocatable, dimension(:), target :: z_atom_cell
@@ -442,11 +450,14 @@ module global_module
 
 contains
 
-  subroutine invert_3x3(mat, inv_mat, det)
+  subroutine invert_3x3(mat, inv_mat, det, is_valid)
     real(double), intent(in) :: mat(3,3)
     real(double), intent(out) :: inv_mat(3,3)
     real(double), intent(out) :: det
+    logical, intent(out), optional :: is_valid
 
+    inv_mat = zero
+    if (present(is_valid)) is_valid = .false.
     det = mat(1,1)*(mat(2,2)*mat(3,3) - mat(2,3)*mat(3,2)) &
         - mat(1,2)*(mat(2,1)*mat(3,3) - mat(2,3)*mat(3,1)) &
         + mat(1,3)*(mat(2,1)*mat(3,2) - mat(2,2)*mat(3,1))
@@ -464,6 +475,7 @@ contains
     inv_mat(3,1) =  (mat(2,1)*mat(3,2) - mat(2,2)*mat(3,1)) / det
     inv_mat(3,2) = -(mat(1,1)*mat(3,2) - mat(1,2)*mat(3,1)) / det
     inv_mat(3,3) =  (mat(1,1)*mat(2,2) - mat(1,2)*mat(2,1)) / det
+    if (present(is_valid)) is_valid = .true.
   end subroutine invert_3x3
 
   subroutine wrap_into_cell(x, y, z)
@@ -501,6 +513,7 @@ contains
     real(double) :: best_sq, candidate_sq, coefficient_bound, rounding_guard
     integer, dimension(3) :: nearest, lower, upper
     integer :: i, n1, n2, n3
+    integer(mic_count_kind) :: candidate_count, extent_count
 
     ! Component-wise fractional rounding is not the Euclidean minimum-image
     ! convention for a sufficiently skewed or unreduced lattice.  Start with
@@ -527,6 +540,24 @@ contains
        lower(i) = ceiling(f(i) - coefficient_bound - rounding_guard)
        upper(i) = floor(f(i) + coefficient_bound + rounding_guard)
     end do
+
+    candidate_count = 1_mic_count_kind
+    do i = 1, 3
+       extent_count = int(upper(i), mic_count_kind) - &
+            int(lower(i), mic_count_kind) + 1_mic_count_kind
+       if (candidate_count > huge(candidate_count)/extent_count) then
+          candidate_count = huge(candidate_count)
+       else
+          candidate_count = candidate_count*extent_count
+       end if
+    end do
+    mic_max_candidate_count = max(mic_max_candidate_count, candidate_count)
+    if (.not. mic_search_warning_issued .and. &
+         candidate_count > mic_warning_threshold) then
+       write(io_lun,'(a,i0,a)') " WARNING: exact minimum-image search has ", &
+            candidate_count, " candidates; consider a reduced lattice basis"
+       mic_search_warning_issued = .true.
+    end if
 
     do n3 = lower(3), upper(3)
        do n2 = lower(2), upper(2)

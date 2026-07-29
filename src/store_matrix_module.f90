@@ -16,6 +16,8 @@
 !!    Defined units for saving intermediary charge etc during optimisation
 !!   2026/07/29 lu
 !!    Preserved full lattice geometry in matrix snapshots and remapping
+!!   2026/07/29 lu
+!!    Rejected singular stored lattices before coordinate remapping
 !!
 module store_matrix
 
@@ -1121,6 +1123,8 @@ contains
           old_lat_vec(:,3) = lat_vec(:,3)/scale_z
        end if
        call invert_3x3(old_lat_vec, old_lat_inv, det_old)
+       if (abs(det_old) < 1.0e-12_double) &
+            call cq_abort("set_atom_coord_diff: singular stored lattice")
        do ig = 1, ni_in_cell
           old_frac = matmul(old_lat_inv, InfoGlob%atom_coord(:,ig))
           affine_coord = matmul(lat_vec, old_frac)

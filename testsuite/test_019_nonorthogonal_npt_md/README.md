@@ -22,8 +22,12 @@ The test verifies that:
 - the `xyz` barostat applies diagonal Cartesian strains to complete lattice
   rows rather than to diagonal matrix entries alone;
 - the final extended-XYZ cell remains nonorthogonal and has positive volume.
-- legacy `AtomMove.OptCellMethod 3` rejects a skew lattice with an explicit
-  instruction to use the fully general method 2.
+- legacy `AtomMove.OptCellMethod 3` is rejected because its three-length
+  optimizer does not synchronize the authoritative lattice state; the
+  diagnostic directs users to the fully general method 2.
+- the bundled Python MD utilities import with current NumPy/SciPy and their
+  generalized RDF/MSD minimum-image calculation agrees with a brute-force
+  closest-image search in an adversarial skew cell.
 
 In the committed two-rank reference run, both `volume` and `xyz` complete one
 NPT step.  The initial MD-frame lattice is exact to the printed precision.  The

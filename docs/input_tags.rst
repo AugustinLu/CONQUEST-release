@@ -933,8 +933,8 @@ AtomMove.OptCellMethod (*integer*)
        recommended simultaneous atom-and-cell method and supports general
        nonorthogonal lattices.
     3. Legacy simultaneous cell and atomic conjugate-gradient relaxation.
-       This method remains orthorhombic-only and stops with an explicit
-       diagnostic for a skew lattice; use method 2 instead.
+       This method is disabled because its three-length representation does
+       not synchronize the authoritative lattice matrix. Use method 2.
 
 AtomMove.EnthalpyTolerance (*real*)
     Enthalpy tolerance for cell optimisation
