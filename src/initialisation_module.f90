@@ -1133,7 +1133,7 @@ contains
     use DFT_D2,              only: dispersion_D2
     use matrix_data,         ONLY: Lrange,Trange,LSrange,SFcoeff_range,Hrange
     use store_matrix,        ONLY: matrix_store_global, grab_InfoMatGlobal, grab_matrix2, &
-         InfoMatrixFile, set_atom_coord_diff
+         InfoMatrixFile, set_atom_coord_diff, deallocate_InfoMatrixFile, free_InfoMatGlobal
     use UpdateInfo,          ONLY: make_glob2node,Matrix_CommRebuild, Report_UpdateMatrix
     use XLBOMD_module,       ONLY: grab_XXvelS,grab_Xhistories
     use support_spec_format, only: read_option
@@ -1226,6 +1226,7 @@ contains
           call grab_matrix2('SFcoeff',inode,nfile,Info,InfoGlob,index=index_MatrixFile,n_matrix=nspin_SF)
           call my_barrier()
           call Matrix_CommRebuild(InfoGlob,Info,SFcoeff_range,SFcoeff_trans,matSFcoeff,nfile,n_matrix=nspin_SF)
+          call deallocate_InfoMatrixFile(nfile, Info)
 
           ! Added DRB 2017/04/10 to fix issue 26: transpose required before transformation can occur
           ! Transpose
@@ -1253,6 +1254,7 @@ contains
        call grab_matrix2('T',inode,nfile,Info,InfoGlob,index=index_MatrixFile,n_matrix=nspin_SF)
        call my_barrier()
        call Matrix_CommRebuild(InfoGlob,Info,Trange,T_trans,matT,nfile,symm,n_matrix=nspin_SF)
+       call deallocate_InfoMatrixFile(nfile, Info)
     endif
     if (flag_LFD .and. .not.read_option) then
        ! Spao was already made in sub:initial_SFcoeff
@@ -1273,12 +1275,14 @@ contains
           call grab_matrix2('L',inode,nfile,Info,InfoGlob,index=index_MatrixFile,n_matrix=nspin)
           call my_barrier()
           call Matrix_CommRebuild(InfoGlob,Info,Lrange,L_trans,matL,nfile,symm,n_matrix=nspin)
+          call deallocate_InfoMatrixFile(nfile, Info)
           if (inode == ionode .and. iprint_init + min_layer > 2) &
                write(io_lun, fmt='(4x,a)') trim(prefix)//' grabbed L  matrix'
        else
           call grab_matrix2('K',inode,nfile,Info,InfoGlob,index=index_MatrixFile,n_matrix=nspin)
           call my_barrier()
           call Matrix_CommRebuild(InfoGlob,Info,Hrange,H_trans,matK,nfile,n_matrix=nspin)
+          call deallocate_InfoMatrixFile(nfile, Info)
           if (inode == ionode .and. iprint_init + min_layer > 2) &
                write(io_lun, fmt='(4x,a)') trim(prefix)//' grabbed K  matrix'
           !DEBUG call Report_UpdateMatrix("Kmat")  
@@ -1294,6 +1298,7 @@ contains
           if (flag_dissipation) call grab_Xhistories(Lrange,L_trans,InfoGlob)
        endif
     endif
+    call free_InfoMatGlobal(InfoGlob)
 !!$
 !!$
 !!$

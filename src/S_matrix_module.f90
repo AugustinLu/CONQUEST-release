@@ -760,7 +760,8 @@ contains
     use timer_module, ONLY: cq_timer,start_timer,stop_print_timer,WITH_LEVEL
     use input_module, ONLY: leqi
     use store_matrix, ONLY: dump_matrix2, grab_matrix2, InfoMatrixFile, &
-                            matrix_store_global, grab_InfoMatGlobal, set_atom_coord_diff
+                            matrix_store_global, grab_InfoMatGlobal, set_atom_coord_diff, &
+                            deallocate_InfoMatrixFile, free_InfoMatGlobal
 
     use UpdateInfo, ONLY: Matrix_CommRebuild
     use io_module, ONLY: return_prefix
@@ -878,6 +879,8 @@ contains
              call grab_matrix2('T',inode,nfile,Info,InfoGlob,index=0,n_matrix=nspin_SF)
              call my_barrier()
              call Matrix_CommRebuild(InfoGlob,Info,Trange,T_trans,matT,nfile,symm,n_matrix=nspin_SF)
+             call deallocate_InfoMatrixFile(nfile, Info)
+             call free_InfoMatGlobal(InfoGlob)
           endif
 
           ! and evaluate the current value of the functional and its gradient
@@ -1444,6 +1447,7 @@ contains
        end do
     end do
     deallocate(work1,work2,work3,work4,work5,work6, STAT=stat)
+    deallocate(temp,temp2)
     if(stat/=0) call cq_abort("Error deallocating arrays for onsite S blip elements: ",blip_info(specj)%FullArraySize,this_nsfL)
     return
   end subroutine get_S_analytic

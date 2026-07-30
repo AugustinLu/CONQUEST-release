@@ -523,7 +523,7 @@
       use GenComms, ONLY: inode, ionode
       use matrix_data, ONLY: Srange
       use mult_module, ONLY: matS,S_trans,matXL,matXLvel
-      use store_matrix, ONLY: grab_matrix2, InfoMatrixFile, matrix_store_global
+      use store_matrix, ONLY: grab_matrix2, InfoMatrixFile, matrix_store_global, deallocate_InfoMatrixFile
       use UpdateInfo, ONLY: Matrix_CommRebuild
 
       implicit none
@@ -550,6 +550,8 @@
         call grab_matrix2('S',inode,nfile,InfoMat,InfoGlob,index=0,n_matrix=nspin_SF)
         call Matrix_CommRebuild(InfoGlob,InfoMat,Srange,S_trans,matS,nfile,symm,n_matrix=nspin_SF)
       endif
+
+      call deallocate_InfoMatrixFile(nfile, InfoMat)
 
       return
     end subroutine grab_XXvelS
@@ -587,7 +589,7 @@
       use GenComms, ONLY: inode, ionode 
       use matrix_data, ONLY: LSrange,Lrange
       use mult_module, ONLY: LS_trans,L_trans, matXL_store, maxiter_Dissipation
-      use store_matrix, ONLY: grab_matrix2, InfoMatrixFile, matrix_store_global
+      use store_matrix, ONLY: grab_matrix2, InfoMatrixFile, matrix_store_global, deallocate_InfoMatrixFile
       use UpdateInfo, ONLY: Matrix_CommRebuild
       !db
       use global_module, ONLY: io_lun
@@ -620,6 +622,7 @@
       do istep = 1, maxiters+1
        call grab_matrix2('X',inode,nfile,InfoMat,InfoGlob,index=istep,n_matrix=nspin)
        call Matrix_CommRebuild(InfoGlob,InfoMat,range,trans,matXL_store(istep,:),nfile,n_matrix=nspin)
+       call deallocate_InfoMatrixFile(nfile, InfoMat)
       enddo
 
       ! ----- 2019/Nov/13: (comment by TM)   -----

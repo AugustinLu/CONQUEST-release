@@ -853,6 +853,8 @@ contains
        if (stat /= 0) &
             call cq_abort("Error deallocating forces: ", ni_in_cell)
        call reg_dealloc_mem(area_moveatoms, 5 * 3 * ni_in_cell, type_dbl)
+       if(allocated(cdft_force)) deallocate(cdft_force)
+       if(allocated(NA_force)) deallocate(NA_force)
     end if
     deallocate(density_total, STAT=stat)
     if (stat /= 0) call cq_abort("force: Error dealloc mem")
