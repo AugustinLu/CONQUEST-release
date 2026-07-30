@@ -78,6 +78,17 @@ def main() -> None:
             "xyz": analyse_case(args.root / "xyz", initial, False),
         },
     }
+    method3_final = input_lattice(args.root / "method3_smoke" / "coord_next.dat")
+    result["method3"] = {
+        "final_lattice_rows_bohr": method3_final.tolist(),
+        "final_volume_bohr3": abs(float(np.linalg.det(method3_final))),
+        "volume_constraint_shape_residual": float(
+            np.max(np.abs(shape_metric(method3_final) - shape_metric(initial)))
+        ),
+        "final_offdiagonal_norm_bohr": float(
+            np.linalg.norm(method3_final - np.diag(np.diag(method3_final)))
+        ),
+    }
 
     failures = []
     for name, case in result["cases"].items():
@@ -92,6 +103,12 @@ def main() -> None:
             failures.append(f"{name}: final lattice is invalid")
     if result["cases"]["volume"]["isotropic_shape_residual"] > 2.0e-6:
         failures.append("isotropic barostat changed the normalized cell shape")
+    if not np.isfinite(method3_final).all() or np.linalg.det(method3_final) <= 0.0:
+        failures.append("method 3: final lattice is invalid")
+    if result["method3"]["final_offdiagonal_norm_bohr"] < 1.0:
+        failures.append("method 3: final cell was diagonalized")
+    if result["method3"]["volume_constraint_shape_residual"] > 2.0e-8:
+        failures.append("method 3: volume constraint changed normalized cell shape")
 
     result["status"] = "pass" if not failures else "fail"
     result["failures"] = failures

@@ -162,7 +162,8 @@ simultaneously the ionic positions and simulation cell. This can be done by sett
 
    AtomMove.TypeOfRun cg
    AtomMove.OptCell T
-   AtomMove.OptCellMethod 2
+   AtomMove.OptCellMethod 3
+   AtomMove.OptCell.Constraint a/b
    AtomMove.ReuseDM T
    AtomMove.MaxForceTol 5e-4
    AtomMove.EnthalpyTolerance 1E-5
@@ -173,6 +174,16 @@ to apply constraints to the simulation cell as described above, but this will
 require extra care from the user to ensure that the simulation proceeds as
 desired.
 
+Method 3 minimises one vector containing all fractional ionic coordinates and
+three lattice-vector scale strains.  It supports orthogonal and nonorthogonal
+cells, preserves all three lattice angles, and honours fixed-length, fixed-ratio,
+and volume-only constraints.  For example, ``a/b`` is appropriate for an HCP
+cell: the two basal vectors scale together while the independent ``c`` scale can
+change the ``c/a`` ratio.  The full stress tensor is enabled automatically
+because its off-diagonal components enter the projection for a general lattice.
+Method 3 does not contain shear degrees of freedom; use method 1 with
+``AtomMove.FullStress T`` when lattice angles must relax.
+
 The enthalpy will generally converge much more rapidly than the force
 and stress, and that it may be necessary to tighten ``minE.SCTolerance``
 (diagonalisation) or ``minE.LTolerance`` (order(N)) to reach the force
@@ -181,11 +192,8 @@ we recommend using ``AtomMove.OptCellMethod 2``,
 which uses a simple but robust double-loop minimisation: a full ionic 
 relaxation (using either cg or sqnm) followed by a full simulation cell 
 relaxation (using cg).  While this may be less efficient than optimising all
-degrees of freedom simultaneously, it is much more robust.  The legacy
-simultaneous-vector route selected by ``AtomMove.OptCellMethod 3`` is disabled
-because its three-length representation does not synchronize the authoritative
-lattice matrix.  The code stops with a diagnostic directing the user to method
-2.
+degrees of freedom simultaneously, it is more robust than the coupled
+method-3 line minimisation.
 
 Go to :ref:`top <strucrelax>`.
 

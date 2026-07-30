@@ -21,10 +21,9 @@ The test verifies that:
 - the isotropic barostat preserves normalized cell shape;
 - the `xyz` barostat applies diagonal Cartesian strains to complete lattice
   rows rather than to diagonal matrix entries alone;
-- the final extended-XYZ cell remains nonorthogonal and has positive volume.
-- legacy `AtomMove.OptCellMethod 3` is rejected because its three-length
-  optimizer does not synchronize the authoritative lattice state; the
-  diagnostic directs users to the fully general method 2.
+- the final extended-XYZ cell remains nonorthogonal and has positive volume;
+- `AtomMove.OptCellMethod 3` completes a one-step, volume-only relaxation on
+  the primitive cell while retaining the authoritative nonorthogonal lattice;
 - the bundled Python MD utilities import with current NumPy/SciPy and their
   generalized RDF/MSD minimum-image calculation agrees with a brute-force
   closest-image search in an adversarial skew cell.

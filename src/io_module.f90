@@ -82,6 +82,8 @@
 !!    Added general lattice input/output and complete extended-XYZ cells
 !!   2026/07/29 lu
 !!    Rejected singular lattices during coordinate initialization
+!!   2026/07/30 lu
+!!    Preserved general lattice angles in PDB CRYST1 input and output
 module io_module
 
   use datatypes,              only: double
@@ -124,6 +126,89 @@ module io_module
 !!***
 
 contains
+
+  ! --------------------------------------------------------------------
+  ! Convert PDB crystallographic parameters to the internal lattice
+  ! convention (Cartesian component, lattice-vector number).
+  ! --------------------------------------------------------------------
+  subroutine pdb_cell_to_lattice(lengths, angles, lattice)
+
+    use numbers, only: zero, one, pi
+
+    implicit none
+
+    real(double), dimension(3),   intent(in)  :: lengths
+    real(double), dimension(3),   intent(in)  :: angles
+    real(double), dimension(3,3), intent(out) :: lattice
+
+    real(double), parameter :: cell_tolerance = 1.0e-12_double
+    real(double) :: alpha, beta, gamma
+    real(double) :: cos_alpha, cos_beta, cos_gamma, sin_gamma
+    real(double) :: z_squared
+
+    if (any(lengths <= zero)) &
+         call cq_abort("PDB CRYST1 contains a non-positive cell length")
+    if (any(angles <= zero) .or. any(angles >= 180.0_double)) &
+         call cq_abort("PDB CRYST1 cell angles must be between 0 and 180 degrees")
+
+    alpha = angles(1)*pi/180.0_double
+    beta  = angles(2)*pi/180.0_double
+    gamma = angles(3)*pi/180.0_double
+    cos_alpha = cos(alpha)
+    cos_beta  = cos(beta)
+    cos_gamma = cos(gamma)
+    sin_gamma = sin(gamma)
+
+    if (abs(sin_gamma) <= cell_tolerance) &
+         call cq_abort("PDB CRYST1 gamma angle produces a singular lattice")
+
+    z_squared = one - cos_alpha*cos_alpha - cos_beta*cos_beta - &
+         cos_gamma*cos_gamma + 2.0_double*cos_alpha*cos_beta*cos_gamma
+    if (z_squared < -cell_tolerance) &
+         call cq_abort("PDB CRYST1 lengths and angles do not define a valid lattice")
+    z_squared = max(zero, z_squared)
+
+    lattice = zero
+    lattice(1,1) = lengths(1)
+    lattice(1,2) = lengths(2)*cos_gamma
+    lattice(2,2) = lengths(2)*sin_gamma
+    lattice(1,3) = lengths(3)*cos_beta
+    lattice(2,3) = lengths(3)*(cos_alpha - cos_beta*cos_gamma)/sin_gamma
+    lattice(3,3) = lengths(3)*sqrt(z_squared)/abs(sin_gamma)
+
+  end subroutine pdb_cell_to_lattice
+
+  ! --------------------------------------------------------------------
+  ! Return lattice-vector lengths and the PDB angles alpha, beta, gamma
+  ! in degrees.
+  ! --------------------------------------------------------------------
+  subroutine lattice_to_pdb_cell(lattice, lengths, angles)
+
+    use numbers, only: zero, one, pi
+
+    implicit none
+
+    real(double), dimension(3,3), intent(in)  :: lattice
+    real(double), dimension(3),   intent(out) :: lengths
+    real(double), dimension(3),   intent(out) :: angles
+
+    real(double), parameter :: cell_tolerance = 1.0e-12_double
+    real(double) :: cosine
+
+    lengths(1) = sqrt(dot_product(lattice(:,1), lattice(:,1)))
+    lengths(2) = sqrt(dot_product(lattice(:,2), lattice(:,2)))
+    lengths(3) = sqrt(dot_product(lattice(:,3), lattice(:,3)))
+    if (any(lengths <= cell_tolerance)) &
+         call cq_abort("Cannot write PDB CRYST1 for a zero-length lattice vector")
+
+    cosine = dot_product(lattice(:,2), lattice(:,3))/(lengths(2)*lengths(3))
+    angles(1) = acos(max(-one, min(one, cosine)))*180.0_double/pi
+    cosine = dot_product(lattice(:,1), lattice(:,3))/(lengths(1)*lengths(3))
+    angles(2) = acos(max(-one, min(one, cosine)))*180.0_double/pi
+    cosine = dot_product(lattice(:,1), lattice(:,2))/(lengths(1)*lengths(2))
+    angles(3) = acos(max(-one, min(one, cosine)))*180.0_double/pi
+
+  end subroutine lattice_to_pdb_cell
 
   ! --------------------------------------------------------------------
   ! Subroutine read_atomic_positions
@@ -395,15 +480,9 @@ second:   do
              case ('CRYST1')
                 read (pdb_line,'(6x,3f9.3,3f7.2,15x)') &
                      cell_vec_len, angle
-                cell_vec_len(1) = AngToBohr * cell_vec_len(1)
-                cell_vec_len(2) = AngToBohr * cell_vec_len(2)
-                cell_vec_len(3) = AngToBohr * cell_vec_len(3)
-                ! Initialize r_super_vec and lat_vec as orthogonal
-                r_super_vec = 0.0d0
-                r_super_vec(1,1) = cell_vec_len(1)
-                r_super_vec(2,2) = cell_vec_len(2)
-                r_super_vec(3,3) = cell_vec_len(3)
-                lat_vec = r_super_vec
+                cell_vec_len = AngToBohr*cell_vec_len
+                call pdb_cell_to_lattice(cell_vec_len, angle, lat_vec)
+                r_super_vec = lat_vec
                 !write(io_lun,4) cell_vec_len
 !4               format(/10x,'The simulation box has the following dimensions',/, &
 !                       10x,'a = ',f9.5,' b = ',f9.5,' c = ',f9.5,' a.u.')
@@ -608,7 +687,7 @@ second:   do
     logical                    :: movex, movey, movez
     character(len=80)          :: pdb_line
     character(len=2)           :: atom_name
-    real(double), dimension(3) :: coords
+    real(double), dimension(3) :: coords, pdb_lengths, pdb_angles
     type(cq_timer)             :: tmr_l_tmp1
 
     if(inode==ionode) then
@@ -656,12 +735,10 @@ second:   do
                 write (lun,'(a)') pdb_line
               endif
             case ('CRYST1')
-              coords(1) = BohrToAng * cell_vec_len(1)
-              coords(2) = BohrToAng * cell_vec_len(2)
-              coords(3) = BohrToAng * cell_vec_len(3)
-              ! Once we get to non-orthorhombic cells the line below has to be updated
-              write (lun,'(a6,3f9.3,3f7.2,a)') pdb_line(1:6), coords(:), &
-                    90.0, 90.0, 90.0, pdb_line(56:80)
+              call lattice_to_pdb_cell(lat_vec, pdb_lengths, pdb_angles)
+              pdb_lengths = BohrToAng*pdb_lengths
+              write (lun,'(a6,3f9.3,3f7.2,a)') pdb_line(1:6), &
+                    pdb_lengths, pdb_angles, pdb_line(56:80)
             case default
               write (lun,'(a)') pdb_line
             end select

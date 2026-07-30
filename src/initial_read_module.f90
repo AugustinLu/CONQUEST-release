@@ -1719,11 +1719,6 @@ contains
     flag_variable_cell    = flag_opt_cell
     optcell_method        = fdf_integer('AtomMove.OptCellMethod', 1)
     cell_constraint_flag  = fdf_string(20,'AtomMove.OptCell.Constraint','none')
-    ! Warn user if applying constraints with OptCellMethod 3
-    !if(optcell_method==3.and.(.not.leqi(cell_constraint_flag,'none'))) then
-    !   call cq_warn(sub_name,"Cell constraints NOT applied for OptCellMethod 3")
-    !   cell_constraint_flag = 'none'
-    !end if
     cell_en_tol           = fdf_double('AtomMove.OptCell.EnTol',0.00001_double)
     ! It makes sense to use GPa here so I'm changing the default to 0.1GPa
     cell_stress_tol       = fdf_double('AtomMove.StressTolerance',0.1_double) !005_double)
@@ -1731,6 +1726,11 @@ contains
     enthalpy_tolerance    = fdf_double('AtomMove.EnthalpyTolerance', 1.0e-5_double)
     flag_stress           = fdf_boolean('AtomMove.CalcStress', .true.)
     flag_full_stress      = fdf_boolean('AtomMove.FullStress', .false.)
+    if (flag_opt_cell .and. optcell_method == 3 .and. .not.flag_full_stress) then
+       flag_full_stress = .true.
+       call cq_warn(sub_name, &
+            "AtomMove.OptCellMethod 3 requires the full stress tensor; enabling AtomMove.FullStress")
+    end if
     flag_atomic_stress    = fdf_boolean('AtomMove.AtomicStress', .false.)
     mix_input_output_XC_GGA_stress = fdf_double('General.MixXCGGAInOut',half)
     !

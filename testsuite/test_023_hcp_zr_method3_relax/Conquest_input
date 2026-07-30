@@ -1,0 +1,42 @@
+IO.Title                    hcp_zr_method3_relax
+IO.Coordinates              coords.in
+IO.FractionalAtomicCoords   T
+IO.Iprint                   1
+
+General.DistanceUnits      Ang
+General.NumberOfSpecies     1
+General.DifferentFunctional T
+General.FunctionalType      101
+General.PAOFromFiles        T
+General.NeutralAtom         F
+%block ChemicalSpeciesLabel
+1 91.2240 Zr Zr.ion
+%endblock
+
+AtomMove.TypeOfRun          cg
+AtomMove.OptCell            T
+AtomMove.OptCellMethod      3
+AtomMove.OptCell.Constraint a/b
+AtomMove.NumSteps           30
+AtomMove.MaxForceTol        5.0e-4
+AtomMove.EnthalpyTolerance  1.0e-5
+AtomMove.StressTolerance    1.0
+AtomMove.ReuseDM            T
+AtomMove.CGLineMin          safe
+AtomMove.FullStress         T
+
+Basis.BasisSet              PAOs
+Grid.GridCutoff             100
+DM.SolutionMethod           diagon
+SC.KerkerPreCondition       T
+SC.LinearMixingFactor       0.25
+SC.MaxIters                 200
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-8
+Diag.SmearingType           0
+Diag.kT                     0.005
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.MPMeshX                6
+Diag.MPMeshY                6
+Diag.MPMeshZ                4

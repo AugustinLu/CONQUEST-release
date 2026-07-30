@@ -58,6 +58,8 @@
 !!    Added extended XYZ file output for run types of static, cg, lbfgs, sqnm, and optcell
 !!   2026/07/29 lu
 !!    Enabled general-cell stress relaxation and guarded legacy method 3
+!!   2026/07/30 lu
+!!    Generalised method 3 to full non-orthogonal lattice vectors
 !!  SOURCE
 !!
 module control
@@ -4249,7 +4251,7 @@ contains
     use units
     use global_module, only: iprint_gen, ni_in_cell, x_atom_cell,  &
                              y_atom_cell, z_atom_cell, id_glob,    &
-                             atom_coord, cell_vec_len, &
+                             atom_coord, cell_vec_len, lat_vec, &
                              area_general, iprint_MD,              &
                              IPRINT_TIME_THRES1,                   &
                              cell_stress_tol, min_layer
@@ -4257,7 +4259,8 @@ contains
     use minimise,      only: get_E_and_F
     use move_atoms,    only: safemin_full, cq_to_vector, enthalpy, &
                              enthalpy_tolerance, backtrack_linemin_full, &
-                             cg_line_min, safe, backtrack
+                             cg_line_min, safe, backtrack, &
+                             method3_cell_gradient
     use GenComms,      only: inode, ionode, cq_warn, cq_abort
     use GenBlas,       only: dot
     use force_module,  only: tot_force, stress
@@ -4286,7 +4289,8 @@ contains
     type(cq_timer) :: tmr_l_iter
     real(double), allocatable, dimension(:,:) :: cg, force, force_old, &
                                                  config
-    real(double), dimension(3) :: one_plus_strain, strain, cell_ref
+    real(double), dimension(3) :: one_plus_strain, strain, cell_residual
+    real(double), dimension(3,3) :: cell_ref
 
     character(len=20) :: subname = "full_cg_run: "
     character(len=120) :: prefix, prefixGO
@@ -4294,8 +4298,6 @@ contains
 
     prefix = return_prefix(subname, min_layer)
     prefixGO = return_prefix("GeomOpt", min_layer)
-    call cq_abort("AtomMove.OptCellMethod 3 is disabled because its legacy "// &
-         "cell state is not synchronized; use AtomMove.OptCellMethod 2")
     allocate(cg(3,ni_in_cell+1), STAT=stat)
     allocate(force(3,ni_in_cell+1), STAT=stat)
     allocate(force_old(3,ni_in_cell+1), STAT=stat)
@@ -4319,6 +4321,7 @@ contains
     cg = zero
     ! Do we need to add MD.MaxCGDispl ?
     done = .false.
+    iter = 0
     length = 3*(ni_in_cell+1)
     press = target_pressure/HaBohr3ToGPa
     energy0 = total_energy
@@ -4326,9 +4329,7 @@ contains
     dH = zero
 
     ! reference cell to compute strain
-    cell_ref(1) = cell_vec_len(1)
-    cell_ref(2) = cell_vec_len(2)
-    cell_ref(3) = cell_vec_len(3)
+    cell_ref = lat_vec
 
     ! Find energy and forces
     min_layer = min_layer - 1
@@ -4341,11 +4342,10 @@ contains
     call get_maxf(max)
     min_layer = min_layer + 1
     volume = abs(cell_vol)
-    max_stress = zero
-    do i=1,3
-       stress_diff = abs(press*volume + stress(i,i))/volume
-       if (stress_diff > max_stress) max_stress = stress_diff
-    end do
+    one_plus_strain = one
+    call method3_cell_gradient(force(:,ni_in_cell+1), cell_residual, &
+                               one_plus_strain, press)
+    max_stress = maxval(abs(cell_residual))
     enthalpy0 = enthalpy(energy0, press)
     if (inode==ionode) then
        write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," H: " ,f16.8,x,a2," MaxS: ",f12.8," GPa")') &
@@ -4362,6 +4362,11 @@ contains
           write(io_lun, fmt='(4x,a," Maximum force below threshold:    ",f12.5," ",a2,"/",a2)') &
                trim(prefix),for_conv*max, en_units(energy_units), d_units(dist_units)
        end if
+       deallocate(config, force, force_old, cg, STAT=stat)
+       if (stat /= 0) &
+            call cq_abort("Error deallocating vectors in control: ", &
+                          ni_in_cell,stat)
+       call reg_dealloc_mem(area_general, 5*length, type_dbl)
        return
     else if(abs(max) < MDcgtol) then
        if(inode==ionode) &
@@ -4374,11 +4379,11 @@ contains
     enthalpy1 = enthalpy0
     do while (.not. done)
       call start_timer(tmr_l_iter, WITH_LEVEL) ! Construct ratio for conjugacy
-      RMSstress = sqrt(((stress(1,1)*stress(1,1)) + &
-           (stress(2,2)*stress(2,2)) + &
-           (stress(3,3)*stress(3,3)))/3)
       ! Construct the vector to optimise (config) and its force vector (force)
       call cq_to_vector(force, config, cell_ref, press)
+      one_plus_strain = one + config(:,ni_in_cell+1)
+      cell_residual = -force(:,ni_in_cell+1)*one_plus_strain/abs(cell_vol)
+      RMSstress = sqrt(sum(cell_residual*cell_residual)/three)
       gg = zero
       gg1 = zero
       do j = 1, ni_in_cell+1 ! extra row for cell "force"
@@ -4447,18 +4452,15 @@ contains
       g0 = dot(length-3, tot_force, 1, tot_force, 1)
       call get_maxf(max)
       volume = abs(cell_vol)
-      max_stress = zero
-      do i=1,3
-        stress_diff = abs(press*volume + stress(i,i))/volume
-        if (stress_diff > max_stress) max_stress = stress_diff
-      end do
+      call cq_to_vector(force, config, cell_ref, press)
+      one_plus_strain = one + config(:,ni_in_cell+1)
+      cell_residual = -force(:,ni_in_cell+1)*one_plus_strain/volume
+      max_stress = maxval(abs(cell_residual))
 
       ! Output and energy changes
       dH = enthalpy1 - enthalpy0
-      newRMSstress = sqrt(((stress(1,1)*stress(1,1)) + &
-           (stress(2,2)*stress(2,2)) + &
-           (stress(3,3)*stress(3,3)))/3)
-      dRMSstress = (RMSstress - newRMSstress)/volume
+      newRMSstress = sqrt(sum(cell_residual*cell_residual)/three)
+      dRMSstress = RMSstress - newRMSstress
       if (inode==ionode) then
          write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," H: " ,f16.8,x,a2," MaxS: ",f12.8," GPa/")') &
               trim(prefixGO)//" - Iter: ",iter, for_conv*max, en_units(energy_units), d_units(dist_units), &

@@ -63,6 +63,9 @@
 !!    Added symmetric-strain method-2 atom/cell optimisation for skew cells
 !!   2026/07/29 lu
 !!    Rejected singular trial lattices before using their inverse
+!!   2026/07/30 lu
+!!    Generalised method-3 simultaneous atom/cell optimisation to preserve
+!!    the full lattice geometry for non-orthogonal cells
 !!  SOURCE
 !!
 module move_atoms
@@ -1931,7 +1934,7 @@ contains
     ! Passed variables
     real(double) :: enthalpy_in, enthalpy_out, target_press, grad_f_dot_p
     real(double), dimension(3,ni_in_cell+1) :: config, direction
-    real(double), dimension(:)   :: cell_ref
+    real(double), dimension(:,:) :: cell_ref
     ! Shared variables needed by get_E_and_F for now (!)
     logical           :: vary_mu, fixed_potential
 
@@ -1991,7 +1994,7 @@ contains
     do while ((.not. done) .and. iter<max_back_iters)
        iter = iter+1
        ! Take a step along search direction
-       call propagate_vector(direction, config_start, config, cell_ref, alpha)
+       call propagate_vector(direction, config_start, config, alpha)
        call vector_to_cq(config, cell_ref, orcellx, orcelly, orcellz)
        ! Re-order force into dummy for update_pos_and_matrices
        do i=1,ni_in_cell
@@ -2812,7 +2815,7 @@ contains
     ! Passed variables
     real(double) :: enthalpy_in, enthalpy_out, target_press
     real(double), dimension(:,:) :: config, force
-    real(double), dimension(:)   :: cell_ref
+    real(double), dimension(:,:) :: cell_ref
     logical           :: vary_mu, fixed_potential
 
     ! Local variables
@@ -2881,7 +2884,7 @@ contains
        call start_timer(tmr_l_tmp1, WITH_LEVEL)
 
        ! Change the configuration
-       call propagate_vector(force, config_start, config, cell_ref, k3)
+       call propagate_vector(force, config_start, config, k3)
        call vector_to_cq(config, cell_ref, orcellx, orcelly, orcellz)
 
        ! Re-order force into dummy for update_pos_and_matrices
@@ -2964,7 +2967,7 @@ contains
     end if
     iter = iter + 1
 
-    call propagate_vector(force, config_start, config, cell_ref, kmin)
+    call propagate_vector(force, config_start, config, kmin)
     call vector_to_cq(config, cell_ref, orcellx, orcelly, orcellz)
     k3_local = kmin - k3
 
@@ -3055,7 +3058,7 @@ contains
           return
        end if
 
-       call propagate_vector(force, config_start, config, cell_ref, kmin)
+       call propagate_vector(force, config_start, config, kmin)
        call vector_to_cq(config, cell_ref, orcellx, orcelly, orcellz)
        k3_local = kmin-kmin_old!03/07/2013
        iter = iter + 1
@@ -5173,16 +5176,16 @@ contains
   !!
   !!  SOURCE
   !!
-  subroutine rescale_grids_and_density(orcellx, orcelly, orcellz)
+  subroutine rescale_grids_and_density(old_lattice, old_volume)
 
     use datatypes
     use numbers
-    use global_module,  only: x_atom_cell, y_atom_cell, z_atom_cell, &
-                              cell_vec_len, flag_diagonalisation, &
-                              iprint_MD
-    use GenComms,       only: inode, ionode
+    use global_module,  only: cell_vec_len, flag_diagonalisation, &
+                              iprint_MD, lat_vec, lat_vec_inv, &
+                              recip_lat_vec, invert_3x3, cell_vol
+    use GenComms,       only: inode, ionode, cq_abort
     use maxima_module,  only: maxngrid
-    use dimens,         only: &
+    use dimens,         only: r_super_vec, r_super_vec_inv, &
                               r_super_x_squared, r_super_y_squared, &
                               r_super_z_squared, volume, grid_point_volume, &
                               one_over_grid_point_volume, n_grid_x, n_grid_y, &
@@ -5190,48 +5193,54 @@ contains
     use DiagModule,     only: kk, nkp
     use fft_module,     only: recip_vector, hartree_factor, i0
     use density_module, only: density
-    use input_module,   only: leqi
 
     implicit none
 
     ! passed variables
-    real(double), intent(in)  :: orcellx, orcelly, orcellz ! old cell
+    real(double), intent(in) :: old_lattice(3,3), old_volume
     ! local variables
     integer                   :: i, j
-    real(double)              :: xvec, yvec, zvec, r2, scale
+    real(double)              :: xvec, yvec, zvec, r2, scale, det_new
+    real(double)              :: fractional(3)
 
     if (inode==ionode .and. iprint_MD > 3) &
       write(io_lun,'(6x,a)') "move_atoms/rescale_grid_and_density"
 
-    cell_vec_len(1) = cell_vec_len(1)
-    cell_vec_len(2) = cell_vec_len(2)
-    cell_vec_len(3) = cell_vec_len(3)
-    ! DRB added 2017/05/24 17:05
-    ! We've changed the simulation cell. Now we must update grids and the density
+    call invert_3x3(lat_vec, lat_vec_inv, det_new)
+    if (det_new <= very_small) &
+         call cq_abort("rescale_grids_and_density: non-positive cell volume")
+    cell_vol = det_new
+    volume = det_new
+    do i = 1, 3
+       cell_vec_len(i) = sqrt(sum(lat_vec(:,i)*lat_vec(:,i)))
+    end do
+    r_super_vec = lat_vec
+    r_super_vec_inv = lat_vec_inv
+    recip_lat_vec = transpose(lat_vec_inv)
+
+    ! We have changed the simulation cell.  Keep all real- and reciprocal-
+    ! space state in the same full lattice representation.
     r_super_x_squared = cell_vec_len(1) * cell_vec_len(1)
     r_super_y_squared = cell_vec_len(2) * cell_vec_len(2)
     r_super_z_squared = cell_vec_len(3) * cell_vec_len(3)
-    volume = cell_vec_len(1) * cell_vec_len(2) * cell_vec_len(3)
     grid_point_volume = volume/(n_grid_x*n_grid_y*n_grid_z)
     one_over_grid_point_volume = one / grid_point_volume
-    scale = (orcellx*orcelly*orcellz)/volume
+    scale = old_volume/volume
     density = density * scale
-    if(flag_diagonalisation) then
+    if (flag_diagonalisation) then
        do i = 1, nkp
-          kk(1,i) = kk(1,i) * orcellx / cell_vec_len(1)
-          kk(2,i) = kk(2,i) * orcelly / cell_vec_len(2)
-          kk(3,i) = kk(3,i) * orcellz / cell_vec_len(3)
+          fractional = matmul(transpose(old_lattice),kk(:,i))/(two*pi)
+          kk(:,i) = two*pi*matmul(transpose(lat_vec_inv),fractional)
        end do
     end if
     do j = 1, maxngrid
-       recip_vector(j,1) = recip_vector(j,1) * orcellx / cell_vec_len(1)
-       recip_vector(j,2) = recip_vector(j,2) * orcelly / cell_vec_len(2)
-       recip_vector(j,3) = recip_vector(j,3) * orcellz / cell_vec_len(3)
+       fractional = matmul(transpose(old_lattice),recip_vector(j,:))/(two*pi)
+       recip_vector(j,:) = two*pi*matmul(transpose(lat_vec_inv),fractional)
        xvec = recip_vector(j,1)/(two*pi)
        yvec = recip_vector(j,2)/(two*pi)
        zvec = recip_vector(j,3)/(two*pi)
        r2 = xvec*xvec + yvec*yvec + zvec*zvec
-       if(j/=i0) hartree_factor(j) = one/r2 ! i0 notates gamma point
+       if (j /= i0) hartree_factor(j) = one/r2
     end do
 
   end subroutine rescale_grids_and_density
@@ -5489,11 +5498,11 @@ contains
   !!   2025/01/20 13:45 dave
   !!    Added conditions for fixed cell side ratios (average stresses)
   !!  SOURCE
-  subroutine propagate_vector(force, config, config_new, cell_ref, k)
+  subroutine propagate_vector(force, config, config_new, k)
 
     use GenComms,      only: inode, ionode
     use global_module, only: iprint_MD, ni_in_cell, id_glob, cell_constraint_flag
-    use numbers, only: half
+    use numbers, only: half, three
     use input_module,   only: leqi
 
     implicit none
@@ -5501,7 +5510,6 @@ contains
     ! passed variables
     real(double), dimension(:,:), intent(in)  :: force, config
     real(double), dimension(:,:), intent(out) :: config_new
-    real(double), dimension(3), intent(in)    :: cell_ref
     real(double), intent(in)                  :: k
 
     ! local variables
@@ -5517,8 +5525,24 @@ contains
         config_new(j,i) = config(j,i) + k*force(j,i)
       end do
    end do
-   ! To maintain cell ratios the strains must be equal, so we average them (the most general way)
-   if (leqi(cell_constraint_flag, 'a/b') .OR. leqi(cell_constraint_flag, 'b/a')) then
+   ! The final column contains the three lattice-vector scale strains.
+   ! Project the trial point onto the requested constraint manifold.
+   if (leqi(cell_constraint_flag, 'volume')) then
+      config_new(:,ni_in_cell+1) = sum(config_new(:,ni_in_cell+1))/three
+   else if (leqi(cell_constraint_flag, 'a')) then
+      config_new(1,ni_in_cell+1) = config(1,ni_in_cell+1)
+   else if (leqi(cell_constraint_flag, 'b')) then
+      config_new(2,ni_in_cell+1) = config(2,ni_in_cell+1)
+   else if (leqi(cell_constraint_flag, 'c')) then
+      config_new(3,ni_in_cell+1) = config(3,ni_in_cell+1)
+   else if (leqi(cell_constraint_flag, 'a b') .OR. leqi(cell_constraint_flag, 'b a')) then
+      config_new(1:2,ni_in_cell+1) = config(1:2,ni_in_cell+1)
+   else if (leqi(cell_constraint_flag, 'a c') .OR. leqi(cell_constraint_flag, 'c a')) then
+      config_new(1,ni_in_cell+1) = config(1,ni_in_cell+1)
+      config_new(3,ni_in_cell+1) = config(3,ni_in_cell+1)
+   else if (leqi(cell_constraint_flag, 'b c') .OR. leqi(cell_constraint_flag, 'c b')) then
+      config_new(2:3,ni_in_cell+1) = config(2:3,ni_in_cell+1)
+   else if (leqi(cell_constraint_flag, 'a/b') .OR. leqi(cell_constraint_flag, 'b/a')) then
       config_new(1,ni_in_cell+1) = half*(config_new(1,ni_in_cell+1) + config_new(2,ni_in_cell+1))
       config_new(2,ni_in_cell+1) = config_new(1,ni_in_cell+1)
    else if (leqi(cell_constraint_flag, 'a/c') .OR. leqi(cell_constraint_flag, 'c/a')) then
@@ -5539,28 +5563,14 @@ contains
   !!  USAGE
   !!
   !!  PURPOSE
-  !!   Convert optimisable vector config (containing strains and fractional
-  !!   coordinates) to Conquest variables (Cartesian coordinates) for
-  !!   electronic structure calculation. Increment the positions using the
-  !!   force vector, containing scaled stresses and ionic forces in lattice
-  !!   coordinates, as defined in !!   Pfrommer et al. J. Comput. Phys. 131,
-  !!    233 (1997)
+  !!   Convert the method-3 optimisation vector to the authoritative Conquest
+  !!   cell and Cartesian atomic coordinates.  Its final column contains
+  !!   independent scale strains for the three full reference lattice vectors:
   !!
-  !!   Stress components:
-  !!      f_sigma,i = -(sigma_i + pV)(1 + epsilon_i)^-1
-  !!   f_sigma,i = ith component of force on cell as defined above
-  !!   sigma_i = ith component of stress
-  !!   epsilon = ith component of strain
-  !!   ionic force components:
-  !!      F_i = h^T h f_i
-  !!   h = matrix of lattice vectors (h^T h = g, metric tensor)
-  !!   f_i = force on atom i, as computed from gradient of energy
+  !!      A(:,i) = (1 + epsilon_i) A_ref(:,i)
   !!
-  !!   force contains scaled stresses force(:,1) and ionic forces in lattice
-  !!   coordinates force(:,2:)
-  !!
-  !!   config contains strains config(:,1) and fractional coordinates
-  !!   config(:,2:)
+  !!   Thus a non-orthogonal cell is handled without changing its angles.
+  !!   The other columns are true fractional atomic coordinates.
   !!  INPUTS
   !!
   !!  USES
@@ -5575,20 +5585,21 @@ contains
   subroutine vector_to_cq(config, cell_ref, orcellx, orcelly, orcellz)
 
     use numbers
-    use GenComms,      only: inode, ionode
+    use GenComms,      only: inode, ionode, cq_abort
     use global_module, only: cell_vec_len, ni_in_cell, &
-                             iprint_MD, id_glob_inv, atom_coord
+                             iprint_MD, atom_coord, lat_vec, cell_vol
 
     implicit none
 
     ! passed variables
     real(double), dimension(:,:), intent(in)  :: config
-    real(double), dimension(3), intent(in)    :: cell_ref
+    real(double), dimension(:,:), intent(in)  :: cell_ref
     real(double), intent(out) :: orcellx, orcelly, orcellz
 
     ! local variables
-    integer       :: i, i_global
-    real(double)  :: dx, dy, dz
+    integer       :: i
+    real(double)  :: old_volume, scale_factor(3)
+    real(double)  :: old_lattice(3,3)
 
     if (inode==ionode .and. iprint_MD > 3) &
       write(io_lun,'(6x,a)') "move_atoms/vector_to_cq"
@@ -5598,19 +5609,23 @@ contains
     orcelly = cell_vec_len(2)
     orcellz = cell_vec_len(3)
 
-    cell_vec_len(1) = (one + config(1,ni_in_cell+1))*cell_ref(1)
-    cell_vec_len(2) = (one + config(2,ni_in_cell+1))*cell_ref(2)
-    cell_vec_len(3) = (one + config(3,ni_in_cell+1))*cell_ref(3)
+    old_lattice = lat_vec
+    old_volume = abs(cell_vol)
+    scale_factor = one + config(:,ni_in_cell+1)
+    if (any(scale_factor <= very_small)) &
+         call cq_abort("vector_to_cq: non-positive method-3 lattice scale")
+    do i = 1, 3
+       lat_vec(:,i) = scale_factor(i)*cell_ref(:,i)
+    end do
+    call rescale_grids_and_density(old_lattice, old_volume)
+
     do i=1,ni_in_cell
-      atom_coord(1,i) = config(1,i)*cell_vec_len(1)
-      atom_coord(2,i) = config(2,i)*cell_vec_len(2)
-      atom_coord(3,i) = config(3,i)*cell_vec_len(3)
+      atom_coord(:,i) = matmul(lat_vec,config(:,i))
     end do
 
     ! Now we've changed atom_coord, we want these changes to be reflected
     ! in x/y/z_atom_cell
     call update_r_atom_cell
-    call rescale_grids_and_density(orcellx, orcelly, orcellz)
 
   end subroutine vector_to_cq
   !!***
@@ -5622,10 +5637,8 @@ contains
   !!  USAGE
   !!
   !!  PURPOSE
-  !!   Convert Conquest variables x_atom_cell, y_atom_cell, z_atom_cell,
-  !!   cell_vec_len(1), cell_vec_len(2), cell_vec_len(3) and tot_force to the vectors required for full
-  !!   cell optimisation, as defined in Pfrommer et al.
-  !!   J. Comput. Phys. 131, 233 (1997) (see cq_to_vector)
+  !!   Convert the authoritative lattice, Cartesian atomic positions, stress,
+  !!   and Cartesian ionic forces to the method-3 optimisation vector.
   !!  INPUTS
   !!
   !!  USES
@@ -5641,48 +5654,118 @@ contains
   subroutine cq_to_vector(force, config, cell_ref, target_press)
 
     use numbers
-    use global_module, only: cell_vec_len, ni_in_cell, &
-                             iprint_MD, id_glob, atom_coord
+    use global_module, only: ni_in_cell, iprint_MD, atom_coord, &
+                             lat_vec, lat_vec_inv
     use GenComms,      only: inode, ionode
-    use force_module,  only: stress, tot_force
+    use force_module,  only: tot_force
     use io_module,     only: print_atomic_positions
 
     implicit none
 
     ! passed variables
     real(double), dimension(:,:), intent(out) :: force, config
-    real(double), dimension(3), intent(in)    :: cell_ref
+    real(double), dimension(:,:), intent(in)  :: cell_ref
     real(double), intent(in)                  :: target_press
 
     ! local variables
-    integer                     :: i, i_global
-    real(double)                :: vol
+    integer                     :: i
     real(double), dimension(3)  :: one_plus_strain
+    real(double), dimension(3)  :: cell_residual
 
     if (inode==ionode .and. iprint_MD>3) &
       write(io_lun,'(6x,a)') "move_atoms/cq_to_vector"
 
-    vol = cell_vec_len(1)*cell_vec_len(2)*cell_vec_len(3)
-    one_plus_strain(1) = cell_vec_len(1)/cell_ref(1)
-    one_plus_strain(2) = cell_vec_len(2)/cell_ref(2)
-    one_plus_strain(3) = cell_vec_len(3)/cell_ref(3)
     do i=1,3
+      one_plus_strain(i) = dot_product(lat_vec(:,i),cell_ref(:,i))/ &
+                           dot_product(cell_ref(:,i),cell_ref(:,i))
       config(i,ni_in_cell+1) = one_plus_strain(i) - one
-      force(i,ni_in_cell+1) = &
-        -(stress(i,i) + target_press*vol)/one_plus_strain(i)
     end do
+    call method3_cell_gradient(force(:,ni_in_cell+1), cell_residual, &
+                               one_plus_strain, target_press)
     do i=1,ni_in_cell
-      config(1,i) = atom_coord(1,i)/cell_vec_len(1) ! Fractional coordinates
-      config(2,i) = atom_coord(2,i)/cell_vec_len(2)
-      config(3,i) = atom_coord(3,i)/cell_vec_len(3)
-      force(1,i) = tot_force(1,i)*cell_vec_len(1)
-      force(2,i) = tot_force(2,i)*cell_vec_len(2)
-      force(3,i) = tot_force(3,i)*cell_vec_len(3)
+      config(:,i) = matmul(lat_vec_inv,atom_coord(:,i))
+      force(:,i) = matmul(transpose(lat_vec),tot_force(:,i))
     end do
 
     if (inode==ionode .and. iprint_MD>3) call print_atomic_positions
 
   end subroutine cq_to_vector
+  !!***
+
+  !!****f* move_atoms/method3_cell_gradient *
+  !!
+  !!  PURPOSE
+  !!   Project the Cartesian stress onto method 3's three lattice-vector
+  !!   scale coordinates.  The projection reduces to the historical diagonal
+  !!   expression for an orthogonal, Cartesian-aligned lattice.
+  !!
+  subroutine method3_cell_gradient(cell_force, cell_residual, &
+                                   one_plus_strain, target_press)
+
+    use numbers, only: half, three
+    use global_module, only: lat_vec, lat_vec_inv, cell_vol, &
+                             cell_constraint_flag
+    use force_module, only: stress
+    use input_module, only: leqi
+
+    implicit none
+
+    real(double), intent(out) :: cell_force(3), cell_residual(3)
+    real(double), intent(in) :: one_plus_strain(3), target_press
+    real(double) :: projected_stress, volume
+    integer :: i, j, k
+
+    volume = abs(cell_vol)
+    do i = 1, 3
+       projected_stress = 0.0_double
+       do j = 1, 3
+          do k = 1, 3
+             projected_stress = projected_stress + stress(j,k)* &
+                  lat_vec(j,i)*lat_vec_inv(i,k)/one_plus_strain(i)
+          end do
+       end do
+       cell_force(i) = -(projected_stress + &
+                          target_press*volume/one_plus_strain(i))
+    end do
+
+    ! Project the cell gradient onto the same constraint manifold used for
+    ! trial configurations.  Averaging retains the legacy relative scaling
+    ! between cell and ionic components of the combined vector.
+    if (leqi(cell_constraint_flag, 'volume')) then
+       cell_force = sum(cell_force)/three
+    else if (leqi(cell_constraint_flag, 'a')) then
+       cell_force(1) = 0.0_double
+    else if (leqi(cell_constraint_flag, 'b')) then
+       cell_force(2) = 0.0_double
+    else if (leqi(cell_constraint_flag, 'c')) then
+       cell_force(3) = 0.0_double
+    else if (leqi(cell_constraint_flag, 'a b') .or. &
+             leqi(cell_constraint_flag, 'b a')) then
+       cell_force(1:2) = 0.0_double
+    else if (leqi(cell_constraint_flag, 'a c') .or. &
+             leqi(cell_constraint_flag, 'c a')) then
+       cell_force(1) = 0.0_double
+       cell_force(3) = 0.0_double
+    else if (leqi(cell_constraint_flag, 'b c') .or. &
+             leqi(cell_constraint_flag, 'c b')) then
+       cell_force(2:3) = 0.0_double
+    else if (leqi(cell_constraint_flag, 'a/b') .or. &
+             leqi(cell_constraint_flag, 'b/a')) then
+       cell_force(1) = half*(cell_force(1) + cell_force(2))
+       cell_force(2) = cell_force(1)
+    else if (leqi(cell_constraint_flag, 'a/c') .or. &
+             leqi(cell_constraint_flag, 'c/a')) then
+       cell_force(1) = half*(cell_force(1) + cell_force(3))
+       cell_force(3) = cell_force(1)
+    else if (leqi(cell_constraint_flag, 'b/c') .or. &
+             leqi(cell_constraint_flag, 'c/b')) then
+       cell_force(2) = half*(cell_force(2) + cell_force(3))
+       cell_force(3) = cell_force(2)
+    end if
+
+    cell_residual = -cell_force*one_plus_strain/volume
+
+  end subroutine method3_cell_gradient
   !!***
 
   !!****f* move_atoms/enthalpy *

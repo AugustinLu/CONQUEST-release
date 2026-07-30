@@ -932,9 +932,12 @@ AtomMove.OptCellMethod (*integer*)
     2. Alternating atomic position and cell vector optimisation.  This is the
        recommended simultaneous atom-and-cell method and supports general
        nonorthogonal lattices.
-    3. Legacy simultaneous cell and atomic conjugate-gradient relaxation.
-       This method is disabled because its three-length representation does
-       not synchronize the authoritative lattice matrix. Use method 2.
+    3. Simultaneous cell and atomic conjugate-gradient relaxation using
+       fractional ionic coordinates and three full lattice-vector scale
+       strains.  Orthogonal and nonorthogonal cells are supported, but lattice
+       angles remain fixed.  The full stress tensor is enabled automatically
+       for the general-lattice projection.  Use method 1 with
+       ``AtomMove.FullStress T`` when shear or angle relaxation is required.
 
 AtomMove.EnthalpyTolerance (*real*)
     Enthalpy tolerance for cell optimisation

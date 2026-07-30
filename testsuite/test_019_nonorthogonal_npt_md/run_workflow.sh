@@ -44,16 +44,15 @@ for constraint in volume xyz; do
   [[ -s "$directory/trajectory.xyz" ]]
 done
 
-guard_directory="$RESULTS_DIR/method3_guard"
-mkdir -p "$guard_directory"
+method3_directory="$RESULTS_DIR/method3_smoke"
+mkdir -p "$method3_directory"
 cp "$SCRIPT_DIR/../test_012_bulk_Si_primitive_nonorthogonal/Si.ion" \
-  "$guard_directory/Si.ion"
-cp "$SCRIPT_DIR/coords.dat" "$guard_directory/coords.dat"
-cp "$SCRIPT_DIR/Conquest_input_method3_guard" \
-  "$guard_directory/Conquest_input"
-set +e
+  "$method3_directory/Si.ion"
+cp "$SCRIPT_DIR/coords.dat" "$method3_directory/coords.dat"
+cp "$SCRIPT_DIR/Conquest_input_method3_smoke" \
+  "$method3_directory/Conquest_input"
 (
-  cd "$guard_directory"
+  cd "$method3_directory"
   if [[ "$BACKGROUND_MODE" == T ]]; then
     /usr/sbin/taskpolicy -b "$MPI_LAUNCHER" -np "$NP" "$CONQUEST_BIN" \
       > mpi.log 2>&1
@@ -61,14 +60,9 @@ set +e
     "$MPI_LAUNCHER" -np "$NP" "$CONQUEST_BIN" > mpi.log 2>&1
   fi
 )
-guard_status=$?
-set -e
-if (( guard_status == 0 )); then
-  echo "ERROR: disabled legacy method 3 unexpectedly ran." >&2
-  exit 1
-fi
-grep -q "OptCellMethod 3 is disabled" \
-  "$guard_directory/Conquest_out"
+grep -q "starting relaxation with safemin line minimisation" \
+  "$method3_directory/Conquest_out"
+[[ -s "$method3_directory/coord_next.dat" ]]
 
 "$PYTHON" "$SCRIPT_DIR/analyse_npt_cell.py" \
   --root "$RESULTS_DIR" --source "$SCRIPT_DIR" \

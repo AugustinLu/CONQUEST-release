@@ -268,7 +268,7 @@ contains
                                       flag_atomic_stress, non_atomic_stress, &
                                       flag_heat_flux, cell_constraint_flag, &
                                       atom_coord, species_glob, min_layer, &
-                                      flag_heat_flux, cell_constraint_flag
+                                      flag_opt_cell, optcell_method
     use density_module,         only: get_electronic_density, density, &
          build_Becke_weight_forces, &
          flag_surface_dipole_correction, &
@@ -794,44 +794,50 @@ contains
        end if
        if (flag_atomic_stress) call gsum(atomic_stress,3,3,ni_in_cell)
        if (flag_dft_d2) stress = stress + disp_stress
-       ! If we constrain the cell, zero the appropriate stresses
-       if (leqi(cell_constraint_flag, 'a')) then
-          stress(1,1) = zero
-       else if (leqi(cell_constraint_flag, 'b')) then
-          stress(2,2) = zero
-       else if (leqi(cell_constraint_flag, 'c')) then
-          stress(3,3) = zero
-       else if (leqi(cell_constraint_flag, 'c a') .or. leqi(cell_constraint_flag, 'a c')) then
-          stress(1,1) = zero
-          stress(3,3) = zero
-       else if (leqi(cell_constraint_flag, 'a b') .or. leqi(cell_constraint_flag, 'b a')) then
-          stress(1,1) = zero
-          stress(2,2) = zero
-       else if (leqi(cell_constraint_flag, 'b c') .or. leqi(cell_constraint_flag, 'c b')) then
-          stress(2,2) = zero
-          stress(3,3) = zero
-       ! These ensure that the stresses maintain the desired ratio while keeping the average fixed
-       else if (leqi(cell_constraint_flag,'a/b') .or. leqi(cell_constraint_flag,'b/a')) then
-          call print_stress(trim(prefix)//" Orig  stress:     ", stress, -2, write_ase) ! Force output
-          ! Desired ratio
-          scaleC = cell_vec_len(2)/cell_vec_len(1)
-          ! Average x-y stress
-          stress(1,1) = (stress(1,1) + stress(2,2))/(one + scaleC)
-          stress(2,2) = scaleC*stress(1,1)
-       else if (leqi(cell_constraint_flag,'a/c') .or. leqi(cell_constraint_flag,'c/a')) then
-          call print_stress(trim(prefix)//" Orig  stress:     ", stress, -2, write_ase) ! Force output
-          ! Desired ratio
-          scaleC = cell_vec_len(3)/cell_vec_len(1)
-          ! Average x-z stress
-          stress(1,1) = (stress(1,1) + stress(3,3))/(one + scaleC)
-          stress(3,3) = scaleC*stress(1,1)
-       else if (leqi(cell_constraint_flag,'c/b') .or. leqi(cell_constraint_flag,'b/c')) then
-          call print_stress(trim(prefix)//" Orig  stress:     ", stress, -2, write_ase) ! Force output
-          ! Desired ratio
-          scaleC = cell_vec_len(2)/cell_vec_len(3)
-          ! Average y-z stress
-          stress(3,3) = (stress(3,3) + stress(2,2))/(one + scaleC)
-          stress(2,2) = scaleC*stress(3,3)
+       ! Methods 1 and 2 use Cartesian length search directions and retain
+       ! their historical stress projection here.  Method 3 instead projects
+       ! the raw tensor onto its three full lattice-vector scale directions in
+       ! method3_cell_gradient; applying this Cartesian projection first would
+       ! be incorrect for a non-orthogonal or rotated cell.
+       if (.not.(flag_opt_cell .and. optcell_method == 3)) then
+          if (leqi(cell_constraint_flag, 'a')) then
+             stress(1,1) = zero
+          else if (leqi(cell_constraint_flag, 'b')) then
+             stress(2,2) = zero
+          else if (leqi(cell_constraint_flag, 'c')) then
+             stress(3,3) = zero
+          else if (leqi(cell_constraint_flag, 'c a') .or. leqi(cell_constraint_flag, 'a c')) then
+             stress(1,1) = zero
+             stress(3,3) = zero
+          else if (leqi(cell_constraint_flag, 'a b') .or. leqi(cell_constraint_flag, 'b a')) then
+             stress(1,1) = zero
+             stress(2,2) = zero
+          else if (leqi(cell_constraint_flag, 'b c') .or. leqi(cell_constraint_flag, 'c b')) then
+             stress(2,2) = zero
+             stress(3,3) = zero
+          ! These ensure that the stresses maintain the desired ratio while keeping the average fixed
+          else if (leqi(cell_constraint_flag,'a/b') .or. leqi(cell_constraint_flag,'b/a')) then
+             call print_stress(trim(prefix)//" Orig  stress:     ", stress, -2, write_ase) ! Force output
+             ! Desired ratio
+             scaleC = cell_vec_len(2)/cell_vec_len(1)
+             ! Average x-y stress
+             stress(1,1) = (stress(1,1) + stress(2,2))/(one + scaleC)
+             stress(2,2) = scaleC*stress(1,1)
+          else if (leqi(cell_constraint_flag,'a/c') .or. leqi(cell_constraint_flag,'c/a')) then
+             call print_stress(trim(prefix)//" Orig  stress:     ", stress, -2, write_ase) ! Force output
+             ! Desired ratio
+             scaleC = cell_vec_len(3)/cell_vec_len(1)
+             ! Average x-z stress
+             stress(1,1) = (stress(1,1) + stress(3,3))/(one + scaleC)
+             stress(3,3) = scaleC*stress(1,1)
+          else if (leqi(cell_constraint_flag,'c/b') .or. leqi(cell_constraint_flag,'b/c')) then
+             call print_stress(trim(prefix)//" Orig  stress:     ", stress, -2, write_ase) ! Force output
+             ! Desired ratio
+             scaleC = cell_vec_len(2)/cell_vec_len(3)
+             ! Average y-z stress
+             stress(3,3) = (stress(3,3) + stress(2,2))/(one + scaleC)
+             stress(2,2) = scaleC*stress(3,3)
+          end if
        end if
        ! Output
        if (inode == ionode.AND.iprint_MD + min_layer>2) then
