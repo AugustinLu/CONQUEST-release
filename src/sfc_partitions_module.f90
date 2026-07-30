@@ -17,6 +17,8 @@
 ! MODIFICATION HISTORY
 ! 2026/07/29 lu
 !  Generalised Hilbert partition coordinates to non-orthogonal cells
+! 2026/07/30 lu
+!  Generalised gap and periodicity classification to lattice coordinates
 ! SOURCE
 !
 module sfc_partitions_module
@@ -56,11 +58,11 @@ module sfc_partitions_module
 
   ! cell type
   type cell
-     real(double), dimension(3)   :: dims        ! cell dimensions (bounding box extent)
-     real(double), dimension(3)   :: cell_min    ! minimum bounding box corner
-     real(double), dimension(3)   :: cell_max    ! maximum bounding box corner
-     real(double), dimension(3)   :: r_atoms_min ! minimum atomic coordinates
-     real(double), dimension(3)   :: r_atoms_max ! maximum atomic coordinates
+     real(double), dimension(3)   :: dims        ! spans normal to lattice faces
+     real(double), dimension(3)   :: cell_min    ! lower lattice-coordinate bounds
+     real(double), dimension(3)   :: cell_max    ! upper lattice-coordinate bounds
+     real(double), dimension(3)   :: r_atoms_min ! minimum lattice coordinates
+     real(double), dimension(3)   :: r_atoms_max ! maximum lattice coordinates
      real(double), dimension(2,3) :: gap         ! gap(1,i) is the start coordinate
                                                  ! of gap in i-th direction,
                                                  ! and gap(2,i) is the end coordinate
@@ -546,7 +548,8 @@ contains
              parts(ihilbert)%n_atoms = parts(ihilbert)%n_atoms + 1
              ! check whether the partitioning needs to be refined
              if ((parts(ihilbert)%n_atoms > max_natoms_part) .and. &
-                  (minval(r_part) > 1.0_double)) then
+                  (maxval(r_part(dim_nparts_auto(1:n_dim_auto))) > &
+                   1.0_double)) then
                 refine = .true.
                 ii = refine_direction(r_part, n_dim_auto, dim_nparts_auto)
                 n_divs(ii) = n_divs(ii) + 1
@@ -728,10 +731,12 @@ contains
                              r_occupied_cell(dim_nparts_fixed(2))))
        end select
        do ii = 1, 3
-          ! DRB 2016/08/05 Bug fix to prevent divide by zero or large numbers of partitions
-          if(r_part(ii)<1.0_double) then
-             n_parts(ii) = 1
-          else
+          ! Keep automatically selected partition spans at least one bohr.
+          ! Clamping the span, rather than forcing the partition count to one,
+          ! still allows the other directions of a thin or skew cell to be
+          ! subdivided.
+          if (n_parts_user(ii) == 0) then
+             r_part(ii) = max(r_part(ii), 1.0_double)
              n_parts(ii) = max(nint(FSC%dims(ii) / r_part(ii)), 1)
           end if
           n_divs(ii) = int_log2(n_parts(ii))
@@ -858,15 +863,18 @@ contains
   !   2016/08/05 09:49 dave
   !   - Changed PBC detection to use gap size and threshold rather than
   !     fraction of cell occupied
+  !   2026/07/30 lu
+  !   - Perform gap and PBC classification along lattice, rather than
+  !     Cartesian, directions for general non-orthogonal cells
   ! SOURCE
   !
   subroutine get_cell_info()
 
     use datatypes
     use numbers
-    ! removed r_super_x from dimens
-    use global_module, only: atom_coord, ni_in_cell, area_init, shift_in_bohr, lat_vec
-    use memory_module, only: reg_alloc_mem, reg_dealloc_mem, type_int
+    use global_module, only: atom_coord, ni_in_cell, area_init, &
+                             shift_in_bohr, lat_vec_inv
+    use memory_module, only: reg_alloc_mem, reg_dealloc_mem, type_dbl, type_int
     use GenComms,      only: cq_abort
 
     implicit none
@@ -876,44 +884,50 @@ contains
     integer,      dimension(3) :: n_blocks
     integer,      dimension(3) :: i_block_xyz
     real(double), dimension(3) :: r_block
+    real(double), dimension(3) :: frac, eps_frac
     real(double), dimension(2) :: limits
     integer,      dimension(:), allocatable :: n_atoms_block
-    integer      :: iatom, n_blocks_total, dim_min_r_block
+    real(double), dimension(:,:), allocatable :: lattice_coord
+    integer      :: iatom, n_blocks_total
     integer      :: ii, icc, stat
     integer      :: gap_block_min, gap_block_max
     real(double) :: r_gap_block_min, r_gap_block_max
     real(double) :: tmp_min, tmp_max
     real(double) :: min_r_block
-    real(double) :: r_super_x, r_super_y, r_super_z
 
-    r_super_x = sqrt(sum(lat_vec(:,1)**2))
-    r_super_y = sqrt(sum(lat_vec(:,2)**2))
-    r_super_z = sqrt(sum(lat_vec(:,3)**2))
-
-    ! Calculate bounding box of the parallelotope defined by lat_vec.
-    ! The 8 corners are sums of subsets of the 3 lattice vectors.
-    ! For each Cartesian component, cell_min is sum of negative contributions,
-    ! cell_max is sum of positive contributions.
-    FSC%cell_min = 0.0_double
-    FSC%cell_max = 0.0_double
+    ! A fractional interval df_i is the separation between two parallel
+    ! planes normal to row i of lat_vec_inv.  Its physical thickness is
+    ! df_i/|grad(f_i)|, not df_i times the length of direct lattice vector i.
+    ! The dual-lattice height is essential for strongly sheared cells.
     do ii = 1, 3
-       FSC%cell_max(ii) = sum(max(0.0_double, lat_vec(ii,:)))
-       FSC%cell_min(ii) = sum(min(0.0_double, lat_vec(ii,:)))
+       FSC%dims(ii) = one/sqrt(sum(lat_vec_inv(ii,:)**2))
+       eps_frac(ii) = shift_in_bohr/FSC%dims(ii)
     end do
-    ! Cell dimensions are the bounding box extents
-    FSC%dims(1) = FSC%cell_max(1) - FSC%cell_min(1)
-    FSC%dims(2) = FSC%cell_max(2) - FSC%cell_min(2)
-    FSC%dims(3) = FSC%cell_max(3) - FSC%cell_min(3)
+    FSC%cell_min = 0.0_double
+    FSC%cell_max = FSC%dims
+
+    allocate(lattice_coord(3,ni_in_cell), STAT=stat)
+    if (stat /= 0) then
+       call cq_abort("get_cell_info: Error allocating lattice_coord", &
+                     ni_in_cell)
+    end if
+    call reg_alloc_mem(area_init, 3*ni_in_cell, type_dbl)
+    do iatom = 1, ni_in_cell
+       frac = matmul(lat_vec_inv, atom_coord(:,iatom))
+       frac = frac - floor(frac + eps_frac)
+       lattice_coord(:,iatom) = (frac + eps_frac)*FSC%dims
+       lattice_coord(:,iatom) = max(FSC%cell_min, &
+                                    min(lattice_coord(:,iatom), FSC%cell_max))
+    end do
+
     ! find the minimum r_block
     r_block(1) = FSC%dims(1) / real(min_n_slices, double)
     r_block(2) = FSC%dims(2) / real(min_n_slices, double)
     r_block(3) = FSC%dims(3) / real(min_n_slices, double)
     min_r_block = r_block(1)
-    dim_min_r_block = 1
     do ii = 2, 3
        if (r_block(ii) < min_r_block) then
           min_r_block = r_block(ii)
-          dim_min_r_block = ii
        end if
     end do
     ! the minimum r_block should not be below average_atomic_diameter
@@ -934,11 +948,10 @@ contains
                      n_blocks_total)
     end if
     call reg_alloc_mem(area_init, n_blocks_total, type_int)
-    n_atoms_block = 0.0_double
+    n_atoms_block = 0
     ! calculate the number of atoms in each block
-    ! Offset coordinates by cell_min so all indices are non-negative
     do iatom = 1, ni_in_cell
-       i_block_xyz(1:3) = floor((atom_coord(1:3,iatom)+shift_in_bohr - FSC%cell_min(1:3)) / r_block(1:3))
+       i_block_xyz = floor((lattice_coord(:,iatom) - FSC%cell_min) / r_block)
        i_block_xyz = max(0, min(i_block_xyz, n_blocks - 1))
        icc = i_block_xyz(1) * n_blocks(2) * n_blocks(3) + &
              i_block_xyz(2) * n_blocks(3) + &
@@ -952,7 +965,7 @@ contains
     FSC%gap = 0.0_double
     do ii = 1, 3
        ! get extent of atoms
-       call get_extent(ii, atom_coord, FSC%r_atoms_min(ii), &
+       call get_extent(ii, lattice_coord, FSC%r_atoms_min(ii), &
                        FSC%r_atoms_max(ii))
        call check_gap(ii, n_blocks, n_atoms_block, &
                       gap_block_min, gap_block_max)
@@ -967,10 +980,12 @@ contains
              FSC%is_folded(ii) = .true.
              limits(1) = FSC%r_atoms_min(ii)
              limits(2) = r_gap_block_min
-             call get_extent(ii, atom_coord, tmp_min, FSC%gap(1,ii), limits)
+             call get_extent(ii, lattice_coord, tmp_min, &
+                             FSC%gap(1,ii), limits)
              limits(1) = r_gap_block_max
              limits(2) = FSC%r_atoms_max(ii)
-             call get_extent(ii, atom_coord, FSC%gap(2,ii), tmp_max, limits)
+             call get_extent(ii, lattice_coord, FSC%gap(2,ii), &
+                             tmp_max, limits)
              ! check if no pbc in this direction
              if ((FSC%gap(2,ii) - FSC%gap(1,ii)) / FSC%dims(ii) > no_pbc) then
                 FSC%system_type = FSC%system_type - 1
@@ -983,7 +998,9 @@ contains
              !if ((FSC%r_atoms_max(ii) - FSC%r_atoms_min(ii)) / FSC%dims(ii) <= &
              !    no_pbc) then
              ! DRB 2016/08/05 New criterion based on gap size
-             if(one - (FSC%r_atoms_max(ii) - FSC%r_atoms_min(ii))>gap_threshold) then
+             if (FSC%dims(ii) - &
+                 (FSC%r_atoms_max(ii) - FSC%r_atoms_min(ii)) > &
+                 gap_threshold) then
                 FSC%system_type = FSC%system_type - 1
                 FSC%has_pbc(ii) = .false.
              end if
@@ -999,6 +1016,11 @@ contains
           end if
        end if
     end do ! ii
+    deallocate(lattice_coord, STAT=stat)
+    if (stat /= 0) then
+       call cq_abort("get_cell_info: Error deallocating lattice_coord")
+    end if
+    call reg_dealloc_mem(area_init, 3*ni_in_cell, type_dbl)
     deallocate(n_atoms_block, STAT=stat)
     if (stat /= 0) then
        call cq_abort("get_cell_info: Error deallocating n_atoms_block")
@@ -1409,28 +1431,28 @@ contains
        end select
        if (iprint_init > 2) then
           write (io_lun, "(10x,a,3f10.6)")  &
-               "Cell dimensions    (a0): ", &
+               "Lattice-normal spans (a0): ", &
                FSC%dims(1), FSC%dims(2), FSC%dims(3)
           write (io_lun, "(10x,a,2f10.6)")  &
-               "System extent in x (a0): ", &
+               "System extent in a (a0): ", &
                FSC%r_atoms_min(1), FSC%r_atoms_max(1)
           write (io_lun, "(10x,a,2f10.6)")  &
-               "System extent in y (a0): ", &
+               "System extent in b (a0): ", &
                FSC%r_atoms_min(2), FSC%r_atoms_max(2)
           write (io_lun, "(10x,a,2f10.6)")  &
-               "System extent in z (a0): ", &
+               "System extent in c (a0): ", &
                FSC%r_atoms_min(3), FSC%r_atoms_max(3)
           write (io_lun, "(10x,a,f10.6)")   &
-               "Largest gap in x   (a0): ", &
+               "Largest gap in a   (a0): ", &
                FSC%gap(2,1) - FSC%gap(1,1)
           write (io_lun, "(10x,a,f10.6)")   &
-               "Largest gap in y   (a0): ", &
+               "Largest gap in b   (a0): ", &
                FSC%gap(2,2) - FSC%gap(1,2)
           write (io_lun, "(10x,a,f10.6)")   &
-               "Largest gap in z   (a0): ", &
+               "Largest gap in c   (a0): ", &
                FSC%gap(2,3) - FSC%gap(1,3)
           write (io_lun, "(10x,a,3l3)")     &
-               "Partitioning method treating system is folded in (x,y,z): ", &
+               "Partitioning method treating system is folded in (a,b,c): ", &
                FSC%is_folded(1), FSC%is_folded(2), FSC%is_folded(3)
        end if
        ! print partition information

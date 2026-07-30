@@ -85,6 +85,28 @@ def parse_case(directory: Path):
     if not partition.is_file() or partition.stat().st_size == 0:
         raise ValueError(f"missing Hilbert SFC partition in {directory}")
 
+    system_types = re.findall(r"Detected system type:\s*(\w+)", text)
+    if not system_types or system_types[-1] != "bulk":
+        raise ValueError(f"expected bulk SFC classification in {directory}")
+    dimension_matches = re.findall(
+        r"(?:Cell dimensions|Lattice dimensions|Lattice-normal spans)"
+        r"\s+\(a0\):\s*"
+        r"([-+0-9.eEdD]+)\s+([-+0-9.eEdD]+)\s+([-+0-9.eEdD]+)",
+        text,
+    )
+    if not dimension_matches:
+        raise ValueError(f"missing SFC lattice dimensions in {directory}")
+    reported_dimensions = np.asarray(
+        [float(value.replace("D", "E")) for value in dimension_matches[-1]]
+    )
+    lattice, _, _ = read_coords(directory / "coords.dat")
+    expected_dimensions = 1.0 / np.linalg.norm(
+        np.linalg.inv(lattice), axis=0
+    )
+    dimension_error = float(np.max(np.abs(
+        reported_dimensions - expected_dimensions
+    )))
+
     energy = last_float(
         r"\|\* Harris-Foulkes energy\s+=\s+([-+0-9.eEdD]+)",
         text, "total energy")
@@ -105,6 +127,9 @@ def parse_case(directory: Path):
     if len(stress_values) != 9 or not all(math.isfinite(value) for value in values):
         raise ValueError(f"non-finite or incomplete result in {directory}")
     return {
+        "sfc_system_type": system_types[-1],
+        "sfc_lattice_normal_spans_bohr": reported_dimensions.tolist(),
+        "sfc_lattice_normal_span_error_bohr": dimension_error,
         "energy_ha": energy,
         "ewald_ha": ewald,
         "maximum_force_ha_per_bohr": maximum_force,
@@ -132,14 +157,19 @@ def analyse(root: Path):
             - cases[f"extreme_np{ranks}"]["ewald_ha"])
         for ranks in (1, 2)
     )
+    lattice_normal_span_error = max(
+        case["sfc_lattice_normal_span_error_bohr"] for case in cases.values()
+    )
     summary = {
         "status": "pass",
         "cases": cases,
+        "sfc_lattice_normal_span_error_bohr": lattice_normal_span_error,
         "rank_energy_error_ha": rank_energy_error,
         "rank_ewald_error_ha": rank_ewald_error,
         "basis_ewald_error_ha": basis_ewald_error,
     }
     limits = {
+        "sfc_lattice_normal_span_error_bohr": 1.0e-5,
         "rank_energy_error_ha": 1.0e-9,
         "rank_ewald_error_ha": 1.0e-10,
         "basis_ewald_error_ha": 1.0e-9,

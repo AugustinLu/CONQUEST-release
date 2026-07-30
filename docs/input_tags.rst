@@ -117,6 +117,9 @@ General.NPartitions[X/Y/Z] (*integer*)
     Allows the user to specify the number of partitions in x, y and z
     directions
 
+    For a nonorthogonal cell, x/y/z denote the first, second, and third
+    lattice-vector (fractional-coordinate) directions, respectively.
+
     *default*: 0 (i.e. use Hilbert partitioning, above)
 
 General.NewRun (*boolean*)
@@ -1532,12 +1535,16 @@ General.CheckDFT (*boolean*)
     *default*: F
 
 General.AverageAtomicDiameter (*real*)
-    Related to space-filling
+    Minimum physical slice size used when detecting empty regions for
+    Hilbert space-filling-curve partitioning, in bohr.
 
     *default*: 5.0
 
 General.GapThreshold (*real*)
-    Related to space-filling
+    Physical gap size, measured normal to each pair of lattice faces, above
+    which Hilbert partitioning treats that fractional-coordinate direction
+    as nonperiodic for decomposition purposes. This does not change the
+    calculation's physical boundary conditions.
 
     *default*: 2.0*(largest support radius)
 

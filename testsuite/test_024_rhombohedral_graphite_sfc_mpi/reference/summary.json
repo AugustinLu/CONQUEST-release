@@ -1,0 +1,146 @@
+{
+  "status": "pass",
+  "provenance": {
+    "structure": "3R rhombohedral graphite",
+    "source": "Lipson and Stokes, Proc. R. Soc. A 181, 101 (1942)",
+    "doi": "10.1098/rspa.1942.0063",
+    "cod_id": 1200018
+  },
+  "published_parameters": {
+    "rhombohedral_edge_angstrom": 3.635,
+    "rhombohedral_angle_degrees": 39.49,
+    "wyckoff_2c_x": 0.164
+  },
+  "space_group": 166,
+  "cases": {
+    "rhombohedral_np1": {
+      "atom_count": 2,
+      "sfc_system_type": "bulk",
+      "sfc_lattice_normal_spans_bohr": [
+        3.932207,
+        3.932207,
+        3.932207
+      ],
+      "sfc_lattice_normal_span_error_bohr": 2.7627839349619876e-07,
+      "partition_counts": [
+        1,
+        1,
+        1
+      ],
+      "energy_ha": -11.889308568254144,
+      "energy_per_atom_ha": -5.944654284127072,
+      "ewald_ha": -8.49075235774,
+      "ewald_per_atom_ha": -4.24537617887,
+      "maximum_force_ha_per_bohr": 0.01548183,
+      "stress_gpa": [
+        -5.68093569,
+        16.86906803,
+        10.57736959,
+        16.86906803,
+        -46.62312438,
+        3.79662172,
+        10.57736959,
+        3.79662172,
+        -50.29749062
+      ]
+    },
+    "rhombohedral_np2": {
+      "atom_count": 2,
+      "sfc_system_type": "bulk",
+      "sfc_lattice_normal_spans_bohr": [
+        3.932207,
+        3.932207,
+        3.932207
+      ],
+      "sfc_lattice_normal_span_error_bohr": 2.7627839349619876e-07,
+      "partition_counts": [
+        2,
+        2,
+        2
+      ],
+      "energy_ha": -11.889308568254123,
+      "energy_per_atom_ha": -5.944654284127061,
+      "ewald_ha": -8.49075235774,
+      "ewald_per_atom_ha": -4.24537617887,
+      "maximum_force_ha_per_bohr": 0.01548183,
+      "stress_gpa": [
+        -5.68093569,
+        16.86906803,
+        10.57736959,
+        16.86906803,
+        -46.62312438,
+        3.79662172,
+        10.57736959,
+        3.79662172,
+        -50.29749062
+      ]
+    },
+    "hexagonal_np1": {
+      "atom_count": 6,
+      "sfc_system_type": "bulk",
+      "sfc_lattice_normal_spans_bohr": [
+        4.019463,
+        4.019463,
+        18.974805
+      ],
+      "sfc_lattice_normal_span_error_bohr": 1.8575665716724643e-07,
+      "partition_counts": [
+        1,
+        1,
+        4
+      ],
+      "energy_ha": -35.677835797359464,
+      "energy_per_atom_ha": -5.946305966226578,
+      "ewald_ha": -25.472257073,
+      "ewald_per_atom_ha": -4.245376178833333,
+      "maximum_force_ha_per_bohr": 0.01444386,
+      "stress_gpa": [
+        -53.40534195,
+        0.00048928,
+        -4.01e-06,
+        0.00048928,
+        -53.40477698,
+        2.32e-06,
+        -4.01e-06,
+        2.32e-06,
+        12.09846108
+      ]
+    },
+    "hexagonal_np2": {
+      "atom_count": 6,
+      "sfc_system_type": "bulk",
+      "sfc_lattice_normal_spans_bohr": [
+        4.019463,
+        4.019463,
+        18.974805
+      ],
+      "sfc_lattice_normal_span_error_bohr": 1.8575665716724643e-07,
+      "partition_counts": [
+        1,
+        1,
+        8
+      ],
+      "energy_ha": -35.6778357973598,
+      "energy_per_atom_ha": -5.946305966226633,
+      "ewald_ha": -25.472257073,
+      "ewald_per_atom_ha": -4.245376178833333,
+      "maximum_force_ha_per_bohr": 0.01444386,
+      "stress_gpa": [
+        -53.40534195,
+        0.00048928,
+        -4.01e-06,
+        0.00048928,
+        -53.40477698,
+        2.32e-06,
+        -4.01e-06,
+        2.32e-06,
+        12.09846108
+      ]
+    }
+  },
+  "sfc_lattice_normal_span_error_bohr": 2.7627839349619876e-07,
+  "rank_energy_error_ha": 3.339550858072471e-13,
+  "rank_ewald_error_ha": 0.0,
+  "rank_stress_error_gpa": 0.0,
+  "representation_ewald_per_atom_error_ha": 3.666666970048027e-11
+}
