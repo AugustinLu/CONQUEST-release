@@ -12,6 +12,53 @@
     "wyckoff_2c_x": 0.164
   },
   "space_group": 166,
+  "electronic_structure": {
+    "status": "pass",
+    "spacegroup_number": 166,
+    "spacegroup_international": "R-3m",
+    "bravais_lattice_extended": "hR1",
+    "path": [
+      [
+        "GAMMA",
+        "T"
+      ],
+      [
+        "T",
+        "H_2"
+      ],
+      [
+        "H_0",
+        "L"
+      ],
+      [
+        "L",
+        "GAMMA"
+      ],
+      [
+        "GAMMA",
+        "S_0"
+      ],
+      [
+        "S_2",
+        "F"
+      ],
+      [
+        "F",
+        "GAMMA"
+      ]
+    ],
+    "band_kpoints": 241,
+    "bands": 18,
+    "occupied_bands": 4,
+    "gaussian_width_ha": 0.005,
+    "gaussian_width_ev": 0.13605693122994,
+    "indirect_path_gap_ev": 0.05382928943681341,
+    "minimum_direct_path_separation_ev": 0.05382928943681341,
+    "integrated_electrons_at_fermi": 8.0,
+    "pdos_atom_files": 2,
+    "carbon_s_weight_minus2_to_2ev": 0.0011423321999999999,
+    "carbon_p_weight_minus2_to_2ev": 0.5471272911
+  },
   "cases": {
     "rhombohedral_np1": {
       "atom_count": 2,

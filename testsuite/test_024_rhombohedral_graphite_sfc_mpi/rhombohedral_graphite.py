@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 
 import numpy as np
+import seekpath
 import spglib
 
 
@@ -106,6 +107,48 @@ def symmetry_record(lattice, fractional):
     }
 
 
+def write_seekpath(root: Path, lattice, fractional):
+    """Write the HPKOT path in the input cell's reciprocal basis."""
+    result = seekpath.get_path_orig_cell(
+        (lattice, fractional, [6] * len(fractional)),
+        recipe="hpkot",
+        with_time_reversal=True,
+        symprec=1.0e-6,
+    )
+    record = {
+        "recipe": "HPKOT",
+        "spacegroup_number": int(result["spacegroup_number"]),
+        "spacegroup_international": result["spacegroup_international"],
+        "bravais_lattice_extended": result["bravais_lattice_extended"],
+        "path": [list(segment) for segment in result["path"]],
+        "point_coords": {
+            label: [float(value) for value in coordinates]
+            for label, coordinates in result["point_coords"].items()
+        },
+    }
+    if record["spacegroup_number"] != EXPECTED_SPACE_GROUP:
+        raise ValueError(
+            "SeeK-path did not retain the published R-3m symmetry"
+        )
+    (root / "seekpath.json").write_text(json.dumps(record, indent=2) + "\n")
+    lines = []
+    for start, end in record["path"]:
+        for label in (start, end):
+            lines.append(
+                " ".join(
+                    f"{value:.14f}" for value in record["point_coords"][label]
+                )
+            )
+    (root / "band_path.dat").write_text("\n".join(lines) + "\n")
+    return {
+        "recipe": record["recipe"],
+        "spacegroup_number": record["spacegroup_number"],
+        "spacegroup_international": record["spacegroup_international"],
+        "bravais_lattice_extended": record["bravais_lattice_extended"],
+        "segments": len(record["path"]),
+    }
+
+
 def prepare(root: Path):
     cells = published_cells()
     root.mkdir(parents=True, exist_ok=True)
@@ -138,6 +181,7 @@ def prepare(root: Path):
             directory.mkdir(parents=True, exist_ok=True)
             write_coords(directory / "coords.dat", lattice, fractional)
 
+    manifest["band_path"] = write_seekpath(root, *cells["rhombohedral"])
     rhombohedral = manifest["representations"]["rhombohedral"]
     hexagonal = manifest["representations"]["hexagonal"]
     volume_ratio = (
@@ -279,11 +323,18 @@ def analyse(root: Path):
     lattice_normal_span_error = max(
         case["sfc_lattice_normal_span_error_bohr"] for case in cases.values()
     )
+    band_summary_path = root / "band_summary.json"
+    if not band_summary_path.is_file():
+        raise ValueError("missing 3R-graphite band/pDOS summary")
+    band_summary = json.loads(band_summary_path.read_text())
+    if band_summary.get("status") != "pass":
+        raise ValueError("3R-graphite band/pDOS validation did not pass")
     summary = {
         "status": "pass",
         "provenance": manifest["provenance"],
         "published_parameters": manifest["published_parameters"],
         "space_group": EXPECTED_SPACE_GROUP,
+        "electronic_structure": band_summary,
         "cases": cases,
         "sfc_lattice_normal_span_error_bohr": lattice_normal_span_error,
         "rank_energy_error_ha": rank_energy_error,

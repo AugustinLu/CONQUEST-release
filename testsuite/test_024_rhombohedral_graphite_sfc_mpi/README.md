@@ -1,4 +1,4 @@
-# Test 024: published 3R graphite SFC and MPI acceptance
+# Test 024: published 3R graphite SFC, MPI, and band acceptance
 
 ## Purpose
 
@@ -35,14 +35,31 @@ requires:
 - equal ionic Ewald energy per atom in the rhombohedral and hexagonal
   settings.
 
+The two-atom primitive cell also supplies a separate, denser
+`8 x 8 x 8` self-consistent density for:
+
+- carbon-resolved pDOS on the same mesh;
+- fixed-density bands along the symmetry-derived HPKOT/SeeK-path route for
+  the published `R-3m` cell;
+- a combined band/pDOS plot and machine-readable validation summary.
+
+The plotted band eigenvalues are not broadened.  Gaussian broadening applies
+only to the DOS/pDOS and defaults to `0.005 Ha` (`0.136 eV`), slightly
+narrower than the `0.006-0.010 Ha` widths used by the earlier band/pDOS
+tests.  The electronic-structure checks require the expected number of path
+points, two carbon pDOS files, an eight-electron DOS integral, finite band
+metrics, and carbon `p` character to dominate within 2 eV of the Fermi
+level.
+
 Run with:
 
 ```bash
 ./run_workflow.sh
 ```
 
-The script never uses more than two MPI ranks and reuses the existing
-graphite carbon ion file from test 010.
+The script never uses more than two MPI ranks, reuses the existing graphite
+carbon ion file from test 010, and accepts `ELECTRONIC_MESH`,
+`BAND_POINTS`, and `PDOS_SIGMA` environment overrides.
 
 ## Quantitative reference
 
@@ -52,3 +69,10 @@ The maximum SFC lattice-normal span error is
 `3.34e-13 Ha`, their stresses are identical at the printed precision, and
 the rhombohedral/hexagonal Ewald energy per atom differs by
 `3.67e-11 Ha`.
+
+The electronic-structure stage produces 18 bands at 241 k points.  With the
+maintained SZP, 60-Ha-grid, `8 x 8 x 8` setup, the sampled HPKOT path gap is
+`0.0538 eV`; this is a regression value rather than a converged prediction
+for graphite's semimetallic overlap.  The broadened DOS integrates to
+exactly eight electrons at the Fermi level, and the integrated carbon
+`p` weight within `-2` to `+2 eV` is about 480 times its `s` weight.
