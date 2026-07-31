@@ -3855,6 +3855,7 @@ contains
     if(flag_DFTplusU) then
        deallocate(occ_mat)
        allocate(occ_mat(7,7,bundle%n_prim,nspin))
+       occ_mat = zero
     end if
     ! (0) Pseudopotentials: choose correct form
     select case (pseudo_type)
