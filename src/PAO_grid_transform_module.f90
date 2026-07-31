@@ -42,6 +42,9 @@
 !!    PAO_to_grid_global and PAO_to_grad_global, which are no longer used.
 !!   2026/07/29 lu
 !!    Generalised PAO-grid mapping to non-orthogonal cells
+!!   2026/07/31 Augustin Lu
+!!    Declared the general-cell lattice and block descriptors shared in the
+!!    OpenMP PAO-grid loop, as required by DEFAULT(NONE) with Intel ifx.
 !!  SOURCE
 !!
 module PAO_grid_transform_module
@@ -212,7 +215,7 @@ contains
     !$omp             schedule(dynamic) &
     !$omp             shared(domain, naba_atoms_of_blocks, offset_position, pao_fns, atomf, &
     !$omp                    dcellx_block, dcelly_block, dcellz_block, dcs_parts, &
-    !$omp                    rcut, n_pts_in_block, pao, gridfunctions, direction) &
+    !$omp                    rcut, n_pts_in_block, pao, gridfunctions, direction, lat_vec, blocks) &
     !$omp             private(ia, ipart, iblock, l1, acz, m1, count1, x, y, z, val, position, &
     !$omp                     npoint, r_store, ip_store, x_store, y_store, z_store, my_species, &
     !$omp                     xblock, yblock, zblock, iatom, xatom, yatom, zatom, naba_part_label, ind_part, icover, nx, ny, nz)
