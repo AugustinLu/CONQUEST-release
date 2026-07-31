@@ -1,0 +1,14 @@
+{
+  "status": "pass",
+  "system": "eight-atom conventional diamond Si",
+  "cell": "orthorhombic",
+  "basis": "blips initialized from nine PAOs",
+  "support_function_range_bohr": 7.12,
+  "support_grid_spacing_bohr": 0.8,
+  "grid_cutoff_ha": 50.0,
+  "kpoint_mesh": [2, 2, 2],
+  "harris_foulkes_energy_ha": -33.282717184298185,
+  "energy_tolerance_ha": 1e-6,
+  "electron_count": 32.00005,
+  "electron_tolerance": 1e-3
+}

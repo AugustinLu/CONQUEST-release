@@ -1,0 +1,40 @@
+IO.Title                     orthorhombic_si_blip_smoke
+IO.Coordinates               coords.dat
+IO.FractionalAtomicCoords    T
+IO.Iprint                    1
+
+AtomMove.TypeOfRun           static
+General.NumberOfSpecies      1
+General.PAOFromFiles         T
+
+%block ChemicalSpeciesLabel
+1 28.086 Si Si.ion
+%endblock
+
+Basis.BasisSet               blips
+Basis.InitBlipFlag           pao
+Basis.LoadCoeffs             F
+Basis.OnsiteBlipsAnalytic    T
+Basis.AnalyticBlipIntegrals  F
+
+%block Si
+Atom.NumberOfSupports        9
+Atom.SupportFunctionRange    7.12
+Atom.SupportGridSpacing      0.80
+%endblock
+
+Grid.GridCutoff              50
+Grid.InBlockX                4
+Grid.InBlockY                4
+Grid.InBlockZ                4
+
+DM.SolutionMethod            diagon
+minE.SelfConsistent          T
+minE.SCTolerance             1.0e-6
+minE.VaryBasis               F
+
+Diag.MPMesh                  T
+Diag.GammaCentred            T
+Diag.MPMeshX                 2
+Diag.MPMeshY                 2
+Diag.MPMeshZ                 2

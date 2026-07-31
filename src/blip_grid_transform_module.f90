@@ -48,8 +48,11 @@
 !!    Adding local blip-to-grid and grid-to-blip transforms
 !!   2014/09/15 18:30 lat
 !!    fixed call start/stop_timer to timer_module (not timer_stdlocks_module !)
-!!   2026/07/29 lu
-!!    Generalised blip-grid coordinate transforms to non-orthogonal cells
+!!   2026/07/31 Augustin Lu
+!!    Added direct Cartesian blip-grid transforms for non-orthogonal and
+!!    rotated cells, including values, gradients, second derivatives, and
+!!    the corresponding inverse transforms.  Retained the original separable
+!!    fast path for axis-aligned orthorhombic cells.
 !!  SOURCE
 module blip_grid_transform_module
 
@@ -64,6 +67,293 @@ module blip_grid_transform_module
 !!***
 
 contains
+
+  ! The legacy blip transforms are separable in the three integration-grid
+  ! indices and therefore require the lattice vectors to coincide with the
+  ! positive Cartesian axes.  Retain that fast path where it is valid and use
+  ! direct Cartesian evaluation for every other cell representation.
+  logical function blip_requires_general_transform()
+
+    use datatypes
+    use numbers,       only: zero, one
+    use global_module, only: cell_vec_len, lat_vec
+
+    implicit none
+
+    real(double) :: orthorhombic_lat_vec(3,3), scale, tolerance
+    integer :: i
+
+    orthorhombic_lat_vec = zero
+    do i = 1, 3
+       orthorhombic_lat_vec(i,i) = cell_vec_len(i)
+    end do
+    scale = max(one,maxval(cell_vec_len))
+    tolerance = 128.0_double*epsilon(one)*scale
+    blip_requires_general_transform = &
+         maxval(abs(lat_vec-orthorhombic_lat_vec)) > tolerance
+  end function blip_requires_general_transform
+
+  ! Value or Cartesian derivative of a one-dimensional cubic blip.
+  real(double) function blip_axis_value(delta, spacing, derivative_order)
+
+    use datatypes
+    use numbers, only: zero, one, two
+
+    implicit none
+
+    real(double), intent(in) :: delta, spacing
+    integer, intent(in) :: derivative_order
+    real(double) :: scaled_distance, inverse_spacing, delta_sign
+
+    inverse_spacing = one/spacing
+    scaled_distance = abs(delta)*inverse_spacing
+    blip_axis_value = zero
+    if(scaled_distance > two) return
+
+    select case(derivative_order)
+    case(0)
+       if(scaled_distance <= one) then
+          blip_axis_value = one + scaled_distance*scaled_distance* &
+               (0.75_double*scaled_distance-1.5_double)
+       else
+          blip_axis_value = 0.25_double*(two-scaled_distance)**3
+       end if
+    case(1)
+       if(delta > zero) then
+          delta_sign = one
+       else if(delta < zero) then
+          delta_sign = -one
+       else
+          delta_sign = zero
+       end if
+       if(scaled_distance <= one) then
+          blip_axis_value = delta_sign*inverse_spacing*scaled_distance* &
+               (2.25_double*scaled_distance-3.0_double)
+       else
+          blip_axis_value = -delta_sign*inverse_spacing*0.75_double* &
+               (two-scaled_distance)**2
+       end if
+    case(2)
+       if(scaled_distance <= one) then
+          blip_axis_value = inverse_spacing*inverse_spacing* &
+               (4.5_double*scaled_distance-3.0_double)
+       else
+          blip_axis_value = inverse_spacing*inverse_spacing*1.5_double* &
+               (two-scaled_distance)
+       end if
+    end select
+  end function blip_axis_value
+
+  ! Correctness-first transform for a general lattice.  Blips remain cubic
+  ! Cartesian basis functions centred on each atom; only the integration-grid
+  ! point construction changes to use the complete lattice-vector matrix.
+  subroutine do_blip_transform_general(iprim, data_blip, nsf, n_d)
+
+    use datatypes
+    use numbers,              only: zero
+    use global_module,        only: area_basis, lat_vec
+    use group_module,         only: blocks
+    use primary_module,       only: bundle
+    use cover_module,         only: BCS_blocks
+    use set_blipgrid_module,  only: naba_blocks_of_atoms
+    use comm_array_module,    only: send_array
+    use block_module,         only: nx_in_block, ny_in_block, nz_in_block, n_pts_in_block
+    use GenComms,             only: cq_abort
+    use support_spec_format,  only: support_function
+    use memory_module,        only: reg_alloc_mem, type_dbl
+    use blip,                 only: blip_info
+
+    implicit none
+
+    integer, intent(in) :: iprim, nsf, n_d(3)
+    type(support_function), intent(in) :: data_blip
+
+    real(double) :: atom_position(3), displacement(3), grid_point(3)
+    real(double) :: axis_value(3,4), dsum(nsf), spacing, weight
+    integer :: axis_index(3,4), axis_count(3)
+    integer :: axis, base_index, bx, by, bz, ix, iy, iz, x, y, z
+    integer :: i1, i2, i3, ind_blip, ind_blk, igrid, naba_blk
+    integer :: ncover_yz, nsf1, nx_blk, ny_blk, nz_blk, spec, stat
+
+    spec = bundle%species(iprim)
+    spacing = blip_info(spec)%SupportGridSpacing
+    atom_position = (/bundle%xprim(iprim),bundle%yprim(iprim),bundle%zprim(iprim)/)
+
+    call start_timer(tmr_std_allocation)
+    allocate(send_array(naba_blocks_of_atoms%no_naba_blk(iprim)*nsf*n_pts_in_block),STAT=stat)
+    if(stat /= 0) call cq_abort('Error allocating send_array in general blip transform: ',stat)
+    call reg_alloc_mem(area_basis,size(send_array),type_dbl)
+    call stop_timer(tmr_std_allocation)
+    send_array = zero
+
+    ncover_yz = BCS_blocks%ncovery*BCS_blocks%ncoverz
+    igrid = 0
+    do naba_blk = 1, naba_blocks_of_atoms%no_naba_blk(iprim)
+       ind_blk = naba_blocks_of_atoms%list_naba_blk(naba_blk,iprim)-1
+       nx_blk = ind_blk/ncover_yz
+       ny_blk = (ind_blk-nx_blk*ncover_yz)/BCS_blocks%ncoverz
+       nz_blk = ind_blk-nx_blk*ncover_yz-ny_blk*BCS_blocks%ncoverz
+       nx_blk = nx_blk-BCS_blocks%nspanlx+BCS_blocks%nx_origin
+       ny_blk = ny_blk-BCS_blocks%nspanly+BCS_blocks%ny_origin
+       nz_blk = nz_blk-BCS_blocks%nspanlz+BCS_blocks%nz_origin
+
+       do iz = 1, nz_in_block
+          z = nz_in_block*(nz_blk-1)+iz-1
+          do iy = 1, ny_in_block
+             y = ny_in_block*(ny_blk-1)+iy-1
+             do ix = 1, nx_in_block
+                x = nx_in_block*(nx_blk-1)+ix-1
+                igrid = igrid+1
+                grid_point = real(x,double)*lat_vec(:,1)/ &
+                     real(blocks%ngcellx*nx_in_block,double) + &
+                     real(y,double)*lat_vec(:,2)/ &
+                     real(blocks%ngcelly*ny_in_block,double) + &
+                     real(z,double)*lat_vec(:,3)/ &
+                     real(blocks%ngcellz*nz_in_block,double)
+                displacement = grid_point-atom_position
+
+                do axis = 1, 3
+                   base_index = floor(displacement(axis)/spacing)
+                   axis_count(axis) = 0
+                   do bx = max(-blip_info(spec)%BlipArraySize,base_index-1), &
+                           min(blip_info(spec)%BlipArraySize,base_index+2)
+                      axis_count(axis) = axis_count(axis)+1
+                      axis_index(axis,axis_count(axis)) = bx
+                      axis_value(axis,axis_count(axis)) = blip_axis_value( &
+                           displacement(axis)-real(bx,double)*spacing,spacing,n_d(axis))
+                   end do
+                end do
+
+                dsum = zero
+                do i3 = 1, axis_count(3)
+                   bz = axis_index(3,i3)
+                   do i2 = 1, axis_count(2)
+                      by = axis_index(2,i2)
+                      do i1 = 1, axis_count(1)
+                         bx = axis_index(1,i1)
+                         ind_blip = blip_info(spec)%blip_number(bx,by,bz)
+                         if(ind_blip /= 0) then
+                            weight = axis_value(1,i1)*axis_value(2,i2)*axis_value(3,i3)
+                            do nsf1 = 1, nsf
+                               dsum(nsf1) = dsum(nsf1) + weight* &
+                                    data_blip%supp_func(nsf1)%coefficients(ind_blip)
+                            end do
+                         end if
+                      end do
+                   end do
+                end do
+                do nsf1 = 1, nsf
+                   send_array(nsf*(igrid-1)+nsf1) = dsum(nsf1)
+                end do
+             end do
+          end do
+       end do
+    end do
+  end subroutine do_blip_transform_general
+
+  ! Adjoint of do_blip_transform_general.  collect_result has already placed
+  ! the grid values in send_array in precisely the same block/grid ordering.
+  subroutine do_inverse_blip_general(iprim, data_dblip, nsf, n_d)
+
+    use datatypes
+    use global_module,        only: area_basis, lat_vec
+    use group_module,         only: blocks
+    use primary_module,       only: bundle
+    use cover_module,         only: BCS_blocks
+    use set_blipgrid_module,  only: naba_blocks_of_atoms
+    use comm_array_module,    only: send_array
+    use block_module,         only: nx_in_block, ny_in_block, nz_in_block
+    use GenComms,             only: cq_abort
+    use support_spec_format,  only: support_function
+    use memory_module,        only: reg_dealloc_mem, type_dbl
+    use blip,                 only: blip_info
+
+    implicit none
+
+    integer, intent(in) :: iprim, nsf, n_d(3)
+    type(support_function), intent(inout) :: data_dblip
+
+    real(double) :: atom_position(3), displacement(3), grid_point(3)
+    real(double) :: axis_value(3,4), dsum(nsf), spacing, weight
+    integer :: axis_index(3,4), axis_count(3)
+    integer :: axis, base_index, bx, by, bz, ix, iy, iz, x, y, z
+    integer :: i1, i2, i3, ind_blip, ind_blk, igrid, naba_blk
+    integer :: ncover_yz, nsf1, nx_blk, ny_blk, nz_blk, spec, stat
+
+    spec = bundle%species(iprim)
+    spacing = blip_info(spec)%SupportGridSpacing
+    atom_position = (/bundle%xprim(iprim),bundle%yprim(iprim),bundle%zprim(iprim)/)
+    ncover_yz = BCS_blocks%ncovery*BCS_blocks%ncoverz
+    igrid = 0
+
+    do naba_blk = 1, naba_blocks_of_atoms%no_naba_blk(iprim)
+       ind_blk = naba_blocks_of_atoms%list_naba_blk(naba_blk,iprim)-1
+       nx_blk = ind_blk/ncover_yz
+       ny_blk = (ind_blk-nx_blk*ncover_yz)/BCS_blocks%ncoverz
+       nz_blk = ind_blk-nx_blk*ncover_yz-ny_blk*BCS_blocks%ncoverz
+       nx_blk = nx_blk-BCS_blocks%nspanlx+BCS_blocks%nx_origin
+       ny_blk = ny_blk-BCS_blocks%nspanly+BCS_blocks%ny_origin
+       nz_blk = nz_blk-BCS_blocks%nspanlz+BCS_blocks%nz_origin
+
+       do iz = 1, nz_in_block
+          z = nz_in_block*(nz_blk-1)+iz-1
+          do iy = 1, ny_in_block
+             y = ny_in_block*(ny_blk-1)+iy-1
+             do ix = 1, nx_in_block
+                x = nx_in_block*(nx_blk-1)+ix-1
+                igrid = igrid+1
+                grid_point = real(x,double)*lat_vec(:,1)/ &
+                     real(blocks%ngcellx*nx_in_block,double) + &
+                     real(y,double)*lat_vec(:,2)/ &
+                     real(blocks%ngcelly*ny_in_block,double) + &
+                     real(z,double)*lat_vec(:,3)/ &
+                     real(blocks%ngcellz*nz_in_block,double)
+                displacement = grid_point-atom_position
+                do nsf1 = 1, nsf
+                   dsum(nsf1) = send_array(nsf*(igrid-1)+nsf1)
+                end do
+
+                do axis = 1, 3
+                   base_index = floor(displacement(axis)/spacing)
+                   axis_count(axis) = 0
+                   do bx = max(-blip_info(spec)%BlipArraySize,base_index-1), &
+                           min(blip_info(spec)%BlipArraySize,base_index+2)
+                      axis_count(axis) = axis_count(axis)+1
+                      axis_index(axis,axis_count(axis)) = bx
+                      axis_value(axis,axis_count(axis)) = blip_axis_value( &
+                           displacement(axis)-real(bx,double)*spacing,spacing,n_d(axis))
+                   end do
+                end do
+
+                do i3 = 1, axis_count(3)
+                   bz = axis_index(3,i3)
+                   do i2 = 1, axis_count(2)
+                      by = axis_index(2,i2)
+                      do i1 = 1, axis_count(1)
+                         bx = axis_index(1,i1)
+                         ind_blip = blip_info(spec)%blip_number(bx,by,bz)
+                         if(ind_blip /= 0) then
+                            weight = axis_value(1,i1)*axis_value(2,i2)*axis_value(3,i3)
+                            do nsf1 = 1, nsf
+                               data_dblip%supp_func(nsf1)%coefficients(ind_blip) = &
+                                    data_dblip%supp_func(nsf1)%coefficients(ind_blip) + &
+                                    dsum(nsf1)*weight
+                            end do
+                         end if
+                      end do
+                   end do
+                end do
+             end do
+          end do
+       end do
+    end do
+
+    call start_timer(tmr_std_allocation)
+    call reg_dealloc_mem(area_basis,size(send_array),type_dbl)
+    deallocate(send_array,STAT=stat)
+    if(stat /= 0) call cq_abort('Error deallocating send_array in general inverse blip transform: ',stat)
+    call stop_timer(tmr_std_allocation)
+  end subroutine do_inverse_blip_general
 
 !!****f* blip_grid_transform_module/blip_to_support_new *
 !!
@@ -232,6 +522,11 @@ contains
     ! are dynamically allocated variables.
     !**************************************************************************
     !     Start of subroutine
+
+    if(blip_requires_general_transform()) then
+       call do_blip_transform_general(iprim,data_blip,nsf,(/0,0,0/))
+       return
+    end if
 
     spec = bundle%species(iprim)
     rec_sgs = one / blip_info(spec)%SupportGridSpacing
@@ -846,11 +1141,19 @@ contains
          nzmin_grid,nzmax_grid
     integer     :: ncover_yz
     integer     :: stat=0,ii
+    integer     :: general_derivative(3)
 
     !real(double) :: sum_send_array1,sum_send_array2,&
          !                sum_send_array3,sum_send_array4
     ! inter_1,inter_2,splines,splines_for_z,imin_for_z,imax_for_z
     ! are dynamically allocated variables.
+
+    if(blip_requires_general_transform()) then
+       general_derivative = 0
+       general_derivative(direction) = 1
+       call do_blip_transform_general(iprim,data_blip,nsf,general_derivative)
+       return
+    end if
 
     spec = bundle%species(iprim)
     rec_sgs = one / blip_info(spec)%SupportGridSpacing
@@ -1309,6 +1612,11 @@ contains
          !                sum_send_array3,sum_send_array4
     ! inter_1,inter_2,splines,splines_for_z,imin_for_z,imax_for_z
     ! are dynamically allocated variables.
+
+    if(blip_requires_general_transform()) then
+       call do_blip_transform_general(iprim,data_blip,nsf,n_d)
+       return
+    end if
 
     spec = bundle%species(iprim)
     rec_sgs = one / blip_info(spec)%SupportGridSpacing
@@ -1785,6 +2093,11 @@ contains
     !      real(double) :: sum
     !**************************************************************************
     !     Start of subroutine
+
+    if(blip_requires_general_transform()) then
+       call do_inverse_blip_general(iprim,data_dblip,nsf,(/0,0,0/))
+       return
+    end if
 
     spec = bundle%species(iprim)
     call start_timer(tmr_std_allocation)
@@ -2424,6 +2737,14 @@ contains
     !!   nblkx,nblky,nblkz : number of integration grid points in a block
     !!     this variables should be passed from (blocks)
     integer :: nblkx,nblky,nblkz
+    integer :: general_derivative(3)
+
+    if(blip_requires_general_transform()) then
+       general_derivative = 0
+       general_derivative(direction) = 1
+       call do_inverse_blip_general(iprim,data_dblip,nsf,general_derivative)
+       return
+    end if
 
     spec = bundle%species(iprim)
     call start_timer(tmr_std_allocation)

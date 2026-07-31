@@ -1,0 +1,9 @@
+{
+  "reference_source": "first maintained general-cell blip run, 2026-07-31",
+  "energy_ha": -33.69282409425804,
+  "energy_tolerance_ha": 1e-05,
+  "maximum_force_ha_per_bohr": 0.00515836,
+  "force_tolerance_ha_per_bohr": 1e-05,
+  "electron_count": 31.999983,
+  "electron_tolerance": 0.001
+}
