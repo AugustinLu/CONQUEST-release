@@ -958,7 +958,7 @@ contains
                 call distsq_blk_atom &
                      (xatom,yatom,zatom,xmin,xmax,ymin,ymax,zmin,zmax,distsq)
                 spec = species_glob( id_glob( parts%icell_beg(DCS_parts%lab_cell(np)) +ni-1 ))
-                if(distsq<rcutsq(spec)+RD_ERR) then
+                if(distsq<rcutsq(spec)-RD_ERR) then
                 !if(distsq < rcutsq) then  ! have found a naba atom
                    ia=ia+1             ! seq. no. of naba atoms for iprim_blk
                    halo_set%ihalo(icover)=1     ! icover-th atom is a halo atom
@@ -1240,7 +1240,7 @@ contains
                 call distsq_blk_atom(xatom,yatom,zatom,xmin,xmax,ymin,ymax,zmin,zmax,distsq)
                 spec = species_glob( id_glob( parts%icell_beg(DCS_parts%lab_cell(np)) +ni-1 ))
 
-                if(distsq < rcutsq(spec)+RD_ERR) then  ! have found a naba atom
+                if(distsq < rcutsq(spec)-RD_ERR) then  ! have found a naba atom
                    ia=ia+1
                    atoms = .true.
                    ihalo(icover) = 1
