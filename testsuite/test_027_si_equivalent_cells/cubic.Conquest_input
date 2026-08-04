@@ -1,0 +1,19 @@
+IO.Title                    si_cubic_equivalence_g400_k11
+IO.Coordinates              coords_cubic.in
+IO.FractionalAtomicCoords   T
+IO.Iprint                   1
+General.NumberOfSpecies     1
+General.PAOFromFiles        T
+%block ChemicalSpeciesLabel
+1 28.086 Si Si.ion
+%endblock
+Grid.GridCutoff             400
+DM.SolutionMethod           diagon
+AtomMove.TypeOfRun          static
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-9
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.MPMeshX                11
+Diag.MPMeshY                11
+Diag.MPMeshZ                11
