@@ -366,7 +366,7 @@ contains
        if(stat/=0) call cq_abort('Error allocating cover set members z: ',set%mx_mcover,stat)
        allocate(set%ig_cover(set%mx_mcover),STAT=stat)
        if(stat/=0) call cq_abort('Error allocating ig_cover:',set%mx_mcover,stat)
-       call reg_alloc_mem(area_index, 3*set%mx_mcover,type_dbl)
+       call reg_alloc_mem(area_index, set%mx_mcover,type_int)
        call stop_timer(tmr_std_allocation)
        do ind_cover=1,set%ng_cover
           nsx=nx_in_cover(ind_cover)
@@ -868,8 +868,9 @@ contains
     deallocate(set%ncover_rem, set%inv_lab_cover, set%lab_cover,set%lab_cell, STAT=stat)
     if(stat/=0) call cq_abort('deallocate_cs: error(2)')
     if(members) then
-       deallocate(set%zcover,set%ycover,set%xcover, set%icover_ibeg,set%n_ing_cover, STAT=stat)
+       deallocate(set%ig_cover,set%zcover,set%ycover,set%xcover, set%icover_ibeg,set%n_ing_cover, STAT=stat)
        if(stat/=0) call cq_abort('deallocate_cs: error(3)')
+       call reg_dealloc_mem(area_index, set%mx_mcover,type_int)
     endif
     call stop_timer(tmr_std_allocation)
     return
