@@ -34,5 +34,7 @@ cp "$SCRIPT_DIR/../test_015_monoclinic_zro2/Zr.ion" "$RESULTS_DIR/Zr.ion"
 
 [[ -s "$RESULTS_DIR/Conquest_out" ]]
 [[ -s "$RESULTS_DIR/coord_next.dat" ]]
+grep -q "OptCellMethod 3 preserves initial lattice angles" \
+  "$RESULTS_DIR/Conquest_out"
 "$PYTHON" "$SCRIPT_DIR/check_cell.py" \
   "$SCRIPT_DIR/coords.in" "$RESULTS_DIR/coord_next.dat"

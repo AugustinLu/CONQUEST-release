@@ -8,6 +8,8 @@ The `a/b` constraint keeps the basal scale factors equal.  Method 3 may
 therefore change `a` and `c` independently, including the `c/a` ratio, while
 preserving the 90, 90, and 120 degree HCP angles.  It cannot relax shear or
 lattice angles; use Method 1 with `AtomMove.FullStress T` for that task.
+CONQUEST emits a runtime warning about this constraint whenever method 3 is
+selected for a nonorthogonal starting cell.
 
 Run from this directory with:
 

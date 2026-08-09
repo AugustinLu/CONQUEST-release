@@ -191,7 +191,8 @@ contains
          flag_cdft_atom, flag_local_excitation, &
          flag_diagonalisation, flag_vary_basis, &
          flag_MDcontinue, flag_SFcoeffReuse,    &
-         flag_exx, flag_full_stress, cell_requires_full_stress
+         flag_exx, flag_full_stress, cell_requires_full_stress, &
+         flag_opt_cell, optcell_method, cell_has_nonorthogonal_vectors
     use exx_types,     only: exx_gto, exx_gto_poisson
     !use read_gto_info, only: read_gto
     use read_gto_info, only: read_gto_new
@@ -339,6 +340,12 @@ contains
        flag_full_stress = .true.
        call cq_warn(sub_name, &
             "General lattice requires the full stress tensor; enabling AtomMove.FullStress")
+    end if
+    if (flag_opt_cell .and. optcell_method == 3 .and. &
+         cell_has_nonorthogonal_vectors()) then
+       call cq_warn(sub_name, &
+            "AtomMove.OptCellMethod 3 preserves initial lattice angles; "// &
+            "use method 1 to relax shear and cell shape")
     end if
     if(iprint_init>4) call print_process_info()
     ! By now, we'll have unit cell sizes and grid cutoff

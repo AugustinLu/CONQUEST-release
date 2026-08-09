@@ -468,6 +468,24 @@ contains
          maxval(abs(lat_vec-axis_aligned_lattice)) > tolerance
   end function cell_requires_full_stress
 
+  logical function cell_has_nonorthogonal_vectors()
+    real(double) :: scale, tolerance
+    integer :: i, j
+
+    cell_has_nonorthogonal_vectors = .false.
+    tolerance = 128.0_double*epsilon(one)
+    do i = 1, 2
+       do j = i + 1, 3
+          scale = cell_vec_len(i)*cell_vec_len(j)
+          if (abs(dot_product(lat_vec(:,i),lat_vec(:,j))) > &
+               tolerance*scale) then
+             cell_has_nonorthogonal_vectors = .true.
+             return
+          end if
+       end do
+    end do
+  end function cell_has_nonorthogonal_vectors
+
   real(double) function reciprocal_lattice_norm(index)
     ! Norm of reciprocal basis vector index without the conventional 2*pi.
     ! This is the inverse spacing of direct-lattice planes normal to that

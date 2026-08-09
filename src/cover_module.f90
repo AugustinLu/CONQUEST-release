@@ -602,8 +602,6 @@ contains
     real(double) :: cslx,csly,cslz              ! Covering set left
     real(double) :: grid_ext_x, grid_ext_y, grid_ext_z
     real(double) :: ratio_x, ratio_y, ratio_z
-    real(double) :: cos12, cos13, cos23
-    logical :: skewed_cell
 
     if(.NOT.associated(prim%groups)) then
        call cq_abort('convert_primary: primary set groups pointer not assoc')
@@ -728,14 +726,7 @@ contains
     ! reciprocal-metric cutoff used above.  Retain one safety group on each
     ! side so that BCS sender lists and DCS receiver lists contain identical
     ! periodic images when a grid dimension changes with cell volume.
-    cos12 = dot_product(lat_vec(:,1),lat_vec(:,2)) / &
-         (cell_vec_len(1)*cell_vec_len(2))
-    cos13 = dot_product(lat_vec(:,1),lat_vec(:,3)) / &
-         (cell_vec_len(1)*cell_vec_len(3))
-    cos23 = dot_product(lat_vec(:,2),lat_vec(:,3)) / &
-         (cell_vec_len(2)*cell_vec_len(3))
-    skewed_cell = max(abs(cos12),abs(cos13),abs(cos23)) > 1.0e-10_double
-    if(skewed_cell) then
+    if(cell_has_nonorthogonal_vectors()) then
        set%nspanlx = set%nspanlx + 1
        set%nspanly = set%nspanly + 1
        set%nspanlz = set%nspanlz + 1
