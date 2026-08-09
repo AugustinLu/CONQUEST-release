@@ -309,8 +309,8 @@ def pdf_report(summary: dict[str, Any], destination: Path) -> None:
         from reportlab.lib.units import mm
         from reportlab.platypus import (
             BaseDocTemplate,
+            CondPageBreak,
             Frame,
-            KeepTogether,
             PageBreak,
             PageTemplate,
             Paragraph,
@@ -443,7 +443,12 @@ def pdf_report(summary: dict[str, Any], destination: Path) -> None:
     table.setStyle(TableStyle(commands))
     story.extend([table, PageBreak(), Paragraph("Test-by-test detail", styles["Section"])])
 
-    for item in tests:
+    for index, item in enumerate(tests):
+        if index:
+            if item["number"] == 20:
+                story.append(PageBreak())
+            else:
+                story.append(CondPageBreak(240 * mm))
         status_color = green if item["status"] == "PASS" else red if item["status"] == "FAIL" else amber
         ranks = ", ".join(str(value) for value in item["mpi_ranks_used"]) or "none"
         meta = Table([
@@ -463,7 +468,11 @@ def pdf_report(summary: dict[str, Any], destination: Path) -> None:
             ("TOPPADDING", (0, 0), (-1, -1), 3),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]))
-        details = [Paragraph(item["name"], styles["Test"]), meta]
+        details = [
+            Paragraph(item["name"], styles["Test"]),
+            Spacer(1, 20 * mm),
+            meta,
+        ]
         if item["highlights"]:
             details.append(Spacer(1, 1.5 * mm))
             details.append(Paragraph("Validation highlights", styles["Small"]))
@@ -474,7 +483,7 @@ def pdf_report(summary: dict[str, Any], destination: Path) -> None:
             Paragraph(f"Log: {item['log']}", styles["Tiny"]),
             Spacer(1, 5 * mm),
         ])
-        story.append(KeepTogether(details))
+        story.extend(details)
 
     story.append(PageBreak())
     story.append(Paragraph("Provenance and method", styles["Section"]))
