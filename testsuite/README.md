@@ -47,6 +47,14 @@ Individual tests or ranges can be selected while developing:
 /opt/anaconda3/bin/python run_all_tests.py --tests 5,12,28-32
 ```
 
+After correcting a failure, a targeted rerun can replace those records in an
+earlier complete summary and regenerate a consolidated report:
+
+```bash
+/opt/anaconda3/bin/python run_all_tests.py --no-build --tests 12,28 \
+  --base-summary test_runs/20260809-230103/summary.json
+```
+
 Timestamped logs and machine-readable summaries are stored under
 `test_runs/`.  The latest PDF is written to
 `../output/pdf/conquest_all_tests_report.pdf`.

@@ -533,6 +533,10 @@ def main() -> int:
     parser.add_argument("--no-build", action="store_true")
     parser.add_argument("--no-pdf", action="store_true")
     parser.add_argument("--pdf", type=Path, default=DEFAULT_PDF)
+    parser.add_argument(
+        "--base-summary", type=Path,
+        help="replace rerun test records in an earlier complete summary",
+    )
     parser.add_argument("--run-root", type=Path,
                         help="result directory (default: testsuite/test_runs/TIMESTAMP)")
     args = parser.parse_args()
@@ -663,11 +667,23 @@ def main() -> int:
         print(f"{name}: {status} | atoms={atom_count or 'n/a'} | ranks={ranks_used or 'none'} | {duration:.1f} s", flush=True)
 
     finished = dt.datetime.now().astimezone()
+    base_summary = None
+    if args.base_summary:
+        base_summary = json.loads(args.base_summary.read_text())
+        merged = {int(item["number"]): item for item in base_summary["tests"]}
+        merged.update({int(item["number"]): item for item in records})
+        records = [merged[number] for number in sorted(merged)]
+
+    started_at = started.isoformat(timespec="seconds")
+    duration_seconds = (finished - started).total_seconds()
+    if base_summary:
+        started_at = base_summary["started_at"]
+        duration_seconds += float(base_summary.get("duration_seconds", 0.0))
     summary = {
         "schema_version": 1,
-        "started_at": started.isoformat(timespec="seconds"),
+        "started_at": started_at,
         "finished_at": finished.isoformat(timespec="seconds"),
-        "duration_seconds": round((finished - started).total_seconds(), 3),
+        "duration_seconds": round(duration_seconds, 3),
         "git": {
             "root": str(ROOT),
             "branch": git_value("branch", "--show-current"),
@@ -677,7 +693,7 @@ def main() -> int:
         "host": os.uname().nodename,
         "python": sys.version.split()[0],
         "mpi_policy": "max(1, min(3, floor(atom_count / 3)))",
-        "build": {
+        "build": base_summary["build"] if base_summary and args.no_build else {
             "status": build_status,
             "exit_code": build_code,
             "duration_seconds": round(build_duration, 3),
@@ -686,6 +702,10 @@ def main() -> int:
         },
         "tests": records,
     }
+    if base_summary:
+        summary["consolidated_from"] = str(args.base_summary.resolve())
+        summary["rerun_tests"] = sorted(int(item["number"]) for item in records
+                                        if int(item["number"]) in selection)
     summary_path = run_root / "summary.json"
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
     print(f"Summary: {summary_path}")
