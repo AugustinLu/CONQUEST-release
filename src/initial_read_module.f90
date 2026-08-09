@@ -191,7 +191,7 @@ contains
          flag_cdft_atom, flag_local_excitation, &
          flag_diagonalisation, flag_vary_basis, &
          flag_MDcontinue, flag_SFcoeffReuse,    &
-         flag_exx
+         flag_exx, flag_full_stress, cell_requires_full_stress
     use exx_types,     only: exx_gto, exx_gto_poisson
     !use read_gto_info, only: read_gto
     use read_gto_info, only: read_gto_new
@@ -334,6 +334,11 @@ contains
        call read_atomic_positions(trim(atom_coord_file))
     else
        call read_atomic_positions(md_position_file)
+    end if
+    if (.not. flag_full_stress .and. cell_requires_full_stress()) then
+       flag_full_stress = .true.
+       call cq_warn(sub_name, &
+            "General lattice requires the full stress tensor; enabling AtomMove.FullStress")
     end if
     if(iprint_init>4) call print_process_info()
     ! By now, we'll have unit cell sizes and grid cutoff

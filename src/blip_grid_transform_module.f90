@@ -74,23 +74,11 @@ contains
   ! direct Cartesian evaluation for every other cell representation.
   logical function blip_requires_general_transform()
 
-    use datatypes
-    use numbers,       only: zero, one
-    use global_module, only: cell_vec_len, lat_vec
+    use global_module, only: cell_requires_full_stress
 
     implicit none
 
-    real(double) :: orthorhombic_lat_vec(3,3), scale, tolerance
-    integer :: i
-
-    orthorhombic_lat_vec = zero
-    do i = 1, 3
-       orthorhombic_lat_vec(i,i) = cell_vec_len(i)
-    end do
-    scale = max(one,maxval(cell_vec_len))
-    tolerance = 128.0_double*epsilon(one)*scale
-    blip_requires_general_transform = &
-         maxval(abs(lat_vec-orthorhombic_lat_vec)) > tolerance
+    blip_requires_general_transform = cell_requires_full_stress()
   end function blip_requires_general_transform
 
   ! Value or Cartesian derivative of a one-dimensional cubic blip.

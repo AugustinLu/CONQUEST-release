@@ -450,6 +450,24 @@ module global_module
 
 contains
 
+  logical function cell_requires_full_stress()
+    ! The stress tensor is expressed in Cartesian coordinates.  Whenever the
+    ! lattice is not represented by three positive, Cartesian-aligned vectors,
+    ! shear components cannot safely be treated as optional: a skewed or
+    ! rotated cell can couple them into cell dynamics and relaxation.
+    real(double) :: axis_aligned_lattice(3,3), scale, tolerance
+    integer :: i
+
+    axis_aligned_lattice = zero
+    do i = 1, 3
+       axis_aligned_lattice(i,i) = cell_vec_len(i)
+    end do
+    scale = max(one, maxval(cell_vec_len))
+    tolerance = 128.0_double*epsilon(one)*scale
+    cell_requires_full_stress = &
+         maxval(abs(lat_vec-axis_aligned_lattice)) > tolerance
+  end function cell_requires_full_stress
+
   subroutine invert_3x3(mat, inv_mat, det, is_valid)
     real(double), intent(in) :: mat(3,3)
     real(double), intent(out) :: inv_mat(3,3)

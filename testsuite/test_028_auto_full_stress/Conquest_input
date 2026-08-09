@@ -1,0 +1,23 @@
+IO.Title                    automatic_full_stress
+IO.Coordinates              coords.dat
+IO.FractionalAtomicCoords   T
+IO.Iprint                   1
+AtomMove.TypeOfRun          static
+
+General.NumberOfSpecies     1
+General.PAOFromFiles        T
+General.NeutralAtom         F
+%block ChemicalSpeciesLabel
+1 28.086 Si Si.ion
+%endblock
+
+Grid.GridCutoff             80
+DM.SolutionMethod           diagon
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-8
+
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.MPMeshX                2
+Diag.MPMeshY                2
+Diag.MPMeshZ                2
