@@ -117,6 +117,26 @@ def canonical_entrypoint(test_dir: Path, number: int) -> tuple[str, list[str]]:
     return "no canonical entrypoint", []
 
 
+def workflow_rank_ceiling(command: list[str], default: int) -> int:
+    """Return a workflow's explicit NP ceiling when it declares one."""
+    if len(command) < 2:
+        return default
+    try:
+        source = Path(command[1]).read_text(errors="replace")
+    except OSError:
+        return default
+    upper_bounds = [
+        int(value)
+        for value in re.findall(r"(?:\$\{?NP\}?|NP)\s*(?:>|-gt)\s*[\"']?(\d+)", source)
+    ]
+    allowed_values = [
+        int(value)
+        for value in re.findall(r"(?:\$\{?NP\}?|NP)[\"']?\s*!=\s*[\"']?(\d+)", source)
+    ]
+    declared = upper_bounds + ([max(allowed_values)] if allowed_values else [])
+    return min(default, min(declared)) if declared else default
+
+
 MPI_GUARD = r'''#!/usr/bin/env python3
 import json
 import os
@@ -571,8 +591,9 @@ def main() -> int:
         name = test_dir.name
         counts = discover_atom_counts(test_dir)
         atom_count = min(counts) if counts else None
-        ranks = rank_limit(atom_count, args.max_mpi)
         entrypoint, command = canonical_entrypoint(test_dir, number)
+        workflow_max = workflow_rank_ceiling(command, args.max_mpi)
+        ranks = min(rank_limit(atom_count, args.max_mpi), workflow_max)
         log_path = log_dir / f"{name}.log"
         env = base_env.copy()
         env["NP"] = str(ranks)
@@ -631,6 +652,7 @@ def main() -> int:
             "atom_count": atom_count,
             "discovered_atom_counts": counts,
             "rank_cap": ranks,
+            "workflow_rank_cap": workflow_max,
             "mpi_ranks_used": ranks_used,
             "mpi_invocations": len(guard_records),
             "entrypoint": entrypoint,
