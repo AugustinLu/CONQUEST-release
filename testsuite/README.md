@@ -21,7 +21,35 @@ To run the tests
   2. Run the `Conquest` executable in the subdirectories named `test_00*`
   3. Check the correctness of the outputs with `pytest`
 
-These steps can be run automatically using the script `run_conquest_test.sh` in this directry.
+These steps can be run automatically using the script `run_conquest_tests.sh` in this directory.
+
+### Complete numbered suite
+
+`run_all_tests.py` runs every numbered test directory, including the extended
+general-cell workflows.  It builds with at most three jobs and dynamically
+limits every MPI launch to
+
+```text
+max(1, min(3, floor(number_of_atoms / 3)))
+```
+
+The MPI limit is applied inside nested workflows as well as to the original
+tests 001-009.  Run the complete suite and generate its JSON and PDF reports
+with:
+
+```bash
+/opt/anaconda3/bin/python run_all_tests.py
+```
+
+Individual tests or ranges can be selected while developing:
+
+```bash
+/opt/anaconda3/bin/python run_all_tests.py --tests 5,12,28-32
+```
+
+Timestamped logs and machine-readable summaries are stored under
+`test_runs/`.  The latest PDF is written to
+`../output/pdf/conquest_all_tests_report.pdf`.
 
 ## Contributing
 
