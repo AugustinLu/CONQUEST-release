@@ -2492,10 +2492,7 @@ contains
     use GenComms,           only: inode, ionode
     use density_module,     only: density
     use maxima_module,      only: maxngrid
-    use dimens,             only:  &
-                                  r_super_x_squared, r_super_y_squared, &
-                                  r_super_z_squared, volume, &
-                                  grid_point_volume, &
+    use dimens,             only: volume, grid_point_volume, &
                                   one_over_grid_point_volume, n_grid_x, &
                                   n_grid_y, n_grid_z
     use fft_module,         only: recip_vector, hartree_factor, i0
@@ -2536,9 +2533,6 @@ contains
 
     ! scale the integration grid and volume to the new cell.
     ! Constant number of grid points
-    r_super_x_squared = cell_vec_len(1) * cell_vec_len(1)
-    r_super_y_squared = cell_vec_len(2) * cell_vec_len(2)
-    r_super_z_squared = cell_vec_len(3) * cell_vec_len(3)
     call baro%get_volume
     if (abs(baro%volume-volume) > 100.0_double*very_small*volume) &
          call cq_abort("update_cell: inconsistent barostat volume")

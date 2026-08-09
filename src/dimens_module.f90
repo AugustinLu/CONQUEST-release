@@ -55,7 +55,7 @@ module dimens
   implicit none
   save
 
-  real(double) :: r_super_vec(3,3), r_super_vec_inv(3,3)
+  real(double) :: r_super_vec(3,3)
   real(double) :: volume
   real(double) :: r_s, r_h, r_c, r_nl, r_core_squared, r_dft_d2, r_exx, r_exxs
   real(double) :: r_s_atomf, r_h_atomf, r_MS, r_LD
@@ -74,7 +74,6 @@ module dimens
 
   integer :: n_grid_x, n_grid_y, n_grid_z, n_my_grid_points
 
-  real(double) :: r_super_x_squared, r_super_y_squared, r_super_z_squared
   real(double) :: x_grid, y_grid, z_grid
 
   integer, parameter :: ngrids = 105

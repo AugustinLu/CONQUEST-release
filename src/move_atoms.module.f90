@@ -2468,10 +2468,7 @@ contains
     use density_module,     only: density
     use maxima_module,      only: maxngrid
     use timer_module
-    use dimens,             only: &
-                                  r_super_x_squared, r_super_y_squared, &
-                                  r_super_z_squared, volume, &
-                                  grid_point_volume, &
+    use dimens,             only: volume, grid_point_volume, &
                                   one_over_grid_point_volume, n_grid_x, &
                                   n_grid_y, n_grid_z
     use fft_module,         only: recip_vector, hartree_factor, i0
@@ -4946,9 +4943,8 @@ contains
     use density_module,     only: density, set_density_pcc
     use maxima_module,      only: maxngrid
     use timer_module
-    use dimens, ONLY: &
-         r_super_x_squared, r_super_y_squared, r_super_z_squared, volume, &
-         grid_point_volume, one_over_grid_point_volume, n_grid_x, n_grid_y, n_grid_z
+    use dimens, ONLY: volume, grid_point_volume, &
+         one_over_grid_point_volume, n_grid_x, n_grid_y, n_grid_z
     use fft_module, ONLY: recip_vector, hartree_factor, i0
     use DiagModule, ONLY: kk, nkp
     use input_module,         only: leqi
@@ -5024,9 +5020,6 @@ contains
 
     ! DRB added 2017/05/24 17:05
     ! We've changed the simulation cell. Now we must update grids and the density
-    r_super_x_squared = cell_vec_len(1) * cell_vec_len(1)
-    r_super_y_squared = cell_vec_len(2) * cell_vec_len(2)
-    r_super_z_squared = cell_vec_len(3) * cell_vec_len(3)
     call invert_3x3(lat_vec, lat_vec_inv, det_new)
     if (abs(det_new) < 1.0e-12_double) &
          call cq_abort("update_cell_dims: singular trial lattice")
@@ -5097,8 +5090,7 @@ contains
     use GenComms, only: cq_abort
     use density_module, only: density
     use maxima_module, only: maxngrid
-    use dimens, only: r_super_x_squared, r_super_y_squared, &
-         r_super_z_squared, volume, grid_point_volume, &
+    use dimens, only: volume, grid_point_volume, &
          one_over_grid_point_volume, n_grid_x, n_grid_y, n_grid_z
     use fft_module, only: recip_vector, hartree_factor, i0
     use DiagModule, only: kk, nkp
@@ -5125,9 +5117,6 @@ contains
     do i = 1, 3
        cell_vec_len(i) = sqrt(sum(lat_vec(:,i)*lat_vec(:,i)))
     end do
-    r_super_x_squared = cell_vec_len(1)*cell_vec_len(1)
-    r_super_y_squared = cell_vec_len(2)*cell_vec_len(2)
-    r_super_z_squared = cell_vec_len(3)*cell_vec_len(3)
     grid_point_volume = volume/(n_grid_x*n_grid_y*n_grid_z)
     one_over_grid_point_volume = one/grid_point_volume
     scale = old_volume/volume
@@ -5185,9 +5174,7 @@ contains
                               recip_lat_vec, invert_3x3, cell_vol
     use GenComms,       only: inode, ionode, cq_abort
     use maxima_module,  only: maxngrid
-    use dimens,         only: r_super_vec, r_super_vec_inv, &
-                              r_super_x_squared, r_super_y_squared, &
-                              r_super_z_squared, volume, grid_point_volume, &
+    use dimens,         only: r_super_vec, volume, grid_point_volume, &
                               one_over_grid_point_volume, n_grid_x, n_grid_y, &
                               n_grid_z
     use DiagModule,     only: kk, nkp
@@ -5215,14 +5202,10 @@ contains
        cell_vec_len(i) = sqrt(sum(lat_vec(:,i)*lat_vec(:,i)))
     end do
     r_super_vec = lat_vec
-    r_super_vec_inv = lat_vec_inv
     recip_lat_vec = transpose(lat_vec_inv)
 
     ! We have changed the simulation cell.  Keep all real- and reciprocal-
     ! space state in the same full lattice representation.
-    r_super_x_squared = cell_vec_len(1) * cell_vec_len(1)
-    r_super_y_squared = cell_vec_len(2) * cell_vec_len(2)
-    r_super_z_squared = cell_vec_len(3) * cell_vec_len(3)
     grid_point_volume = volume/(n_grid_x*n_grid_y*n_grid_z)
     one_over_grid_point_volume = one / grid_point_volume
     scale = old_volume/volume

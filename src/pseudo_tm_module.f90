@@ -3142,7 +3142,7 @@ contains
        npoint, ip_store, r_store, x_store, y_store, z_store) 
 
     use numbers
-    use global_module, only: cell_vec_len, lattice_grid_point_offset
+    use global_module, only: lattice_grid_point_offset
     use group_module,  only: blocks
     use block_module,  only: nx_in_block,ny_in_block,nz_in_block, &
          n_pts_in_block
@@ -3158,18 +3158,12 @@ contains
     real(double),intent(out) :: y_store(n_pts_in_block)
     real(double),intent(out) :: z_store(n_pts_in_block)
     !Local
-    real(double):: dcellx_block,dcelly_block,dcellz_block
-    real(double):: dcellx_grid, dcelly_grid, dcellz_grid
     real(double):: dx, dy, dz
     integer :: ipoint, iz, iy, ix
     real(double) ::  r2, r_from_i, rx, ry, rz, x, y, z, rcut2
 
 
     rcut2 = rcut* rcut
-    dcellx_block=cell_vec_len(1)/blocks%ngcellx; dcellx_grid=dcellx_block/nx_in_block
-    dcelly_block=cell_vec_len(2)/blocks%ngcelly; dcelly_grid=dcelly_block/ny_in_block
-    dcellz_block=cell_vec_len(3)/blocks%ngcellz; dcellz_grid=dcellz_block/nz_in_block
-
     ipoint=0
     npoint=0
     do iz=1,nz_in_block

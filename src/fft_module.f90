@@ -681,8 +681,6 @@ contains
           col_num = (n-1)*numprocs + JNODE - 1
           x = MOD(col_num,n_grid_x)
           !c xmin2 is distance to nearest edge of reciprocal box squared
-          !xmin2 = real(min(x*x,(n_grid_x-x)*(n_grid_x-x)))
-          !xmin2 = xmin2 / (r_super_x_squared)
           ! If we were looping over grid points in x, then I'd do a loop from 1 to ngridx/2+1 and set
           ! x = (nx-1)/cell_vec_len(1) and then a second loop from ngridx/2+2 to ngridx and set
           ! x = ((nx-1)-ngridx)/cell_vec_len(1) to get the Brillouin zone right; I'm assuming that the minus
@@ -694,8 +692,6 @@ contains
           end if
           xmin2 = xmin*xmin
           z = col_num / n_grid_x
-          !zmin2 = real(min(z*z,(n_grid_z-z)*(n_grid_z-z)))
-          !zmin2 = zmin2 / (r_super_z_squared)
           if((n_grid_z-z)<z) then
              zmin = real(z-n_grid_z,double)/cell_vec_len(3)
           else
@@ -709,8 +705,6 @@ contains
                 col_num = ((y+x*n_grid_y)/numprocs) + 1
                 site = (col_num-1)*n_grid_z + z + 1
                 unpackyz(site) = cnt
-                !ymin2 = real(min(y*y,(n_grid_y-y)*(n_grid_y-y)))
-                !ymin2 =  ymin2 / (r_super_y_squared)
                 if((n_grid_y-y)<y) then
                    ymin = real(y-n_grid_y,double)/cell_vec_len(2)
                 else
