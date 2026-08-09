@@ -1,0 +1,26 @@
+IO.Title                    rotated_triclinic_pdb_restart
+IO.Coordinates              restart.pdb
+IO.PdbIn                    T
+IO.PdbOut                   T
+IO.PdbTemplate              restart.pdb
+IO.FractionalAtomicCoords   F
+IO.Iprint                   1
+AtomMove.TypeOfRun          static
+
+General.NumberOfSpecies     1
+General.PAOFromFiles        T
+General.NeutralAtom         F
+%block ChemicalSpeciesLabel
+1 28.086 Si Si.ion
+%endblock
+
+Grid.GridCutoff             80
+DM.SolutionMethod           diagon
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-8
+
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.MPMeshX                2
+Diag.MPMeshY                2
+Diag.MPMeshZ                2

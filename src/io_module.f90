@@ -301,6 +301,10 @@ contains
     integer      :: num_move_atom
     real(double) :: num_move_atom_real
     real(double), dimension(3) :: angle
+    real(double), dimension(3) :: pdb_origin
+    real(double), dimension(3,3) :: pdb_scale, pdb_lattice
+    real(double) :: scale_determinant
+    logical, dimension(3) :: scale_found
     character(len=80) :: pdb_line
     character(len=2)  :: atom_name
 
@@ -370,6 +374,9 @@ first:    do
           call reg_alloc_mem(area_init, 3*ni_in_cell,type_dbl)
           call reg_alloc_mem(area_init, 4*ni_in_cell,type_int)
 
+          pdb_scale = zero
+          pdb_origin = zero
+          scale_found = .false.
           i = 0
 second:   do
              read (lun, '(a)', iostat=ios) pdb_line
@@ -486,8 +493,35 @@ second:   do
                 !write(io_lun,4) cell_vec_len
 !4               format(/10x,'The simulation box has the following dimensions',/, &
 !                       10x,'a = ',f9.5,' b = ',f9.5,' c = ',f9.5,' a.u.')
+             case ('SCALE1','SCALE2','SCALE3')
+                j = iachar(pdb_line(6:6)) - iachar('0')
+                read (pdb_line(11:55),'(3f10.6,5x,f10.5)') &
+                     pdb_scale(j,:), pdb_origin(j)
+                scale_found(j) = .true.
              end select
           end do second
+          if (any(scale_found) .and. .not. all(scale_found)) &
+               call cq_abort("PDB file contains an incomplete SCALE matrix")
+          if (all(scale_found)) then
+             ! SCALE maps the stored orthogonal Cartesian coordinates to
+             ! fractional coordinates.  Its inverse therefore restores the
+             ! actual orientation that CRYST1 lengths and angles cannot carry.
+             call invert_3x3(pdb_scale, pdb_lattice, scale_determinant)
+             if (abs(scale_determinant) < 1.0e-12_double) &
+                  call cq_abort("PDB SCALE matrix is singular")
+             lat_vec = AngToBohr*pdb_lattice
+             r_super_vec = lat_vec
+             do j = 1, 3
+                cell_vec_len(j) = &
+                     sqrt(dot_product(lat_vec(:,j),lat_vec(:,j)))
+             end do
+             ! A nonzero SCALE translation shifts the crystallographic
+             ! origin.  Move Cartesian positions to CONQUEST's zero origin.
+             do i = 1, ni_in_cell
+                atom_coord(:,i) = atom_coord(:,i) + &
+                     matmul(lat_vec,pdb_origin)
+             end do
+          end if
           ! Wrap coordinates
           call invert_3x3(lat_vec, lat_vec_inv, cell_vol)
           if (abs(cell_vol) < 1.0e-12_double) &
@@ -675,7 +709,7 @@ second:   do
                               lat_vec, lat_vec_inv
     use species_module, only: species, species_label
     use GenComms,       only: inode, ionode, cq_abort
-    use units,          only: BohrToAng
+    use units,          only: AngToBohr, BohrToAng
     use timer_module
 
     ! Passed variables
@@ -688,6 +722,7 @@ second:   do
     character(len=80)          :: pdb_line
     character(len=2)           :: atom_name
     real(double), dimension(3) :: coords, pdb_lengths, pdb_angles
+    real(double), dimension(3,3) :: pdb_scale
     type(cq_timer)             :: tmr_l_tmp1
 
     if(inode==ionode) then
@@ -705,6 +740,11 @@ second:   do
              write(io_lun,*) 'Filename was: |',pdb_temp,'|'
              call cq_abort('Reading template file: file error ',ios)
           end if
+          call lattice_to_pdb_cell(lat_vec, pdb_lengths, pdb_angles)
+          pdb_lengths = BohrToAng*pdb_lengths
+          ! PDB SCALE records preserve the orientation omitted by CRYST1:
+          ! fractional = SCALE * Cartesian(Angstrom), with zero origin shift.
+          pdb_scale = AngToBohr*lat_vec_inv
           ! Read the template file, reprint all lines that are not ATOM, HETATM, or CRYST1
           ! to the output file
           ! If the line contains coords/cell parameters, replace them by the calculated ones.
@@ -735,10 +775,15 @@ second:   do
                 write (lun,'(a)') pdb_line
               endif
             case ('CRYST1')
-              call lattice_to_pdb_cell(lat_vec, pdb_lengths, pdb_angles)
-              pdb_lengths = BohrToAng*pdb_lengths
               write (lun,'(a6,3f9.3,3f7.2,a)') pdb_line(1:6), &
                     pdb_lengths, pdb_angles, pdb_line(56:80)
+              do j = 1, 3
+                 write (lun,'("SCALE",i1,4x,3f10.6,5x,f10.5)') &
+                      j, pdb_scale(j,:), zero
+              end do
+            case ('SCALE1','SCALE2','SCALE3')
+              ! Replaced immediately after CRYST1 above.
+              continue
             case default
               write (lun,'(a)') pdb_line
             end select
