@@ -1,0 +1,722 @@
+{
+  "build": {
+    "duration_seconds": 0.02,
+    "exit_code": 0,
+    "jobs": 3,
+    "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/build.log",
+    "status": "PASS"
+  },
+  "consolidated_from": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/summary.json",
+  "duration_seconds": 2595.55,
+  "finished_at": "2026-08-09T23:57:16+09:00",
+  "git": {
+    "branch": "feature/general-nonorthogonal-cells",
+    "commit": "9248eb4de5f5",
+    "describe": "v1.5-68-g9248eb4d-dirty",
+    "root": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release"
+  },
+  "host": "Lu-Laptop.local",
+  "mpi_policy": "max(1, min(3, floor(atom_count / 3)))",
+  "python": "3.13.9",
+  "rerun_tests": [
+    11,
+    19,
+    27
+  ],
+  "schema_version": 1,
+  "started_at": "2026-08-09T23:01:03+09:00",
+  "tests": [
+    {
+      "atom_count": 8,
+      "discovered_atom_counts": [
+        8
+      ],
+      "duration_seconds": 2.598,
+      "entrypoint": "direct CONQUEST run + pytest reference comparison",
+      "exit_code": 0,
+      "highlights": [
+        "4 passed, 32 deselected in 0.08s",
+        "PulayMixSC: Reached SCF tolerance of 0.91858E-06 after 5 iterations"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_001_bulk_Si_1proc_Diag.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        2
+      ],
+      "name": "test_001_bulk_Si_1proc_Diag",
+      "number": 1,
+      "rank_cap": 2,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 8,
+      "discovered_atom_counts": [
+        8
+      ],
+      "duration_seconds": 9.932,
+      "entrypoint": "direct CONQUEST run + pytest reference comparison",
+      "exit_code": 0,
+      "highlights": [
+        "4 passed, 32 deselected in 0.04s"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_002_bulk_Si_1proc_OrderN.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        2
+      ],
+      "name": "test_002_bulk_Si_1proc_OrderN",
+      "number": 2,
+      "rank_cap": 2,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 5,
+      "discovered_atom_counts": [
+        5,
+        40
+      ],
+      "duration_seconds": 18.086,
+      "entrypoint": "direct CONQUEST run + pytest reference comparison",
+      "exit_code": 0,
+      "highlights": [
+        "4 passed, 32 deselected in 0.06s",
+        "PulayMixSC: Reached SCF tolerance of 0.76963E-07 after 29 iterations"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_003_bulk_BTO_polarisation.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_003_bulk_BTO_polarisation",
+      "number": 3,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 6,
+      "discovered_atom_counts": [
+        6
+      ],
+      "duration_seconds": 12.238,
+      "entrypoint": "direct CONQUEST run + pytest reference comparison",
+      "exit_code": 0,
+      "highlights": [
+        "4 passed, 32 deselected in 0.06s",
+        "PulayMixSC: Reached SCF tolerance of 0.79157E-07 after 15 iterations"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_004_isol_C2H4_4proc_PBE0CRI.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        2
+      ],
+      "name": "test_004_isol_C2H4_4proc_PBE0CRI",
+      "number": 4,
+      "rank_cap": 2,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 6,
+      "discovered_atom_counts": [
+        6
+      ],
+      "duration_seconds": 56.431,
+      "entrypoint": "direct CONQUEST run + pytest reference comparison",
+      "exit_code": 0,
+      "highlights": [
+        "4 passed, 32 deselected in 0.06s",
+        "PulayMixSC: Reached SCF tolerance of 0.78125E-07 after 14 iterations"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_005_isol_C2H4_4proc_PBE0GTO.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        2
+      ],
+      "name": "test_005_isol_C2H4_4proc_PBE0GTO",
+      "number": 5,
+      "rank_cap": 2,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 6,
+      "discovered_atom_counts": [
+        6
+      ],
+      "duration_seconds": 16.437,
+      "entrypoint": "direct CONQUEST run + pytest reference comparison",
+      "exit_code": 0,
+      "highlights": [
+        "4 passed, 32 deselected in 0.04s",
+        "PulayMixSC: Reached SCF tolerance of 0.79157E-07 after 15 iterations"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_006_isol_C2H4_4proc_PBE0ERI.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        2
+      ],
+      "name": "test_006_isol_C2H4_4proc_PBE0ERI",
+      "number": 6,
+      "rank_cap": 2,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 2,
+      "discovered_atom_counts": [
+        2
+      ],
+      "duration_seconds": 228.72,
+      "entrypoint": "direct CONQUEST run + pytest reference comparison",
+      "exit_code": 0,
+      "highlights": [
+        "4 passed, 32 deselected in 0.06s",
+        "PulayMixSC: Reached SCF tolerance of 0.57025E-03 after 4 iterations"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_007_isol_CH_spinpol_1proc_PBE0CRI.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_007_isol_CH_spinpol_1proc_PBE0CRI",
+      "number": 7,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 3,
+      "discovered_atom_counts": [
+        3
+      ],
+      "duration_seconds": 4.493,
+      "entrypoint": "direct CONQUEST run + pytest reference comparison",
+      "exit_code": 0,
+      "highlights": [
+        "4 passed, 32 deselected in 0.04s",
+        "PulayMixSC: Reached SCF tolerance of 0.70722E-08 after 38 iterations"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_008_surface_dipole.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_008_surface_dipole",
+      "number": 8,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 2,
+      "discovered_atom_counts": [
+        2
+      ],
+      "duration_seconds": 188.394,
+      "entrypoint": "direct CONQUEST run + pytest reference comparison",
+      "exit_code": 0,
+      "highlights": [
+        "4 passed, 32 deselected in 0.04s",
+        "SCF tolerance: 0.00000100",
+        "PulayMixSC: Reached SCF tolerance of 0.85677E-06 after 29 iterations"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_009_DFT_plus_U.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_009_DFT_plus_U",
+      "number": 9,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 4,
+      "discovered_atom_counts": [
+        4
+      ],
+      "duration_seconds": 194.054,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "Workflow completed successfully!",
+        "Error in process 1"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_010_graphite_monoclinic.log",
+      "mpi_invocations": 4,
+      "mpi_ranks_used": [
+        1,
+        2
+      ],
+      "name": "test_010_graphite_monoclinic",
+      "number": 10,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 12,
+      "discovered_atom_counts": [
+        12
+      ],
+      "duration_seconds": 63.228,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "[1/4] Converged PBE/DZP SCF density on monoclinic HfO2",
+        "SCF tolerance: 0.00001000",
+        "new_SC_potl: Starting. Tolerance: 0.10000E-04",
+        "PulayMixSC: Reached SCF tolerance of 0.99530E-05 after 7 iterations"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-235347/logs/test_011_hfo2.log",
+      "mpi_invocations": 4,
+      "mpi_ranks_used": [
+        1,
+        2
+      ],
+      "name": "test_011_hfo2",
+      "number": 11,
+      "rank_cap": 2,
+      "status": "PASS",
+      "workflow_rank_cap": 2
+    },
+    {
+      "atom_count": 2,
+      "discovered_atom_counts": [
+        2
+      ],
+      "duration_seconds": 47.383,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "[2/5] Converged self-consistent density",
+        "\"initial_basis_error_bohr\": 0.05996283515645341,",
+        "\"final_basis_error_bohr\": 1.6081599726137713e-05"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_012_bulk_Si_primitive_nonorthogonal.log",
+      "mpi_invocations": 5,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_012_bulk_Si_primitive_nonorthogonal",
+      "number": 12,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 6,
+      "discovered_atom_counts": [
+        6
+      ],
+      "duration_seconds": 153.657,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "[2/5] Converged SCF density"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_013_rutile_TiO2_tetragonal.log",
+      "mpi_invocations": 5,
+      "mpi_ranks_used": [
+        1,
+        2
+      ],
+      "name": "test_013_rutile_TiO2_tetragonal",
+      "number": 13,
+      "rank_cap": 2,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 6,
+      "discovered_atom_counts": [
+        6
+      ],
+      "duration_seconds": 177.726,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "PASS: sulfur internal relaxation converged; MaxF 0.02736401 -> 0.00019562 Ha/a0.",
+        "[2/5] Converged relaxed-cell SCF density"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_014_bulk_2h_mos2_hexagonal.log",
+      "mpi_invocations": 5,
+      "mpi_ranks_used": [
+        1,
+        2
+      ],
+      "name": "test_014_bulk_2h_mos2_hexagonal",
+      "number": 14,
+      "rank_cap": 2,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 12,
+      "discovered_atom_counts": [
+        12
+      ],
+      "duration_seconds": 719.721,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "[2/5] Symmetry restoration and converged SCF density"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_015_monoclinic_zro2.log",
+      "mpi_invocations": 5,
+      "mpi_ranks_used": [
+        1,
+        3
+      ],
+      "name": "test_015_monoclinic_zro2",
+      "number": 15,
+      "rank_cap": 3,
+      "status": "PASS"
+    },
+    {
+      "atom_count": null,
+      "discovered_atom_counts": [],
+      "duration_seconds": 0.734,
+      "entrypoint": "run_exact_mic.sh",
+      "exit_code": 0,
+      "highlights": [],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_016_exact_minimum_image_triclinic.log",
+      "mpi_invocations": 0,
+      "mpi_ranks_used": [],
+      "name": "test_016_exact_minimum_image_triclinic",
+      "number": 16,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 2,
+      "discovered_atom_counts": [
+        2
+      ],
+      "duration_seconds": 10.916,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "\"extxyz_stress_error_gpa\": 7.669131392162853e-07",
+        "\"maximum_quantum_error_e_per_bohr2\": 2.053218706166149e-14,",
+        "\"maximum_extxyz_lattice_error_angstrom\": 4.955079013768682e-09,",
+        "\"maximum_extxyz_stress_error_gpa\": 7.927003740082483e-07",
+        "\"maximum_quantum_error_e_per_bohr2\": 5e-12,",
+        "\"maximum_extxyz_lattice_error_angstrom\": 1e-07,",
+        "\"maximum_extxyz_stress_error_gpa\": 2e-05",
+        "\"failed_metrics\": []"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_017_nonorthogonal_polarisation_extxyz.log",
+      "mpi_invocations": 2,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_017_nonorthogonal_polarisation_extxyz",
+      "number": 17,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 2,
+      "discovered_atom_counts": [
+        2
+      ],
+      "duration_seconds": 7.142,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "\"energy_tolerance_ha\": 0.002,",
+        "\"correction_tolerance_ha\": 0.002"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_018_nonorthogonal_vdw_graphene.log",
+      "mpi_invocations": 2,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_018_nonorthogonal_vdw_graphene",
+      "number": 18,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 2,
+      "discovered_atom_counts": [
+        2
+      ],
+      "duration_seconds": 22.171,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "\"md_frame_initial_error_bohr\": 0.0,",
+        "\"initial_xsf_lattice_error_angstrom\": 2.477539506884341e-09,",
+        "\"final_xsf_lattice_error_angstrom\": 0.0,"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-235347/logs/test_019_nonorthogonal_npt_md.log",
+      "mpi_invocations": 3,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_019_nonorthogonal_npt_md",
+      "number": 19,
+      "rank_cap": 1,
+      "status": "PASS",
+      "workflow_rank_cap": 2
+    },
+    {
+      "atom_count": null,
+      "discovered_atom_counts": [],
+      "duration_seconds": 40.301,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "\"sfc_lattice_normal_span_error_bohr\": 2.1119547710668485e-07,",
+        "\"sfc_lattice_normal_span_error_bohr\": 2.111954788830417e-07,",
+        "\"rank_energy_error_ha\": 0.0,",
+        "\"rank_ewald_error_ha\": 0.0,",
+        "\"basis_ewald_error_ha\": 0.0"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_020_extreme_skew_sfc_mpi.log",
+      "mpi_invocations": 4,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_020_extreme_skew_sfc_mpi",
+      "number": 20,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 12,
+      "discovered_atom_counts": [
+        12
+      ],
+      "duration_seconds": 49.975,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "\"stress_symmetry_error\": 0.0,"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_021_hfo2_full_cell_npt.log",
+      "mpi_invocations": 3,
+      "mpi_ranks_used": [
+        3
+      ],
+      "name": "test_021_hfo2_full_cell_npt",
+      "number": 21,
+      "rank_cap": 3,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 18,
+      "discovered_atom_counts": [
+        18
+      ],
+      "duration_seconds": 41.089,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "\"stress_symmetry_error\": 1.000000000000001e-08,"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_022_graphene_xy_npt.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        3
+      ],
+      "name": "test_022_graphene_xy_npt",
+      "number": 22,
+      "rank_cap": 3,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 2,
+      "discovered_atom_counts": [
+        2
+      ],
+      "duration_seconds": 192.464,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_023_hcp_zr_method3_relax.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_023_hcp_zr_method3_relax",
+      "number": 23,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": null,
+      "discovered_atom_counts": [],
+      "duration_seconds": 30.18,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "\"sfc_lattice_normal_span_error_bohr\": 2.7627839349619876e-07,",
+        "\"sfc_lattice_normal_span_error_bohr\": 1.8575665716724643e-07,",
+        "\"rank_energy_error_ha\": 3.481659405224491e-13,",
+        "\"rank_ewald_error_ha\": 0.0,",
+        "\"rank_stress_error_gpa\": 0.0,",
+        "\"representation_ewald_per_atom_error_ha\": 3.666666970048027e-11"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_024_rhombohedral_graphite_sfc_mpi.log",
+      "mpi_invocations": 8,
+      "mpi_ranks_used": [
+        1,
+        2
+      ],
+      "name": "test_024_rhombohedral_graphite_sfc_mpi",
+      "number": 24,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 8,
+      "discovered_atom_counts": [
+        8
+      ],
+      "duration_seconds": 2.545,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_025_blip_basis_smoke.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        2
+      ],
+      "name": "test_025_blip_basis_smoke",
+      "number": 25,
+      "rank_cap": 2,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 8,
+      "discovered_atom_counts": [
+        8
+      ],
+      "duration_seconds": 37.614,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "PASS: nonorthogonal blip value/derivative/inverse regression; energy=-33.692824094258 Ha; rank error=0.000e+00 Ha"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_026_nonorthogonal_blip_basis.log",
+      "mpi_invocations": 2,
+      "mpi_ranks_used": [
+        1,
+        2
+      ],
+      "name": "test_026_nonorthogonal_blip_basis",
+      "number": 26,
+      "rank_cap": 2,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 2,
+      "discovered_atom_counts": [
+        2,
+        8
+      ],
+      "duration_seconds": 123.092,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "PASS: equivalent diamond-Si cells; energy error=5.746e-06 Ha/2 atoms (0.0782 meV/atom); stress error=2.736e-02 GPa"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-235347/logs/test_027_si_equivalent_cells.log",
+      "mpi_invocations": 2,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_027_si_equivalent_cells",
+      "number": 27,
+      "rank_cap": 1,
+      "status": "PASS",
+      "workflow_rank_cap": 3
+    },
+    {
+      "atom_count": 2,
+      "discovered_atom_counts": [
+        2
+      ],
+      "duration_seconds": 3.786,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_028_auto_full_stress.log",
+      "mpi_invocations": 2,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_028_auto_full_stress",
+      "number": 28,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 2,
+      "discovered_atom_counts": [
+        2
+      ],
+      "duration_seconds": 3.378,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "PASS: FFT cutoff sphere is contained and automatic k-point spacing uses reciprocal-vector norms"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_029_general_cell_sampling.log",
+      "mpi_invocations": 1,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_029_general_cell_sampling",
+      "number": 29,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": null,
+      "discovered_atom_counts": [],
+      "duration_seconds": 0.525,
+      "entrypoint": "run_block_distance.sh",
+      "exit_code": 0,
+      "highlights": [],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_030_triclinic_block_distance.log",
+      "mpi_invocations": 0,
+      "mpi_ranks_used": [],
+      "name": "test_030_triclinic_block_distance",
+      "number": 30,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": 2,
+      "discovered_atom_counts": [
+        2
+      ],
+      "duration_seconds": 4.034,
+      "entrypoint": "run_workflow.sh",
+      "exit_code": 0,
+      "highlights": [
+        "maximum lattice error (Angstrom): 8.918e-06",
+        "maximum fractional-coordinate error: 1.540e-04"
+      ],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_031_rotated_triclinic_pdb.log",
+      "mpi_invocations": 2,
+      "mpi_ranks_used": [
+        1
+      ],
+      "name": "test_031_rotated_triclinic_pdb",
+      "number": 31,
+      "rank_cap": 1,
+      "status": "PASS"
+    },
+    {
+      "atom_count": null,
+      "discovered_atom_counts": [],
+      "duration_seconds": 0.418,
+      "entrypoint": "run_surface_geometry.sh",
+      "exit_code": 0,
+      "highlights": [],
+      "log": "/Users/augustin/Documents/CONQUEST-monoclinic-codex/CONQUEST-release/testsuite/test_runs/20260809-230103/logs/test_032_triclinic_surface_geometry.log",
+      "mpi_invocations": 0,
+      "mpi_ranks_used": [],
+      "name": "test_032_triclinic_surface_geometry",
+      "number": 32,
+      "rank_cap": 1,
+      "status": "PASS"
+    }
+  ]
+}
