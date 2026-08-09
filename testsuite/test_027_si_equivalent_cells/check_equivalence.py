@@ -75,10 +75,37 @@ def parse_case(path: Path, expected_electrons: float, occupied_band: int) -> dic
     stress_match = require(
         r"Total stress:\s*([-+0-9.eEdD]+)\s+([-+0-9.eEdD]+)\s+([-+0-9.eEdD]+)\s+GPa",
         text,
-        f"{output}: diagonal stress was not printed",
+        f"{output}: stress was not printed",
     )
-    stress = [number(stress_match.group(i)) for i in range(1, 4)]
-    if not all(math.isfinite(value) for value in [energy, electrons, *stress]):
+    first_row = [number(stress_match.group(i)) for i in range(1, 4)]
+    continuation = re.match(
+        r"\s*\n\s*([-+0-9.eEdD]+)\s+([-+0-9.eEdD]+)\s+([-+0-9.eEdD]+)"
+        r"\s*\n\s*([-+0-9.eEdD]+)\s+([-+0-9.eEdD]+)\s+([-+0-9.eEdD]+)",
+        text[stress_match.end() :],
+    )
+    if continuation is None:
+        # Orthorhombic output prints only xx, yy and zz on its first row.
+        stress_tensor = [
+            [first_row[0], 0.0, 0.0],
+            [0.0, first_row[1], 0.0],
+            [0.0, 0.0, first_row[2]],
+        ]
+    else:
+        # General cells print the complete Cartesian tensor over three rows.
+        stress_tensor = [
+            first_row,
+            [number(continuation.group(i)) for i in range(1, 4)],
+            [number(continuation.group(i)) for i in range(4, 7)],
+        ]
+    stress = [stress_tensor[i][i] for i in range(3)]
+    off_diagonal = max(
+        abs(stress_tensor[i][j])
+        for i in range(3)
+        for j in range(3)
+        if i != j
+    )
+    flat_stress = [value for row in stress_tensor for value in row]
+    if not all(math.isfinite(value) for value in [energy, electrons, *flat_stress]):
         raise SystemExit(f"FAIL: {output}: a parsed result is non-finite")
     if abs(electrons - expected_electrons) > 1.0e-3:
         raise SystemExit(
@@ -88,7 +115,9 @@ def parse_case(path: Path, expected_electrons: float, occupied_band: int) -> dic
     return {
         "energy_ha": energy,
         "electrons": electrons,
+        "stress_tensor_gpa": stress_tensor,
         "diagonal_stress_gpa": stress,
+        "maximum_off_diagonal_stress_gpa": off_diagonal,
         "sampled_gap_ev": sampled_gap(path / "eigenvalues.dat", occupied_band),
     }
 
@@ -122,6 +151,11 @@ def main() -> None:
         raise SystemExit(
             f"FAIL: primitive and cubic diagonal stresses differ by {stress_error:.3e} GPa"
         )
+    if max(
+        cubic["maximum_off_diagonal_stress_gpa"],
+        primitive["maximum_off_diagonal_stress_gpa"],
+    ) > 5.0e-2:
+        raise SystemExit("FAIL: equivalent cubic silicon has non-hydrostatic stress")
     if primitive["sampled_gap_ev"] < 0.2:
         raise SystemExit(
             "FAIL: primitive diamond Si is not insulating on the sampled mesh; "
