@@ -42,6 +42,7 @@ for constraint in volume xyz; do
   grep -q "MD step:      1" "$directory/Conquest_out"
   [[ -s "$directory/md.frames" ]]
   [[ -s "$directory/trajectory.xyz" ]]
+  [[ -s "$directory/trajectory.xsf" ]]
 done
 
 method3_directory="$RESULTS_DIR/method3_smoke"

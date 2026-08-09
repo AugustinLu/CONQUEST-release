@@ -22,6 +22,8 @@ The test verifies that:
 - the `xyz` barostat applies diagonal Cartesian strains to complete lattice
   rows rather than to diagonal matrix entries alone;
 - the final extended-XYZ cell remains nonorthogonal and has positive volume;
+- every XSF `PRIMVEC` frame contains the same complete lattice as the native
+  MD/extended-XYZ outputs rather than an orthorhombic box;
 - `AtomMove.OptCellMethod 3` completes a one-step, volume-only relaxation on
   the primitive cell while retaining the authoritative nonorthogonal lattice;
 - the bundled Python MD utilities import with current NumPy/SciPy and their

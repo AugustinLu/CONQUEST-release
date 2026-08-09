@@ -10,6 +10,8 @@ from pathlib import Path
 
 import numpy as np
 
+BOHR_TO_ANG = 0.529177210903
+
 
 def input_lattice(path: Path) -> np.ndarray:
     return np.array(
@@ -36,6 +38,22 @@ def extxyz_lattice(path: Path) -> np.ndarray:
     return np.array([float(value) for value in values.group(1).split()]).reshape(3, 3)
 
 
+def xsf_lattices(path: Path) -> list[np.ndarray]:
+    lines = path.read_text().splitlines()
+    lattices = []
+    for index, line in enumerate(lines):
+        if line.startswith("PRIMVEC"):
+            lattices.append(
+                np.array(
+                    [[float(value) for value in lines[index + offset].split()]
+                     for offset in range(1, 4)]
+                )
+            )
+    if not lattices:
+        raise RuntimeError("No PRIMVEC frames found in XSF trajectory")
+    return lattices
+
+
 def shape_metric(rows: np.ndarray) -> np.ndarray:
     gram = rows @ rows.T
     return gram / abs(np.linalg.det(rows)) ** (2.0 / 3.0)
@@ -44,6 +62,7 @@ def shape_metric(rows: np.ndarray) -> np.ndarray:
 def analyse_case(root: Path, initial: np.ndarray, isotropic: bool) -> dict:
     frame = frame_lattice(root / "md.frames")
     final = extxyz_lattice(root / "trajectory.xyz")
+    xsf = xsf_lattices(root / "trajectory.xsf")
     text = (root / "Conquest_out").read_text()
     result = {
         "md_frame_lattice_rows_bohr": frame.tolist(),
@@ -52,6 +71,12 @@ def analyse_case(root: Path, initial: np.ndarray, isotropic: bool) -> dict:
         "md_frame_initial_error_bohr": float(np.max(np.abs(frame - initial))),
         "final_offdiagonal_norm_angstrom": float(
             np.linalg.norm(final - np.diag(np.diag(final)))
+        ),
+        "initial_xsf_lattice_error_angstrom": float(
+            np.max(np.abs(xsf[0] - initial * BOHR_TO_ANG))
+        ),
+        "final_xsf_lattice_error_angstrom": float(
+            np.max(np.abs(xsf[-1] - final))
         ),
         "completed_md_steps": len(re.findall(r"MD step:\s+1\b", text)),
     }
@@ -96,6 +121,10 @@ def main() -> None:
             failures.append(f"{name}: md.frames lost the complete input lattice")
         if case["final_offdiagonal_norm_angstrom"] < 1.0:
             failures.append(f"{name}: final cell was diagonalized")
+        if case["initial_xsf_lattice_error_angstrom"] > 1.0e-7:
+            failures.append(f"{name}: initial XSF cell lost lattice shear")
+        if case["final_xsf_lattice_error_angstrom"] > 1.0e-7:
+            failures.append(f"{name}: final XSF and extended-XYZ cells disagree")
         if case["completed_md_steps"] != 1:
             failures.append(f"{name}: one-step NPT trajectory did not complete")
         final = np.asarray(case["final_extxyz_lattice_rows_angstrom"])

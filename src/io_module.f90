@@ -2850,7 +2850,7 @@ second:   do
   subroutine write_positions(num,parts)
 
     use basic_types, only: group_set
-    use global_module, only: lat_vec, ni_in_cell, &
+    use global_module, only: lat_vec, cell_vec_len, ni_in_cell, &
          x_atom_cell, y_atom_cell, z_atom_cell, numprocs, id_glob
     use species_module, only: species
 
@@ -2873,7 +2873,10 @@ second:   do
     end if
     call io_assign(lun)
     open(unit=lun,file=filename)
-    write(lun,1) lat_vec(1,1), lat_vec(2,2), lat_vec(3,3) ! Just diag for backward compat in pdb for now
+    ! This legacy diagnostic header has room for three lengths only.  Retain
+    ! its schema, but do not confuse Cartesian diagonal projections with the
+    ! actual lattice-vector lengths for a rotated cell.
+    write(lun,1) cell_vec_len
     write(lun,2) ni_in_cell
     write(lun,3) parts%ngcellx,parts%ngcelly,parts%ngcellz
     write(lun,2) numprocs
@@ -2928,10 +2931,9 @@ second:   do
   subroutine write_xsf(filename, step)
 
     use datatypes
-    use numbers,        only: zero
     use dimens,         only:
     use global_module,  only: ni_in_cell, iprint_init, atom_coord, &
-                              species_glob
+                              species_glob, lat_vec
     use species_module, only: species_label
     use GenComms,       only: inode, ionode, cq_abort
     use units,          only: BohrToAng
@@ -2956,9 +2958,9 @@ second:   do
       end if
       write(lun,'(a)') "CRYSTAL"
       write(lun,'("PRIMVEC   ",i8)') step
-      write(lun,fmt='(3f14.8)') cell_vec_len(1)*BohrToAng, zero, zero
-      write(lun,fmt='(3f14.8)') zero, cell_vec_len(2)*BohrToAng, zero
-      write(lun,fmt='(3f14.8)') zero, zero, cell_vec_len(3)*BohrToAng
+      do i = 1, 3
+         write(lun,fmt='(3f14.8)') lat_vec(:,i)*BohrToAng
+      end do
       write(lun,'("PRIMCOORD ",i8)') step
       write(lun,fmt='(2i8)') ni_in_cell, 1
       do i=1,ni_in_cell
