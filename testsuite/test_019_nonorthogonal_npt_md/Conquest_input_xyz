@@ -5,6 +5,7 @@ IO.Iprint                   0
 
 General.NumberOfSpecies     1
 General.PAOFromFiles        T
+General.RNGSeed             5489
 %block ChemicalSpeciesLabel
 1 28.086 Si Si.ion
 %endblock

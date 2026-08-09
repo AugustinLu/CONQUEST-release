@@ -4719,32 +4719,26 @@ contains
 
     use datatypes
     use global_module, only: x_atom_cell, y_atom_cell, z_atom_cell,   &
-                             shift_in_bohr, ni_in_cell, io_lun, iprint_MD, &
+                             shift_in_bohr, ni_in_cell, &
                              lat_vec, lat_vec_inv
-    use global_module,        only: cell_vec_len
 
     implicit none
-    integer        :: atom
+    integer        :: atom, i
     real(double)   :: eps
-    real(double)   :: f(3), x, y, z
+    real(double)   :: cart(3), eps_frac(3), f(3)
 
     eps=shift_in_bohr
+    do i = 1, 3
+      eps_frac(i) = eps*sqrt(sum(lat_vec_inv(i,:)**2))
+    enddo
     do atom = 1, ni_in_cell
-      x = x_atom_cell(atom) + eps
-      y = y_atom_cell(atom) + eps
-      z = z_atom_cell(atom) + eps
-
-      f(1) = lat_vec_inv(1,1)*x + lat_vec_inv(1,2)*y + lat_vec_inv(1,3)*z
-      f(2) = lat_vec_inv(2,1)*x + lat_vec_inv(2,2)*y + lat_vec_inv(2,3)*z
-      f(3) = lat_vec_inv(3,1)*x + lat_vec_inv(3,2)*y + lat_vec_inv(3,3)*z
-
-      f(1) = f(1) - floor(f(1))
-      f(2) = f(2) - floor(f(2))
-      f(3) = f(3) - floor(f(3))
-
-      x_atom_cell(atom) = lat_vec(1,1)*f(1) + lat_vec(1,2)*f(2) + lat_vec(1,3)*f(3) - eps
-      y_atom_cell(atom) = lat_vec(2,1)*f(1) + lat_vec(2,2)*f(2) + lat_vec(2,3)*f(3) - eps
-      z_atom_cell(atom) = lat_vec(3,1)*f(1) + lat_vec(3,2)*f(2) + lat_vec(3,3)*f(3) - eps
+      cart = (/x_atom_cell(atom), y_atom_cell(atom), z_atom_cell(atom)/)
+      f = matmul(lat_vec_inv,cart)
+      f = f - floor(f + eps_frac)
+      cart = matmul(lat_vec,f)
+      x_atom_cell(atom) = cart(1)
+      y_atom_cell(atom) = cart(2)
+      z_atom_cell(atom) = cart(3)
     enddo
 
     return

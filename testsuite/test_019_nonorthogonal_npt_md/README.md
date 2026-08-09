@@ -3,7 +3,9 @@
 This one-step primitive-Si regression checks the variable-cell molecular
 dynamics paths that previously reconstructed an orthorhombic box from three
 lengths.  It uses the default isotropic (`MD.CellConstraint volume`)
-Parrinello-Rahman path on a 60-degree primitive cell.
+Parrinello-Rahman path on a 60-degree primitive cell.  The two MD inputs use a
+fixed random seed so that boundary crossings and the resulting regression are
+reproducible.
 
 Run with:
 
