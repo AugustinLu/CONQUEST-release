@@ -942,9 +942,11 @@ contains
 
     use datatypes
     use numbers
-    use global_module,               only: ni_in_cell, x_atom_cell, y_atom_cell, z_atom_cell, cell_vec_len
-    use dimens,                      only: grid_point_volume, n_grid_x, n_grid_y, n_grid_z, &
-         x_grid, y_grid, z_grid
+    use global_module,               only: ni_in_cell, x_atom_cell, &
+         y_atom_cell, z_atom_cell, lattice_plane_spacing, &
+         lattice_face_area, lattice_normal_coordinate
+    use dimens,                      only: grid_point_volume, n_grid_x, &
+         n_grid_y, n_grid_z
     use block_module,                only: n_pts_in_block, in_block_x,in_block_y,in_block_z
     use primary_module,              only: domain
     use GenComms,                    only: gsum, inode, ionode, cq_warn
@@ -965,35 +967,34 @@ contains
     integer, dimension(:), pointer :: grid_point_norm
     real(double) :: r_super_norm, r_super_area, grid_spacing_norm
     real(double) :: min_dens, beta, shift, locpot, dcl_frac
-    real(double), dimension(:), pointer :: atom_cell_norm
+    real(double), dimension(:), allocatable :: atom_cell_norm
+    real(double) :: atom_position(3)
 
     ! Set up appropriate parameters in direction of surface normal
     select case(surface_normal)
-    case(1) ! X
+    case(1) ! First fractional lattice direction
        n_grid_norm  = n_grid_x
        n_grid_plane = n_grid_y * n_grid_z
-       r_super_norm = cell_vec_len(1)
-       r_super_area = cell_vec_len(2) * cell_vec_len(3)
-       grid_spacing_norm = x_grid*cell_vec_len(1)
        grid_point_norm => grid_point_x
-       atom_cell_norm  => x_atom_cell
-    case(2) ! Y
+    case(2) ! Second fractional lattice direction
        n_grid_norm = n_grid_y
        n_grid_plane = n_grid_x * n_grid_z
-       r_super_norm = cell_vec_len(2)
-       r_super_area = cell_vec_len(1) * cell_vec_len(3)
-       grid_spacing_norm = y_grid*cell_vec_len(2)
        grid_point_norm => grid_point_y
-       atom_cell_norm  => y_atom_cell
-    case(3) ! Z
+    case(3) ! Third fractional lattice direction
        n_grid_norm = n_grid_z
        n_grid_plane = n_grid_y * n_grid_x
-       r_super_norm = cell_vec_len(3)
-       r_super_area = cell_vec_len(2) * cell_vec_len(1)
-       grid_spacing_norm = z_grid*cell_vec_len(3)
        grid_point_norm => grid_point_z
-       atom_cell_norm  => z_atom_cell
     end select
+    r_super_norm = lattice_plane_spacing(surface_normal)
+    r_super_area = lattice_face_area(surface_normal)
+    grid_spacing_norm = r_super_norm/real(n_grid_norm,double)
+    allocate(atom_cell_norm(ni_in_cell))
+    do atom = 1, ni_in_cell
+       atom_position = (/ x_atom_cell(atom), y_atom_cell(atom), &
+            z_atom_cell(atom) /)
+       atom_cell_norm(atom) = &
+            lattice_normal_coordinate(atom_position,surface_normal)
+    end do
     ! Allocate
     if(.not.allocated(density_average)) allocate(density_average(n_grid_norm))
     if(.not.allocated(planar_average)) allocate(planar_average(n_grid_norm))
@@ -1116,6 +1117,7 @@ contains
     if(inode==ionode.AND.iprint_SC>3) &
          write(io_lun,fmt='(8x,"Dipole energy for electrons and ions: ",2f12.5)') &
          surface_dipole_energy_elec, surface_dipole_energy_ion
+    deallocate(atom_cell_norm)
     return
   end subroutine get_surface_dipole
   !!***

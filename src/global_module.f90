@@ -496,6 +496,31 @@ contains
          sqrt(dot_product(recip_lat_vec(:,index), recip_lat_vec(:,index)))
   end function reciprocal_lattice_norm
 
+  real(double) function lattice_plane_spacing(index)
+    ! Perpendicular distance between the two opposite faces at fractional
+    ! coordinates zero and one for lattice direction index.
+    integer, intent(in) :: index
+
+    lattice_plane_spacing = one/reciprocal_lattice_norm(index)
+  end function lattice_plane_spacing
+
+  real(double) function lattice_face_area(index)
+    ! Area of the cell face spanned by the other two lattice vectors.
+    integer, intent(in) :: index
+
+    lattice_face_area = abs(cell_vol)/lattice_plane_spacing(index)
+  end function lattice_face_area
+
+  real(double) function lattice_normal_coordinate(point, index)
+    ! Wrapped perpendicular distance of point from fractional face index=0.
+    real(double), intent(in) :: point(3)
+    integer, intent(in) :: index
+
+    lattice_normal_coordinate = modulo( &
+         dot_product(recip_lat_vec(:,index),point),one) * &
+         lattice_plane_spacing(index)
+  end function lattice_normal_coordinate
+
   real(double) function point_parallelepiped_distance_sq(point, origin, edges)
     ! Exact squared distance from a Cartesian point to the closed
     ! parallelepiped origin + edges*t, 0 <= t_i <= 1.  Enumerating the 27
