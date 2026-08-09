@@ -3226,7 +3226,8 @@ contains
     use global_module,   only: iprint_init, cell_vec_len,  &
          area_general, ni_in_cell, numprocs,   &
          species_glob, io_lun, io_ase, ase_file, write_ase, flag_calc_pol, &
-         fractional_recip_to_cart, cart_recip_to_fractional
+         fractional_recip_to_cart, cart_recip_to_fractional, &
+         reciprocal_lattice_norm
     use numbers,         only: zero, one, two, pi, RD_ERR, half
     use GenComms,        only: cq_abort, cq_warn, gcopy
     use input_module
@@ -3563,9 +3564,9 @@ contains
        flag_gamma = fdf_boolean('Diag.GammaCentred',.false.)
        dk = fdf_double('Diag.dk',zero)
        if(dk>zero) then
-          mp(1) = ceiling(two*pi/(dk*cell_vec_len(1)))
-          mp(2) = ceiling(two*pi/(dk*cell_vec_len(2)))
-          mp(3) = ceiling(two*pi/(dk*cell_vec_len(3)))
+          mp(1) = ceiling(two*pi*reciprocal_lattice_norm(1)/dk)
+          mp(2) = ceiling(two*pi*reciprocal_lattice_norm(2)/dk)
+          mp(3) = ceiling(two*pi*reciprocal_lattice_norm(3)/dk)
        else
           mp(1) = fdf_integer('Diag.MPMeshX',1)
           mp(2) = fdf_integer('Diag.MPMeshY',1)

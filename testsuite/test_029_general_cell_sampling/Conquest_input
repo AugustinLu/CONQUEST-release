@@ -1,0 +1,21 @@
+IO.Title                    general_cell_sampling
+IO.Coordinates              coords.dat
+IO.FractionalAtomicCoords   T
+IO.Iprint                   1
+AtomMove.TypeOfRun          static
+
+General.NumberOfSpecies     1
+General.PAOFromFiles        T
+General.NeutralAtom         F
+%block ChemicalSpeciesLabel
+1 28.086 Si Si.ion
+%endblock
+
+Grid.GridCutoff             20
+DM.SolutionMethod           diagon
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-7
+
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.dk                     3.0

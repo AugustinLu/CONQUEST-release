@@ -480,7 +480,11 @@ contains
           end if
        end if
        sqKE = sqrt(two*GridCutoff) ! Use KE = 0.5*G*G
-       ! For now, we assume orthorhombic cells
+       ! The FFT box must contain every reciprocal vector with
+       ! |G| <= sqKE.  Since n_i = G.a_i/(2*pi), the closest point on
+       ! an omitted index face n_i = N_i/2 is pi*N_i/|a_i|.  Therefore
+       ! N_i > sqKE*|a_i|/pi is valid for a cell of any shape; using the
+       ! direct interplanar spacing here would under-size skewed cells.
        ! x first
        mingrid = int(sqKE*sqrt(sum(r_super_vec(:,1)**2))/pi)
        do i=1,ngrids

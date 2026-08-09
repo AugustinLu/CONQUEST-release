@@ -602,7 +602,6 @@ contains
     real(double) :: cslx,csly,cslz              ! Covering set left
     real(double) :: grid_ext_x, grid_ext_y, grid_ext_z
     real(double) :: ratio_x, ratio_y, ratio_z
-    real(double) :: recip_len_x, recip_len_y, recip_len_z
     real(double) :: cos12, cos13, cos23
     logical :: skewed_cell
 
@@ -614,18 +613,10 @@ contains
     ratio_y = real(groups%ngcelly,double) / real(prim%groups%ngcelly,double)
     ratio_z = real(groups%ngcellz,double) / real(prim%groups%ngcellz,double)
 
-    ! Reciprocal vector lengths
-    ! recip_lat_vec(:,i) is the reciprocal covector dual to lattice
-    ! vector i.  Its norm converts a Cartesian cutoff to a fractional
-    ! extent along that lattice coordinate.
-    recip_len_x = sqrt(sum(recip_lat_vec(:,1)**2))
-    recip_len_y = sqrt(sum(recip_lat_vec(:,2)**2))
-    recip_len_z = sqrt(sum(recip_lat_vec(:,3)**2))
-
     ! Extent of rcut in groups grid units
-    grid_ext_x = set%rcut * recip_len_x * groups%ngcellx
-    grid_ext_y = set%rcut * recip_len_y * groups%ngcelly
-    grid_ext_z = set%rcut * recip_len_z * groups%ngcellz
+    grid_ext_x = set%rcut * reciprocal_lattice_norm(1) * groups%ngcellx
+    grid_ext_y = set%rcut * reciprocal_lattice_norm(2) * groups%ngcelly
+    grid_ext_z = set%rcut * reciprocal_lattice_norm(3) * groups%ngcellz
 
     ! Convert origin of prim to groups grid units
     ro_cx = real(prim%nx_origin-1,double)*ratio_x + very_small

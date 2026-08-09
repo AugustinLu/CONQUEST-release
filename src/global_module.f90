@@ -468,6 +468,16 @@ contains
          maxval(abs(lat_vec-axis_aligned_lattice)) > tolerance
   end function cell_requires_full_stress
 
+  real(double) function reciprocal_lattice_norm(index)
+    ! Norm of reciprocal basis vector index without the conventional 2*pi.
+    ! This is the inverse spacing of direct-lattice planes normal to that
+    ! reciprocal vector.
+    integer, intent(in) :: index
+
+    reciprocal_lattice_norm = &
+         sqrt(dot_product(recip_lat_vec(:,index), recip_lat_vec(:,index)))
+  end function reciprocal_lattice_norm
+
   subroutine invert_3x3(mat, inv_mat, det, is_valid)
     real(double), intent(in) :: mat(3,3)
     real(double), intent(out) :: inv_mat(3,3)
