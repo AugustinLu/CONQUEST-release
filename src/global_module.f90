@@ -496,6 +496,89 @@ contains
          sqrt(dot_product(recip_lat_vec(:,index), recip_lat_vec(:,index)))
   end function reciprocal_lattice_norm
 
+  real(double) function point_parallelepiped_distance_sq(point, origin, edges)
+    ! Exact squared distance from a Cartesian point to the closed
+    ! parallelepiped origin + edges*t, 0 <= t_i <= 1.  Enumerating the 27
+    ! active sets (lower/free/upper for each coordinate) makes this small
+    ! convex projection deterministic without assuming orthogonal edges.
+    real(double), intent(in) :: point(3), origin(3), edges(3,3)
+    real(double) :: coefficients(3), candidate(3), residual(3)
+    real(double) :: edge_norms(3), unit_edges(3,3)
+    real(double) :: gram(3,3), gram_inverse(3,3), rhs(3)
+    real(double) :: determinant, tolerance, trial_distance
+    integer :: states(3), free_indices(3), n_free
+    integer :: state1, state2, state3, i, j
+    logical :: valid
+
+    point_parallelepiped_distance_sq = huge(one)
+    tolerance = 128.0_double*epsilon(one)
+    do i = 1, 3
+       edge_norms(i) = sqrt(dot_product(edges(:,i),edges(:,i)))
+       if (edge_norms(i) <= tiny(one)) return
+       unit_edges(:,i) = edges(:,i)/edge_norms(i)
+    end do
+    do state3 = -1, 1
+       do state2 = -1, 1
+          do state1 = -1, 1
+             states = (/ state1, state2, state3 /)
+             coefficients = zero
+             n_free = 0
+             do i = 1, 3
+                if (states(i) == 1) coefficients(i) = one
+                if (states(i) == 0) then
+                   n_free = n_free + 1
+                   free_indices(n_free) = i
+                end if
+             end do
+
+             residual = point - origin - matmul(edges,coefficients)
+             valid = .true.
+             select case(n_free)
+             case(0)
+                continue
+             case(1)
+                i = free_indices(1)
+                coefficients(i) = dot_product(unit_edges(:,i),residual) &
+                     /edge_norms(i)
+             case default
+                gram = zero
+                rhs = zero
+                do i = 1, n_free
+                   rhs(i) = dot_product(unit_edges(:,free_indices(i)),residual)
+                   do j = 1, n_free
+                      gram(i,j) = dot_product(unit_edges(:,free_indices(i)), &
+                           unit_edges(:,free_indices(j)))
+                   end do
+                end do
+                if (n_free == 2) gram(3,3) = one
+                call invert_3x3(gram, gram_inverse, determinant, valid)
+                if (valid) then
+                   rhs(n_free+1:3) = zero
+                   rhs = matmul(gram_inverse,rhs)
+                   do i = 1, n_free
+                      coefficients(free_indices(i)) = &
+                           rhs(i)/edge_norms(free_indices(i))
+                   end do
+                end if
+             end select
+
+             do i = 1, n_free
+                j = free_indices(i)
+                if (coefficients(j) < -tolerance .or. &
+                     coefficients(j) > one+tolerance) valid = .false.
+                coefficients(j) = max(zero,min(one,coefficients(j)))
+             end do
+             if (valid) then
+                candidate = origin + matmul(edges,coefficients)
+                trial_distance = dot_product(point-candidate,point-candidate)
+                point_parallelepiped_distance_sq = &
+                     min(point_parallelepiped_distance_sq,trial_distance)
+             end if
+          end do
+       end do
+    end do
+  end function point_parallelepiped_distance_sq
+
   subroutine invert_3x3(mat, inv_mat, det, is_valid)
     real(double), intent(in) :: mat(3,3)
     real(double), intent(out) :: inv_mat(3,3)

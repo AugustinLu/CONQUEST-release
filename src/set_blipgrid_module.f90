@@ -315,15 +315,14 @@ contains
     use group_module,   ONLY: blocks,parts
     use primary_module, ONLY: bundle
     use cover_module,   ONLY: BCS_blocks,DCS_parts
-    use global_module,  ONLY: lat_vec, cell_vec_len,numprocs
+    use global_module,  ONLY: lat_vec, cell_vec_len,numprocs, &
+         point_parallelepiped_distance_sq
     use block_module,   ONLY: nx_in_block,ny_in_block,nz_in_block
     use GenComms, ONLY: cq_abort, myid
     use species_module, ONLY: n_species
 
     implicit none
-    real(double) :: ex1, ey1, ez1, ex2, ey2, ez2, ex3, ey3, ez3, block_cx, block_cy, block_cz
-    integer :: nqx, nqy, nqz
-    real(double) :: shift_x, shift_y, shift_z, xatom_eff, yatom_eff, zatom_eff
+    real(double) :: block_origin(3), block_edges(3,3), atom_position(3)
 
     !Dummy Arguments
     real(double),intent(in),dimension(n_species) :: rcut
@@ -337,7 +336,7 @@ contains
     real(double) :: dcellx_block_v(3), dcelly_block_v(3), dcellz_block_v(3)
     real(double) :: dcellx_grid_v(3), dcelly_grid_v(3), dcellz_grid_v(3)
     real(double) :: xmin_p,ymin_p,zmin_p
-    real(double) :: xmin,xmax,ymin,ymax,zmin,zmax
+    real(double) :: xmin,ymin,zmin
     real(double) :: xatom,yatom,zatom,distsq
     integer :: inp,ncoverz,ncoveryz,np,nx,ny,nz,ni,iblock,ind_block,nnd_rem
     integer :: ncoverz_rem,ncoveryz_rem,spec
@@ -374,6 +373,9 @@ contains
     dcellx_grid_v(:) = dcellx_block_v(:)/nx_in_block
     dcelly_grid_v(:) = dcelly_block_v(:)/ny_in_block
     dcellz_grid_v(:) = dcellz_block_v(:)/nz_in_block
+    block_edges(:,1) = dcellx_block_v - dcellx_grid_v
+    block_edges(:,2) = dcelly_block_v - dcelly_grid_v
+    block_edges(:,3) = dcellz_block_v - dcellz_grid_v
 
     !- CHECK BCS_blocks ---
     !  write(io_lun,*) ' ng_cover of BCS_blocks ',&
@@ -423,38 +425,11 @@ contains
                 ny=ny-BCS_blocks%nspanly+BCS_blocks%ny_origin
                 nz=nz-BCS_blocks%nspanlz+BCS_blocks%nz_origin
 
-                ! Compute nqx exactly as in cover_module.f90
-                !(xmin,ymin,zmin) is the l.h.s. corner of the UN-SHIFTED block
-                block_cx = (nx-1)*dcellx_block_v(1) + (ny-1)*dcelly_block_v(1) + (nz-1)*dcellz_block_v(1)
-                block_cy = (nx-1)*dcellx_block_v(2) + (ny-1)*dcelly_block_v(2) + (nz-1)*dcellz_block_v(2)
-                block_cz = (nx-1)*dcellx_block_v(3) + (ny-1)*dcelly_block_v(3) + (nz-1)*dcellz_block_v(3)
-
-                xatom_eff = xatom
-                yatom_eff = yatom
-                zatom_eff = zatom
-
-                ex1 = dcellx_block_v(1) - dcellx_grid_v(1)
-                ey1 = dcellx_block_v(2) - dcellx_grid_v(2)
-                ez1 = dcellx_block_v(3) - dcellx_grid_v(3)
-
-                ex2 = dcelly_block_v(1) - dcelly_grid_v(1)
-                ey2 = dcelly_block_v(2) - dcelly_grid_v(2)
-                ez2 = dcelly_block_v(3) - dcelly_grid_v(3)
-
-                ex3 = dcellz_block_v(1) - dcellz_grid_v(1)
-                ey3 = dcellz_block_v(2) - dcellz_grid_v(2)
-                ez3 = dcellz_block_v(3) - dcellz_grid_v(3)
-
-                ! Compute AABB for the block bounding volume
-                xmin = block_cx + min(0.0_double, ex1) + min(0.0_double, ex2) + min(0.0_double, ex3)
-                xmax = block_cx + max(0.0_double, ex1) + max(0.0_double, ex2) + max(0.0_double, ex3)
-                ymin = block_cy + min(0.0_double, ey1) + min(0.0_double, ey2) + min(0.0_double, ey3)
-                ymax = block_cy + max(0.0_double, ey1) + max(0.0_double, ey2) + max(0.0_double, ey3)
-                zmin = block_cz + min(0.0_double, ez1) + min(0.0_double, ez2) + min(0.0_double, ez3)
-                zmax = block_cz + max(0.0_double, ez1) + max(0.0_double, ez2) + max(0.0_double, ez3)
-
-                call distsq_blk_atom&
-                     (xatom_eff,yatom_eff,zatom_eff,xmin,xmax,ymin,ymax,zmin,zmax,distsq)
+                block_origin = (nx-1)*dcellx_block_v + &
+                     (ny-1)*dcelly_block_v + (nz-1)*dcellz_block_v
+                atom_position = (/ xatom, yatom, zatom /)
+                distsq = point_parallelepiped_distance_sq( &
+                     atom_position,block_origin,block_edges)
 
                 ! if(distsq < rcutsq) then  ! If it is a neighbour block,...
                 ! if(distsq < rcutsq+very_small) then  ! If it is a neighbour block,...
@@ -597,13 +572,14 @@ contains
     use group_module,   ONLY: blocks,parts
     use primary_module, ONLY: bundle
     use cover_module,   ONLY: BCS_blocks,DCS_parts
-    use global_module,  ONLY: lat_vec, cell_vec_len,numprocs
+    use global_module,  ONLY: lat_vec, cell_vec_len,numprocs, &
+         point_parallelepiped_distance_sq
     use block_module,   ONLY: nx_in_block,ny_in_block,nz_in_block
     use GenComms, ONLY: cq_abort
     use species_module, ONLY: n_species
 
     implicit none
-    real(double) :: ex1, ey1, ez1, ex2, ey2, ez2, ex3, ey3, ez3, block_cx, block_cy, block_cz
+    real(double) :: block_origin(3), block_edges(3,3), atom_position(3)
 
 
     !Dummy Arguments
@@ -618,7 +594,6 @@ contains
     real(double) :: dcellx_block_v(3), dcelly_block_v(3), dcellz_block_v(3)
     real(double) :: dcellx_grid_v(3), dcelly_grid_v(3), dcellz_grid_v(3)
     real(double) :: xmin_p,ymin_p,zmin_p
-    real(double) :: xmin,xmax,ymin,ymax,zmin,zmax
     real(double) :: xatom,yatom,zatom,distsq
     integer :: inp,ncoverz,ncoveryz,np,nx,ny,nz,ni,iblock,ind_block,nnd_rem
     integer :: no_recv_node, no_naba_blk, ii, spec
@@ -649,6 +624,9 @@ contains
     dcellx_grid_v(:) = dcellx_block_v(:)/nx_in_block
     dcelly_grid_v(:) = dcelly_block_v(:)/ny_in_block
     dcellz_grid_v(:) = dcellz_block_v(:)/nz_in_block
+    block_edges(:,1) = dcellx_block_v - dcellx_grid_v
+    block_edges(:,2) = dcelly_block_v - dcelly_grid_v
+    block_edges(:,3) = dcellz_block_v - dcellz_grid_v
 
     do np=1,bundle%groups_on_node  ! primary partitions in bundle
        if(bundle%nm_nodgroup(np) > 0) then  ! Are there atoms?
@@ -675,33 +653,11 @@ contains
                 ny=ny-BCS_blocks%nspanly+BCS_blocks%ny_origin
                 nz=nz-BCS_blocks%nspanlz+BCS_blocks%nz_origin
 
-                !(xmin,ymin,zmin) is the l.h.s. corner of the block
-                !   -dcellx_grid etc. is added 4/8/2000 T M
-                block_cx = (nx-1)*dcellx_block_v(1) + (ny-1)*dcelly_block_v(1) + (nz-1)*dcellz_block_v(1)
-                block_cy = (nx-1)*dcellx_block_v(2) + (ny-1)*dcelly_block_v(2) + (nz-1)*dcellz_block_v(2)
-                block_cz = (nx-1)*dcellx_block_v(3) + (ny-1)*dcelly_block_v(3) + (nz-1)*dcellz_block_v(3)
-
-                ex1 = dcellx_block_v(1) - dcellx_grid_v(1)
-                ey1 = dcellx_block_v(2) - dcellx_grid_v(2)
-                ez1 = dcellx_block_v(3) - dcellx_grid_v(3)
-
-                ex2 = dcelly_block_v(1) - dcelly_grid_v(1)
-                ey2 = dcelly_block_v(2) - dcelly_grid_v(2)
-                ez2 = dcelly_block_v(3) - dcelly_grid_v(3)
-
-                ex3 = dcellz_block_v(1) - dcellz_grid_v(1)
-                ey3 = dcellz_block_v(2) - dcellz_grid_v(2)
-                ez3 = dcellz_block_v(3) - dcellz_grid_v(3)
-
-                ! Compute AABB for the block bounding volume
-                xmin = block_cx + min(0.0_double, ex1) + min(0.0_double, ex2) + min(0.0_double, ex3)
-                xmax = block_cx + max(0.0_double, ex1) + max(0.0_double, ex2) + max(0.0_double, ex3)
-                ymin = block_cy + min(0.0_double, ey1) + min(0.0_double, ey2) + min(0.0_double, ey3)
-                ymax = block_cy + max(0.0_double, ey1) + max(0.0_double, ey2) + max(0.0_double, ey3)
-                zmin = block_cz + min(0.0_double, ez1) + min(0.0_double, ez2) + min(0.0_double, ez3)
-                zmax = block_cz + max(0.0_double, ez1) + max(0.0_double, ez2) + max(0.0_double, ez3)
-                call distsq_blk_atom&
-                     (xatom,yatom,zatom,xmin,xmax,ymin,ymax,zmin,zmax,distsq)
+                block_origin = (nx-1)*dcellx_block_v + &
+                     (ny-1)*dcelly_block_v + (nz-1)*dcellz_block_v
+                atom_position = (/ xatom, yatom, zatom /)
+                distsq = point_parallelepiped_distance_sq( &
+                     atom_position,block_origin,block_edges)
                 if(distsq < rcutsq(spec)-RD_ERR) then  ! If it is a neighbour block,...
 
                    ind_block= BCS_blocks%lab_cell(iblock)  !CC in a sim. cell
@@ -737,78 +693,6 @@ contains
   end subroutine get_naba_BCSblk_max
 !!***
 
-!!****f* set_blipgrid_module/distsq_blk_atom *
-!!
-!!  NAME
-!!   distsq_blk_atom
-!!  USAGE
-!!
-!!  PURPOSE
-!!   sbrt distsq_blk_atom
-!!    calculates the square of distance between an atom and a block
-!!    We assume a block is orthogonal and it is specified
-!!    the minimum and maximum of three direction
-!!  (xmin,xmax),(ymin,ymax),(zmin,zmax)
-!!    coordinate of atom (xatom,yatom,zatom)
-!!
-!!  INPUTS
-!!
-!!
-!!  USES
-!!
-!!  AUTHOR
-!!   T.Miyazaki
-!!  CREATION DATE
-!!
-!!  MODIFICATION HISTORY
-!!
-!!  SOURCE
-!!
-  subroutine distsq_blk_atom &
-       (xatom,yatom,zatom,xmin,xmax,ymin,ymax,zmin,zmax,distsq)
-
-    use datatypes
-    use numbers, ONLY: ZERO
-    implicit none
-
-    real(double),intent(in)::xatom,yatom,zatom
-    real(double),intent(in)::xmin,xmax,ymin,ymax,zmin,zmax
-    real(double),intent(out)::distsq
-
-    real(double) :: dx,dy,dz
-
-    if(xatom > xmax) then
-       dx=xatom-xmax
-    elseif(xatom < xmin) then
-       dx=xmin-xatom
-    else
-       dx=ZERO
-    endif
-
-    if(yatom > ymax) then
-       dy=yatom-ymax
-    elseif(yatom < ymin) then
-       dy=ymin-yatom
-    else
-       dy=ZERO
-    endif
-
-    if(zatom > zmax) then
-       dz=zatom-zmax
-    elseif(zatom < zmin) then
-       dz=zmin-zatom
-    else
-       dz=ZERO
-    endif
-
-    distsq=dx*dx+dy*dy+dz*dz
-    distsq=anint(distsq*1.0d10)*1.0d-10
-
-    return
-
-  end subroutine distsq_blk_atom
-!!***
-
 !!****f* set_blipgrid_module/get_naba_DCSprt *
 !!
 !!  NAME
@@ -838,7 +722,8 @@ contains
 
     use datatypes
     use numbers,        ONLY: RD_ERR
-    use global_module,  ONLY: lat_vec, cell_vec_len,numprocs, id_glob, species_glob, sf, nlpf, paof
+    use global_module,  ONLY: lat_vec, cell_vec_len,numprocs, id_glob, &
+         species_glob, sf, nlpf, paof, point_parallelepiped_distance_sq
     use species_module, ONLY: nsf_species, nlpf_species, npao_species, n_species
     use group_module,   ONLY: parts,blocks
     use primary_module, ONLY: domain
@@ -847,13 +732,12 @@ contains
     use GenComms, ONLY: cq_abort
 
     implicit none
-    real(double) :: ex1, ey1, ez1, ex2, ey2, ez2, ex3, ey3, ez3, block_cx, block_cy, block_cz
+    real(double) :: block_origin(3), block_edges(3,3), atom_position(3)
 
 
     real(double),intent(in), dimension(n_species) :: rcut
     type(naba_atm_of_blk),intent(inout) :: naba_set
     type(halo_atm_of_blk),intent(inout) :: halo_set
-    real(double) :: xmin,xmax,ymin,ymax,zmin,zmax
     real(double) :: xatom,yatom,zatom,distsq
     real(double), dimension(n_species) :: rcutsq
     real(double) :: dcellx_block,dcelly_block,dcellz_block
@@ -885,6 +769,10 @@ contains
     dcelly_grid_v(:) = dcelly_block_v(:)/ny_in_block
     dcellz_grid_v(:) = dcellz_block_v(:)/nz_in_block
 
+    block_edges(:,1) = dcellx_block_v(:) - dcellx_grid_v(:)
+    block_edges(:,2) = dcelly_block_v(:) - dcelly_grid_v(:)
+    block_edges(:,3) = dcellz_block_v(:) - dcellz_grid_v(:)
+
     naba_set%no_of_part=0
     naba_set%no_of_atom=0
     if (naba_set%mx_part > 0) then
@@ -904,34 +792,12 @@ contains
     !TM VARNSF : END
 
     do iprim_blk=1,domain%groups_on_node  ! primary blocks of domain
-       !(xmin,ymin,zmin) is the l.h.s. corner of the block
        nx = domain%idisp_primx(iprim_blk)+domain%nx_origin
        ny = domain%idisp_primy(iprim_blk)+domain%ny_origin
        nz = domain%idisp_primz(iprim_blk)+domain%nz_origin
 
-       block_cx = (nx-1)*dcellx_block_v(1) + (ny-1)*dcelly_block_v(1) + (nz-1)*dcellz_block_v(1)
-       block_cy = (nx-1)*dcellx_block_v(2) + (ny-1)*dcelly_block_v(2) + (nz-1)*dcellz_block_v(2)
-       block_cz = (nx-1)*dcellx_block_v(3) + (ny-1)*dcelly_block_v(3) + (nz-1)*dcellz_block_v(3)
-
-       ex1 = dcellx_block_v(1) - dcellx_grid_v(1)
-       ey1 = dcellx_block_v(2) - dcellx_grid_v(2)
-       ez1 = dcellx_block_v(3) - dcellx_grid_v(3)
-
-       ex2 = dcelly_block_v(1) - dcelly_grid_v(1)
-       ey2 = dcelly_block_v(2) - dcelly_grid_v(2)
-       ez2 = dcelly_block_v(3) - dcelly_grid_v(3)
-
-       ex3 = dcellz_block_v(1) - dcellz_grid_v(1)
-       ey3 = dcellz_block_v(2) - dcellz_grid_v(2)
-       ez3 = dcellz_block_v(3) - dcellz_grid_v(3)
-
-       ! Compute AABB for the block bounding volume
-       xmin = block_cx + min(0.0_double, ex1) + min(0.0_double, ex2) + min(0.0_double, ex3)
-       xmax = block_cx + max(0.0_double, ex1) + max(0.0_double, ex2) + max(0.0_double, ex3)
-       ymin = block_cy + min(0.0_double, ey1) + min(0.0_double, ey2) + min(0.0_double, ey3)
-       ymax = block_cy + max(0.0_double, ey1) + max(0.0_double, ey2) + max(0.0_double, ey3)
-       zmin = block_cz + min(0.0_double, ez1) + min(0.0_double, ez2) + min(0.0_double, ez3)
-       zmax = block_cz + max(0.0_double, ez1) + max(0.0_double, ez2) + max(0.0_double, ez3)
+       block_origin = (nx-1)*dcellx_block_v(:) + &
+            (ny-1)*dcelly_block_v(:) + (nz-1)*dcellz_block_v(:)
 
        ia=0                  ! counter of naba atoms for each prim block
        icover=0              ! counter of covering atoms
@@ -955,8 +821,9 @@ contains
                 yatom=DCS_parts%ycover(DCS_parts%icover_ibeg(np)+ni-1)
                 zatom=DCS_parts%zcover(DCS_parts%icover_ibeg(np)+ni-1)
 
-                call distsq_blk_atom &
-                     (xatom,yatom,zatom,xmin,xmax,ymin,ymax,zmin,zmax,distsq)
+                atom_position = (/ xatom, yatom, zatom /)
+                distsq = point_parallelepiped_distance_sq( &
+                     atom_position,block_origin,block_edges)
                 spec = species_glob( id_glob( parts%icell_beg(DCS_parts%lab_cell(np)) +ni-1 ))
                 if(distsq<rcutsq(spec)-RD_ERR) then
                 !if(distsq < rcutsq) then  ! have found a naba atom
@@ -1129,7 +996,8 @@ contains
 
     use datatypes
     use numbers,        ONLY: RD_ERR
-    use global_module,  ONLY: lat_vec, cell_vec_len,numprocs, id_glob, species_glob, sf, nlpf, paof
+    use global_module,  ONLY: lat_vec, cell_vec_len,numprocs, id_glob, &
+         species_glob, sf, nlpf, paof, point_parallelepiped_distance_sq
     use species_module, ONLY: nsf_species, nlpf_species, npao_species, n_species
     use group_module,   ONLY: parts,blocks
     use primary_module, ONLY: domain
@@ -1138,7 +1006,7 @@ contains
     use GenComms, ONLY: cq_abort
 
     implicit none
-    real(double) :: ex1, ey1, ez1, ex2, ey2, ez2, ex3, ey3, ez3, block_cx, block_cy, block_cz
+    real(double) :: block_origin(3), block_edges(3,3), atom_position(3)
 
 
     ! Passed variables
@@ -1146,7 +1014,6 @@ contains
     integer, intent(out) :: max_naba_prt,max_naba_atm,max_halo_part,max_halo_nodes
 
     ! Local variables
-    real(double) :: xmin,xmax,ymin,ymax,zmin,zmax
     real(double) :: xatom,yatom,zatom,distsq
     real(double), dimension(n_species) :: rcutsq
     real(double) :: dcellx_block,dcelly_block,dcellz_block
@@ -1183,6 +1050,10 @@ contains
     dcelly_grid_v(:) = dcelly_block_v(:)/ny_in_block
     dcellz_grid_v(:) = dcellz_block_v(:)/nz_in_block
 
+    block_edges(:,1) = dcellx_block_v(:) - dcellx_grid_v(:)
+    block_edges(:,2) = dcelly_block_v(:) - dcelly_grid_v(:)
+    block_edges(:,3) = dcellz_block_v(:) - dcellz_grid_v(:)
+
     iorb_alp_i_iblk = 0
     !TM VARNSF : END
     max_naba_prt = 0
@@ -1190,34 +1061,12 @@ contains
     max_halo_part = 0
     ihalo = 0
     do iprim_blk=1,domain%groups_on_node  ! primary blocks of domain
-       !(xmin,ymin,zmin) is the l.h.s. corner of the block
        nx = domain%idisp_primx(iprim_blk)+domain%nx_origin
        ny = domain%idisp_primy(iprim_blk)+domain%ny_origin
        nz = domain%idisp_primz(iprim_blk)+domain%nz_origin
 
-       block_cx = (nx-1)*dcellx_block_v(1) + (ny-1)*dcelly_block_v(1) + (nz-1)*dcellz_block_v(1)
-       block_cy = (nx-1)*dcellx_block_v(2) + (ny-1)*dcelly_block_v(2) + (nz-1)*dcellz_block_v(2)
-       block_cz = (nx-1)*dcellx_block_v(3) + (ny-1)*dcelly_block_v(3) + (nz-1)*dcellz_block_v(3)
-
-       ex1 = dcellx_block_v(1) - dcellx_grid_v(1)
-       ey1 = dcellx_block_v(2) - dcellx_grid_v(2)
-       ez1 = dcellx_block_v(3) - dcellx_grid_v(3)
-
-       ex2 = dcelly_block_v(1) - dcelly_grid_v(1)
-       ey2 = dcelly_block_v(2) - dcelly_grid_v(2)
-       ez2 = dcelly_block_v(3) - dcelly_grid_v(3)
-
-       ex3 = dcellz_block_v(1) - dcellz_grid_v(1)
-       ey3 = dcellz_block_v(2) - dcellz_grid_v(2)
-       ez3 = dcellz_block_v(3) - dcellz_grid_v(3)
-
-       ! Compute AABB for the block bounding volume
-       xmin = block_cx + min(0.0_double, ex1) + min(0.0_double, ex2) + min(0.0_double, ex3)
-       xmax = block_cx + max(0.0_double, ex1) + max(0.0_double, ex2) + max(0.0_double, ex3)
-       ymin = block_cy + min(0.0_double, ey1) + min(0.0_double, ey2) + min(0.0_double, ey3)
-       ymax = block_cy + max(0.0_double, ey1) + max(0.0_double, ey2) + max(0.0_double, ey3)
-       zmin = block_cz + min(0.0_double, ez1) + min(0.0_double, ez2) + min(0.0_double, ez3)
-       zmax = block_cz + max(0.0_double, ez1) + max(0.0_double, ez2) + max(0.0_double, ez3)
+       block_origin = (nx-1)*dcellx_block_v(:) + &
+            (ny-1)*dcelly_block_v(:) + (nz-1)*dcellz_block_v(:)
 
        ia=0                  ! counter of naba atoms for each prim block
        icover=0              ! counter of covering atoms
@@ -1237,7 +1086,9 @@ contains
                 yatom=DCS_parts%ycover(DCS_parts%icover_ibeg(np)+ni-1)
                 zatom=DCS_parts%zcover(DCS_parts%icover_ibeg(np)+ni-1)
 
-                call distsq_blk_atom(xatom,yatom,zatom,xmin,xmax,ymin,ymax,zmin,zmax,distsq)
+                atom_position = (/ xatom, yatom, zatom /)
+                distsq = point_parallelepiped_distance_sq( &
+                     atom_position,block_origin,block_edges)
                 spec = species_glob( id_glob( parts%icell_beg(DCS_parts%lab_cell(np)) +ni-1 ))
 
                 if(distsq < rcutsq(spec)-RD_ERR) then  ! have found a naba atom

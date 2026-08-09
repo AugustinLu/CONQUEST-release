@@ -720,20 +720,6 @@ contains
        set%ncoverz = set%ncoverz-floor(rhcz-rhz)
     endif
 
-    ! The block-neighbour search uses Cartesian axis-aligned bounding boxes
-    ! around skewed grid parallelepipeds.  Those boxes are deliberately
-    ! conservative and can extend by part of one group beyond the exact
-    ! reciprocal-metric cutoff used above.  Retain one safety group on each
-    ! side so that BCS sender lists and DCS receiver lists contain identical
-    ! periodic images when a grid dimension changes with cell volume.
-    if(cell_has_nonorthogonal_vectors()) then
-       set%nspanlx = set%nspanlx + 1
-       set%nspanly = set%nspanly + 1
-       set%nspanlz = set%nspanlz + 1
-       set%ncoverx = set%ncoverx + 2
-       set%ncovery = set%ncovery + 2
-       set%ncoverz = set%ncoverz + 2
-    endif
     return
   end subroutine convert_primary
 !!***
