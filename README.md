@@ -1,3 +1,22 @@
+> [!WARNING]
+> **Personal experimental research fork - Augustin Lu**
+>
+> This repository contains an AI-assisted prototype for nonorthorhombic-cell
+> calculations in CONQUEST. It is maintained solely by **Augustin Lu** as a
+> personal research tool. Augustin Lu takes responsibility for the modifications
+> in this fork and for their use in his research.
+>
+> This is not an official CONQUEST release, is not supported or endorsed by the
+> CONQUEST development team, and is not intended for submission to the upstream
+> repository. The upstream developers bear no responsibility for these
+> modifications or for results produced with them.
+>
+> This fork must not be treated as generally validated production software.
+> Calculations outside its documented validation envelope require independent
+> verification. Changes from this fork should not be cherry-picked into the
+> official CONQUEST repository. See [FORK_STATUS.md](FORK_STATUS.md) for scope,
+> validation, provenance, and maintenance policy.
+
 [![build](https://github.com/OrderN/CONQUEST-release/actions/workflows/makefile.yml/badge.svg?branch=develop)](https://github.com/OrderN/CONQUEST-release/actions/workflows/makefile.yml?query=branch%3Adevelop)
 
 # CONQUEST: Large-scale DFT calculations
