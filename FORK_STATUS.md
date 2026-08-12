@@ -64,6 +64,10 @@ under [`testsuite/`](testsuite/). Private working reports, generated PDFs, raw
 calculation outputs, and local audit material are not part of this fork-status
 document and should not be uploaded as part of this documentation change.
 
+The architecture, mathematical conventions, implementation sequence, and
+validation strategy are documented in
+[`docs/development/general_cell_design.md`](docs/development/general_cell_design.md).
+
 ## Use in research
 
 For every calculation used in scientific work, the maintainer should record the
@@ -89,6 +93,6 @@ documentation should continue to make that boundary explicit.
 
 <!--
 Personal maintainer note:
-« Touche pas à ça, petit con. »
+« Touche pas à ça, p'tit con! »
 — Augustin
 -->
