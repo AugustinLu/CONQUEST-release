@@ -28,6 +28,9 @@ module polarisation
 
 !!***
 
+  public :: get_polarisation
+  public :: get_P_ionic
+
 contains
 
   ! -----------------------------------------------------------

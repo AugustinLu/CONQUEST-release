@@ -159,6 +159,7 @@ contains
     use io_module,            only: write_extxyz
     use md_control,           only: flag_write_extxyz
     use density_module,       only: flag_output_average_potential, write_average_potential
+    use bec_module,           only: bec_run
 
     implicit none
 
@@ -212,6 +213,9 @@ contains
        !
     else if ( leqi(runtype, 'pulay') ) then
        call pulay_relax(fixed_potential,vary_mu, total_energy)
+       !
+    else if ( leqi(runtype, 'bec') ) then
+       call bec_run(fixed_potential,vary_mu, total_energy)
        !
     else if ( leqi(runtype, 'lbfgs') ) then
        call lbfgs(fixed_potential,vary_mu, total_energy)

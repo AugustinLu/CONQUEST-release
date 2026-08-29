@@ -25,8 +25,8 @@ SCALAPACK = -lscalapack-openmpi
 # Choose LibXC version: v4 (deprecated) or v5 (v5, v6 and v7 have the same interface)
 # XC_LIBRARY = LibXC_v4
 #XC_LIB = -lxcf90 -lxc
-XC_LIBRARY = LibXC_v5
-XC_LIB = -lxcf03 -lxc
+XC_LIBRARY = CQ
+XC_LIB =
 XC_COMPFLAGS = -I${HOME}/local/include -I/usr/local/include
 
 # Set FFT library

@@ -2812,7 +2812,7 @@ second:   do
     use numbers,        only: zero
     use dimens,         only: r_super_x, r_super_y, r_super_z
     use global_module,  only: ni_in_cell, iprint_init, atom_coord, &
-                              species_glob
+                              species_glob, flag_calc_bec, bec_tensor
     use species_module, only: species_label
     use GenComms,       only: inode, ionode, cq_abort
     use units,          only: BohrToAng
@@ -2883,7 +2883,7 @@ second:   do
     use numbers,        only: zero
     use dimens,         only: r_super_x, r_super_y, r_super_z
     use global_module,  only: ni_in_cell, iprint_init, atom_coord, &
-                              species_glob
+                              species_glob, flag_calc_bec, bec_tensor
     use species_module, only: species_label
     use GenComms,       only: inode, ionode, cq_abort
     use units,          only: BohrToAng, HaToeV
@@ -2933,7 +2933,11 @@ second:   do
       write(vec_b,fmt='(3f15.8)') zero, r_super_y*BohrToAng, zero
       write(vec_c,fmt='(3f15.8)') zero, zero, r_super_z*BohrToAng
       comment=TRIM(comment)//' Lattice="'//ADJUSTL(vec_a)//ADJUSTL(vec_b)//TRIM(ADJUSTL(vec_c))//'" '
-      comment=TRIM(comment)//' Properties=species:S:1:pos:R:3:forces:R:3 potential_energy='
+      if (flag_calc_bec) then
+         comment=TRIM(comment)//' Properties=species:S:1:pos:R:3:born_effective_charges:R:9:forces:R:3 potential_energy='
+      else
+         comment=TRIM(comment)//' Properties=species:S:1:pos:R:3:forces:R:3 potential_energy='
+      end if
       write(energy_str,'(f0.8)') energy0 * en_conv_loc
       comment = TRIM(comment)//TRIM(energy_str)//' pbc="T T T" '
 
@@ -2955,9 +2959,16 @@ second:   do
 
       do i=1,ni_in_cell
         atom_name = adjustr(species_label(species_glob(i))(1:2))
-        write(lun,'(a4,3f16.8,3e16.8)') atom_name, atom_coord(:,i)*dist_conv_loc, &
-                 (for_conv_loc*atom_force(j,i), j = 1, 3)
-                 ! species_glob(i),flag_move_atom(1,i),flag_move_atom(2,i), &
+        if (flag_calc_bec) then
+           write(lun,'(a4,3f16.8,9f16.8,3e16.8)') atom_name, atom_coord(:,i)*dist_conv_loc, &
+                    bec_tensor(1,1,i), bec_tensor(1,2,i), bec_tensor(1,3,i), &
+                    bec_tensor(2,1,i), bec_tensor(2,2,i), bec_tensor(2,3,i), &
+                    bec_tensor(3,1,i), bec_tensor(3,2,i), bec_tensor(3,3,i), &
+                    (for_conv_loc*atom_force(j,i), j = 1, 3)
+        else
+           write(lun,'(a4,3f16.8,3e16.8)') atom_name, atom_coord(:,i)*dist_conv_loc, &
+                    (for_conv_loc*atom_force(j,i), j = 1, 3)
+        end if
       end do
       call io_close(lun)
     end if
