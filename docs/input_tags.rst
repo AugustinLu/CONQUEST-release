@@ -904,9 +904,11 @@ AtomMove.CalcStress (*boolean*)
 AtomMove.FullStress (*boolean*)
     Toggle calculation of the off-diagonal elements of the stress tensor, which
     can be expensive, but is required for calculating certain properties.  It
-    is required together with ``AtomMove.CGLineMin backtrack`` for an
-    unconstrained relaxation of all six strain components of a nonorthogonal
-    cell.
+    is used together with ``AtomMove.CGLineMin backtrack`` for an unconstrained
+    relaxation of all six strain components of a general cell.  For a rotated
+    or nonorthogonal cell, Methods 1 and 2 enable the full stress tensor and
+    select the backtracking minimizer automatically when the cell constraint is
+    ``none``.
 
     *default*: F
 
@@ -939,8 +941,9 @@ AtomMove.OptCellMethod (*integer*)
        fractional ionic coordinates and three full lattice-vector scale
        strains.  Orthogonal and nonorthogonal cells are supported, but lattice
        angles remain fixed.  The full stress tensor is enabled automatically
-       for the general-lattice projection.  Use method 1 with
-       ``AtomMove.FullStress T`` when shear or angle relaxation is required.
+       for the general-lattice projection.  Use method 1 when shear or angle
+       relaxation is required; its full-stress backtracking path is selected
+       automatically for an unconstrained general cell.
 
 AtomMove.EnthalpyTolerance (*real*)
     Enthalpy tolerance for cell optimisation
@@ -960,9 +963,9 @@ AtomMove.TargetPressure (*real*)
 AtomMove.OptCell.Constraint (*string*)
     Applies a constraint to the relaxation.
 
-    none: Unconstrained relaxation.  With full stress and the backtracking line
-    minimizer, all six independent symmetric-strain components are varied for a
-    general cell.
+    none: Unconstrained relaxation.  All six independent symmetric-strain
+    components are varied for a general cell.  Methods 1 and 2 automatically
+    enable full stress and select the backtracking line minimizer in this case.
 
     *Fixing a single cell dimension:*
 

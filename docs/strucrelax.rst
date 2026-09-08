@@ -121,8 +121,10 @@ coordinates* (``AtomMove.OptCellMethod 1``) using the following input:
    AtomMove.EnthalpyTolerance 1E-5
    AtomMove.StressTolerance 0.1
 
-For a general nonorthogonal cell, an unconstrained six-component strain
-relaxation additionally requires:
+For a rotated or nonorthogonal cell, an unconstrained Method-1 or Method-2
+relaxation automatically enables the full stress tensor and selects the
+backtracking line minimizer.  CONQUEST reports both changes as warnings.  The
+equivalent explicit settings are:
 
 ::
 

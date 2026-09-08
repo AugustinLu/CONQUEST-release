@@ -192,7 +192,8 @@ contains
          flag_diagonalisation, flag_vary_basis, &
          flag_MDcontinue, flag_SFcoeffReuse,    &
          flag_exx, flag_full_stress, cell_requires_full_stress, &
-         flag_opt_cell, optcell_method, cell_has_nonorthogonal_vectors
+         flag_opt_cell, optcell_method, cell_constraint_flag, &
+         cell_has_nonorthogonal_vectors
     use exx_types,     only: exx_gto, exx_gto_poisson
     !use read_gto_info, only: read_gto
     use read_gto_info, only: read_gto_new
@@ -224,6 +225,7 @@ contains
          flag_MSSF_nonminimal, &   !nonmin_mssf
          MSSF_nonminimal_species   !nonmin_mssf
     use md_control,             only: md_position_file
+    use move_atoms,             only: cg_line_min, safe, backtrack
     use pao_format
     use XC,                     only: flag_functional_type, flag_different_functional
     use H_matrix_module, only:  num_plusUproj, info_plusUproj, plusUvalue, & ! 2024.05.20 nakata DFT+U
@@ -340,6 +342,16 @@ contains
        flag_full_stress = .true.
        call cq_warn(sub_name, &
             "General lattice requires the full stress tensor; enabling AtomMove.FullStress")
+    end if
+    if (flag_opt_cell .and. &
+         (optcell_method == 1 .or. optcell_method == 2) .and. &
+         leqi(cell_constraint_flag, 'none') .and. &
+         cell_requires_full_stress() .and. cg_line_min == safe) then
+       cg_line_min = backtrack
+       call cq_warn(sub_name, &
+            "General-cell relaxation with AtomMove.OptCellMethod 1 or 2 and "// &
+            "AtomMove.OptCell.Constraint none requires six-component symmetric "// &
+            "strain; selecting AtomMove.CGLineMin backtrack")
     end if
     if (flag_opt_cell .and. optcell_method == 3 .and. &
          cell_has_nonorthogonal_vectors()) then
