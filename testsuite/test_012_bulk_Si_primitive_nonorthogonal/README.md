@@ -54,10 +54,46 @@ background-policy jobs may otherwise use up to five ranks.
   with final maximum stress about `0.00020 GPa`;
 - the 60-degree angles are retained and one-/two-rank endpoints agree to
   approximately `2e-7 A`;
-- six-strain stress check: maximum absolute error `0.0646 GPa`, RMS error
-  `0.0405 GPa`, and maximum relative component error `2.93%`.
+- six-strain stress check at the canonical `5e-4` step: maximum absolute error
+  `0.0548 GPa`, RMS error `0.0360 GPa`, and maximum relative component error
+  `2.34%`.
 
 Compact summaries and plots are in `reference/`.
+
+## Finite-difference step sensitivity
+
+The canonical six-strain check retains its original `5e-4` step, but
+`run_strain_fd.sh` accepts a `DELTA` environment variable so that numerical
+derivatives can be checked for step stability.  The apparently anomalous xz
+error is not stable under that check:
+
+| strain step | analytic xz (GPa) | finite-difference xz (GPa) | absolute error (GPa) |
+|---:|---:|---:|---:|
+| `1.0e-3` | -2.21442821 | -2.23956516 | 0.02513695 |
+| `5.0e-4` | -2.21442821 | -2.26632962 | 0.05190141 |
+| `2.5e-4` | -2.21442821 | -2.21405259 | 0.00037562 |
+| `1.25e-4` | -2.21442821 | -2.21375261 | 0.00067560 |
+
+At fixed step `5e-4`, increasing the integration-grid cutoff from 80 to 120
+and 160 Ha changes the xz error from `0.05190` to `0.05483` and `0.05732 GPa`;
+it does not converge the coarse-step result monotonically.  Conversely, the
+two smaller steps agree with the complete analytic stress to below
+`7e-4 GPa` at 80 Ha.
+
+The analytic xz total includes symmetric kinetic (`+1.18685 GPa`), S-Pulay
+(`+1.77945 GPa`), Phi-Pulay (`-3.33526 GPa`), local (`+2.40136 GPa`),
+non-local (`-1.04272 GPa`), XC (`-0.01268 GPa`), ion-ion (`-3.23987 GPa`),
+Hartree (`-0.00851 GPa`), and PCC (`+0.05695 GPa`) contributions.  In
+particular, the smaller-step numerical derivative agrees with the total that
+contains the PCC term, ruling out an omitted PCC shear stress despite the
+similar size of that term and the coarse-step error.  Verbose finite-difference
+energy decompositions move across several kinetic, XC, neutral-atom/pseudo,
+and non-local channels; those individual energies are not separately
+variational, so their response terms cannot identify one analytic stress
+contribution as the cause.  The evidence therefore supports a finite-grid
+sampling/finite-difference artifact, not a missing Pulay, non-local, PCC, or XC
+stress term.  The machine-readable sweep is stored beside the canonical
+reference summary.
 
 ## What this checks—and what it does not
 

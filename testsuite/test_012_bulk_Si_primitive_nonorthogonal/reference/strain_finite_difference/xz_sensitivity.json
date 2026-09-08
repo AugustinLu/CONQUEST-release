@@ -1,0 +1,58 @@
+{
+  "component": "xz",
+  "base_analytic_stress_gpa_at_80_ha": -2.21442821,
+  "strain_step_sweep_at_80_ha": [
+    {
+      "delta": 0.001,
+      "finite_difference_gpa": -2.239565157,
+      "absolute_error_gpa": 0.025136947
+    },
+    {
+      "delta": 0.0005,
+      "finite_difference_gpa": -2.266329616,
+      "absolute_error_gpa": 0.051901406
+    },
+    {
+      "delta": 0.00025,
+      "finite_difference_gpa": -2.2140525855,
+      "absolute_error_gpa": 0.0003756245
+    },
+    {
+      "delta": 0.000125,
+      "finite_difference_gpa": -2.2137526145,
+      "absolute_error_gpa": 0.0006755955
+    }
+  ],
+  "cutoff_sweep_at_delta_0.0005": [
+    {
+      "grid_cutoff_ha": 80,
+      "analytic_gpa": -2.21442821,
+      "finite_difference_gpa": -2.266329616,
+      "absolute_error_gpa": 0.051901406
+    },
+    {
+      "grid_cutoff_ha": 120,
+      "analytic_gpa": -2.24216555,
+      "finite_difference_gpa": -2.296990594,
+      "absolute_error_gpa": 0.054825044
+    },
+    {
+      "grid_cutoff_ha": 160,
+      "analytic_gpa": -2.19668746,
+      "finite_difference_gpa": -2.2540085784,
+      "absolute_error_gpa": 0.0573211184
+    }
+  ],
+  "analytic_contributions_gpa_at_80_ha": {
+    "kinetic_symmetric": 1.186851095,
+    "s_pulay_symmetric": 1.77944922,
+    "phi_pulay_symmetric": -3.335259495,
+    "local": 2.40136016,
+    "non_local_symmetric": -1.04271765,
+    "xc": -0.01268345,
+    "ion_ion": -3.23987391,
+    "hartree": -0.00850839,
+    "partial_core_correction": 0.05695422
+  },
+  "conclusion": "The xz discrepancy at delta=0.0005 is not stable with strain step. Smaller steps agree with the complete analytic stress, including PCC, below 0.0007 GPa. Energy-derivative changes are distributed across non-separately-variational electronic channels, so no missing analytic stress contribution is indicated."
+}

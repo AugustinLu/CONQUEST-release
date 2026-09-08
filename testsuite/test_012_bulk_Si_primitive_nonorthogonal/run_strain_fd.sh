@@ -10,6 +10,7 @@ PYTHON="${PYTHON:-/opt/anaconda3/bin/python}"
 NP="${NP:-2}"
 BACKGROUND_MODE="${BACKGROUND_MODE:-auto}"
 RUN_DIR="${RUN_DIR:-$SCRIPT_DIR/results/strain_finite_difference}"
+DELTA="${DELTA:-5.0e-4}"
 
 if [[ "$BACKGROUND_MODE" == auto ]]; then
   if [[ "$(uname -s)" == Darwin && -x /usr/sbin/taskpolicy ]]; then
@@ -29,7 +30,7 @@ if [[ -e "$RUN_DIR" ]]; then
 fi
 mkdir -p "$RUN_DIR/.matplotlib"
 "$PYTHON" "$SCRIPT_DIR/strain_finite_difference.py" prepare \
-  --base "$SCRIPT_DIR/coords_ideal.dat" --root "$RUN_DIR" \
+  --base "$SCRIPT_DIR/coords_ideal.dat" --root "$RUN_DIR" --delta "$DELTA" \
   > "$RUN_DIR/prepare.log"
 
 for directory in "$RUN_DIR"/base "$RUN_DIR"/*_minus "$RUN_DIR"/*_plus; do
