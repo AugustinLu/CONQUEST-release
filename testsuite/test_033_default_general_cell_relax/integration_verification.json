@@ -1,0 +1,26 @@
+{
+  "tested_source_revision": "5b1aee97a8c87279d4edaf4d3b6b93e9f4c625b3",
+  "date": "2026-09-08",
+  "tests": [
+    {
+      "name": "test_033_default_general_cell_relax",
+      "status": "pass",
+      "details": "Method 1 automatically selected backtracking and reduced the maximum six-component stress from 0.74251855 to 0.00823880 GPa; Method 2 selected the same minimizer."
+    },
+    {
+      "name": "test_028_auto_full_stress",
+      "status": "pass",
+      "details": "General cells automatically enabled the full Cartesian stress tensor."
+    },
+    {
+      "name": "test_019_nonorthogonal_npt_md",
+      "status": "pass",
+      "details": "Both volume and xyz NPT cases completed one step; the Method-3 constrained smoke case and exact triclinic minimum-image checks passed."
+    },
+    {
+      "name": "test_015_monoclinic_zro2",
+      "status": "pass_with_checkpoint",
+      "details": "The integrated CONQUEST executable passed SCF, density, and band stages from the runner-supported completed fixed-cell relaxation checkpoint; pDOS and final summary passed. This test has AtomMove.OptCell F and does not exercise the changed cell-relaxation branch."
+    }
+  ]
+}

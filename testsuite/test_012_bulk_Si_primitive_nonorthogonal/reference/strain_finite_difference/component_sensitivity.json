@@ -1,0 +1,84 @@
+{
+  "tested_source_revision": "5b1aee97a8c87279d4edaf4d3b6b93e9f4c625b3",
+  "grid_cutoff_ha": 80,
+  "component_order": ["xx", "yy", "zz", "xy", "xz", "yz"],
+  "strain_step_sweep": [
+    {
+      "delta": 0.001,
+      "absolute_errors_gpa": [0.0103210381, 0.0302372148, 0.0166836741, 0.0177360532, 0.0251369473, 0.0044316378],
+      "maximum_absolute_error_gpa": 0.0302372148,
+      "rms_absolute_error_gpa": 0.0194303503
+    },
+    {
+      "delta": 0.0005,
+      "absolute_errors_gpa": [0.0002791452, 0.0547849080, 0.0449605433, 0.0050671366, 0.0519014059, 0.0035862313],
+      "maximum_absolute_error_gpa": 0.0547849080,
+      "rms_absolute_error_gpa": 0.0359518367
+    },
+    {
+      "delta": 0.00025,
+      "absolute_errors_gpa": [0.0041065280, 0.1077388548, 0.1037870034, 0.0020663412, 0.0003756252, 0.0018286695],
+      "maximum_absolute_error_gpa": 0.1077388548,
+      "rms_absolute_error_gpa": 0.0611064936
+    },
+    {
+      "delta": 0.00015,
+      "absolute_errors_gpa": [0.0032408810, 0.0008125224, 0.0028881677, 0.0010908247, 0.0005402429, 0.0007151302],
+      "maximum_absolute_error_gpa": 0.0032408810,
+      "rms_absolute_error_gpa": 0.0018928896
+    },
+    {
+      "delta": 0.000125,
+      "absolute_errors_gpa": [0.0025527139, 0.0005564674, 0.0024828830, 0.0011514126, 0.0006755940, 0.0000139397],
+      "maximum_absolute_error_gpa": 0.0025527139,
+      "rms_absolute_error_gpa": 0.0015691337
+    },
+    {
+      "delta": 0.0001,
+      "absolute_errors_gpa": [0.0021030902, 0.0011257368, 0.0019520270, 0.0007013682, 0.0007818497, 0.0004900446],
+      "maximum_absolute_error_gpa": 0.0021030902,
+      "rms_absolute_error_gpa": 0.0013443729
+    }
+  ],
+  "yy_cutoff_sweep_at_delta_0.0005": [
+    {
+      "grid_cutoff_ha": 80,
+      "analytic_gpa": -4.49169180,
+      "finite_difference_gpa": -4.546476708,
+      "absolute_error_gpa": 0.054784908
+    },
+    {
+      "grid_cutoff_ha": 120,
+      "analytic_gpa": -4.52158615,
+      "finite_difference_gpa": -4.570519789,
+      "absolute_error_gpa": 0.048933639
+    },
+    {
+      "grid_cutoff_ha": 160,
+      "analytic_gpa": -4.54227011,
+      "finite_difference_gpa": -4.592991298,
+      "absolute_error_gpa": 0.050721188
+    }
+  ],
+  "xz_cutoff_sweep_at_delta_0.0005": [
+    {
+      "grid_cutoff_ha": 80,
+      "analytic_gpa": -2.21442821,
+      "finite_difference_gpa": -2.266329616,
+      "absolute_error_gpa": 0.051901406
+    },
+    {
+      "grid_cutoff_ha": 120,
+      "analytic_gpa": -2.24216555,
+      "finite_difference_gpa": -2.296990594,
+      "absolute_error_gpa": 0.054825044
+    },
+    {
+      "grid_cutoff_ha": 160,
+      "analytic_gpa": -2.19668746,
+      "finite_difference_gpa": -2.254008578,
+      "absolute_error_gpa": 0.057321118
+    }
+  ],
+  "conclusion": "The component errors are non-monotonic with strain step and do not separate into diagonal and shear classes. At three neighboring deltas from 0.0001 through 0.00015 every component agrees within 0.00325 GPa, ruling out a stable missing analytic term at that scale. The sweep is consistent with finite-grid numerical sampling but does not uniquely identify its mechanism."
+}

@@ -25,3 +25,9 @@ Run with:
 ```bash
 ./run_workflow.sh
 ```
+
+`integration_verification.json` records the focused regression and the
+related NPT, Method-3, and fixed-cell compatibility checks run after combining
+this change with the feature branch's memory-safety fixes.  Generated result
+directories remain ignored because they contain large binary and calculation
+outputs; the committed record states when a maintained checkpoint was reused.

@@ -11,6 +11,7 @@ NP="${NP:-2}"
 BACKGROUND_MODE="${BACKGROUND_MODE:-auto}"
 RUN_DIR="${RUN_DIR:-$SCRIPT_DIR/results/strain_finite_difference}"
 DELTA="${DELTA:-5.0e-4}"
+GRID_CUTOFF="${GRID_CUTOFF:-80}"
 
 if [[ "$BACKGROUND_MODE" == auto ]]; then
   if [[ "$(uname -s)" == Darwin && -x /usr/sbin/taskpolicy ]]; then
@@ -21,6 +22,11 @@ if [[ "$BACKGROUND_MODE" == auto ]]; then
 fi
 if (( NP < 1 || NP > 2 )); then
   echo "ERROR: primitive Si has two atoms; NP must be 1 or 2." >&2
+  exit 2
+fi
+if [[ ! "$GRID_CUTOFF" =~ ^[0-9]+([.][0-9]+)?$ ]] ||
+   ! awk -v cutoff="$GRID_CUTOFF" 'BEGIN { exit !(cutoff > 0) }'; then
+  echo "ERROR: GRID_CUTOFF must be a positive numeric value." >&2
   exit 2
 fi
 if [[ -e "$RUN_DIR" ]]; then
@@ -35,7 +41,13 @@ mkdir -p "$RUN_DIR/.matplotlib"
 
 for directory in "$RUN_DIR"/base "$RUN_DIR"/*_minus "$RUN_DIR"/*_plus; do
   cp "$SCRIPT_DIR/Si.ion" "$directory/Si.ion"
-  cp "$SCRIPT_DIR/strain_static.Conquest_input" "$directory/Conquest_input"
+  awk -v cutoff="$GRID_CUTOFF" '
+    /^Grid[.]GridCutoff[[:space:]]/ {
+      printf "Grid.GridCutoff             %s\n", cutoff
+      next
+    }
+    { print }
+  ' "$SCRIPT_DIR/strain_static.Conquest_input" > "$directory/Conquest_input"
   echo "Running $(basename "$directory")"
   (
     cd "$directory"
