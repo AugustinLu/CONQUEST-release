@@ -1,0 +1,95 @@
+{
+  "tested_source_revision": "518bf3599ee7c16ba693d9c2d7ac2742731449eb",
+  "purpose": "Follow up the non-monotonic yy finite-difference error and test the proposed integer-grid-size mechanism.",
+  "configuration": {
+    "grid_cutoff_ha": 80,
+    "base_volume_bohr3": 281.9792330062192,
+    "scf_tolerance_ha": 1e-10,
+    "neutral_atom_potential_enabled": true
+  },
+  "whole_grid_check": {
+    "deltas_checked": [0.001, 0.0005, 0.00025, 0.00015, 0.000125, 0.0001],
+    "endpoints_checked_per_delta": ["yy_minus", "yy_plus"],
+    "integration_grid_dimensions_for_every_endpoint": [32, 32, 32],
+    "result": "The whole-grid point count does not change; the grid spacing deforms continuously with the strained cell."
+  },
+  "positive_yy_threshold_scan": [
+    {"delta": 0.000181, "energy_ha": -8.425515345108678, "pao_physical_cutoff_points": 351386, "electrons": 8.000011},
+    {"delta": 0.000182, "energy_ha": -8.425515387899154, "pao_physical_cutoff_points": 351386, "electrons": 8.000011},
+    {"delta": 0.000183, "energy_ha": -8.425515430690007, "pao_physical_cutoff_points": 351386, "electrons": 8.000011},
+    {"delta": 0.000184, "energy_ha": -8.425515473452840, "pao_physical_cutoff_points": 351382, "electrons": 8.000011},
+    {"delta": 0.000185, "energy_ha": -8.425515516191663, "pao_physical_cutoff_points": 351378, "electrons": 8.000011},
+    {"delta": 0.000186, "energy_ha": -8.425516075214443, "pao_physical_cutoff_points": 351378, "electrons": 8.000014},
+    {"delta": 0.000187, "energy_ha": -8.425516117830247, "pao_physical_cutoff_points": 351378, "electrons": 8.000014},
+    {"delta": 0.000188, "energy_ha": -8.425516160446479, "pao_physical_cutoff_points": 351378, "electrons": 8.000014},
+    {"delta": 0.000189, "energy_ha": -8.425516203063168, "pao_physical_cutoff_points": 351378, "electrons": 8.000014}
+  ],
+  "localized_energy_step": {
+    "interval": [0.000185, 0.000186],
+    "smooth_increment_before_ha_per_1e-6_strain": -4.2738822259025255e-8,
+    "crossing_increment_ha_per_1e-6_strain": -5.59022780066698e-7,
+    "smooth_increment_after_ha_per_1e-6_strain": -4.261580421882627e-8,
+    "excess_step_ha": -5.163454668277723e-7,
+    "central_difference_artifact_gpa": [
+      {"delta": 0.001, "predicted": 0.0269371143, "observed_yy_absolute_error": 0.0302372148},
+      {"delta": 0.0005, "predicted": 0.0538742286, "observed_yy_absolute_error": 0.0547849080},
+      {"delta": 0.00025, "predicted": 0.1077484572, "observed_yy_absolute_error": 0.1077388548}
+    ]
+  },
+  "controls_across_delta_0.000185_to_0.000186": {
+    "unchanged": {
+      "integration_grid_dimensions": [32, 32, 32],
+      "hilbert_block_file": "byte-identical",
+      "covering_set_member_counts": [3180, 100, 432],
+      "sparse_matrix_lengths": [15390, 15390, 162, 14094, 14094, 19926, 19926, 29484, 29484, 15390, 15390, 29484, 162, 15390, 29484, 15390, 15390, 15390, 162],
+      "pao_grid_accepted_points": 406356,
+      "pao_physical_cutoff_points": 351378,
+      "neutral_atom_grid_accepted_points": 351378,
+      "neutral_atom_block_membership": "identical keys and counts"
+    },
+    "neutral_atom_grid_potential": "Changes smoothly; no isolated step was found in the dumped potential values.",
+    "ruled_out": [
+      "whole-grid dimension change",
+      "Hilbert or block-layout change",
+      "covering-set membership change",
+      "sparse-matrix size change",
+      "PAO support membership change",
+      "neutral-atom support membership change",
+      "an isolated discontinuity in the sampled neutral-atom grid potential"
+    ]
+  },
+  "scf_tolerance_control": {
+    "tolerances_ha": [1e-10, 1e-12],
+    "energy_change_at_delta_0.000180_ha": 3e-15,
+    "energy_change_at_delta_0.000185_ha": 2e-15,
+    "energy_change_at_delta_0.000186_ha": 1.7e-14,
+    "energy_change_at_delta_0.000190_ha": 6e-15,
+    "result": "The branch is not caused by loose SCF stopping tolerance. Changing Pulay history length or using linear mixing did not remove it, so it is not assigned specifically to Pulay extrapolation."
+  },
+  "neutral_atom_disabled_control": {
+    "positive_yy_threshold_scan": [
+      {"delta": 0.000184, "energy_ha": -8.425513033741314},
+      {"delta": 0.000185, "energy_ha": -8.425513075846503},
+      {"delta": 0.000186, "energy_ha": -8.425513118517230},
+      {"delta": 0.000187, "energy_ha": -8.425513161188180}
+    ],
+    "all_component_absolute_errors_gpa": [
+      {
+        "delta": 0.0005,
+        "component_order": ["xx", "yy", "zz", "xy", "xz", "yz"],
+        "values": [0.0014585244, 0.0297130964, 0.0259906580, 0.0046946074, 0.0290389480, 0.0033933157],
+        "maximum": 0.0297130964,
+        "rms": 0.0201549172
+      },
+      {
+        "delta": 0.00025,
+        "component_order": ["xx", "yy", "zz", "xy", "xz", "yz"],
+        "values": [0.0053219923, 0.0583120970, 0.0610741161, 0.0019881232, 0.0000800691, 0.0019739759],
+        "maximum": 0.0610741161,
+        "rms": 0.0345604001
+      }
+    ],
+    "result": "Disabling the neutral-atom-potential formulation removes the localized 0.000185-to-0.000186 energy step and reduces, but does not eliminate, other coarse-step finite-difference errors."
+  },
+  "conclusion": "The coarse yy pattern is not smooth O(delta^2) truncation error. It is dominated by central-difference amplification of a tiny neutral-atom-potential-dependent SCF energy branch crossing. The proposed integer whole-grid-count mechanism and several related discrete topology changes are ruled out. Small deltas at or below 0.00015 avoid this crossing and all six analytic stress components then agree with energy derivatives within 0.00325 GPa. No stress-formula change is indicated. The precise lower-level trigger of the neutral-atom SCF branch, and the source of residual coarse-step errors when that formulation is disabled, remain unidentified."
+}

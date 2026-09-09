@@ -98,10 +98,31 @@ energy decompositions move across several kinetic, XC, neutral-atom/pseudo,
 and non-local channels; those individual energies are not separately
 variational, so their response terms cannot identify one analytic stress
 contribution as the cause.  The small-step agreement of every component rules
-out a stable missing analytic stress term at the measured scale.  The
-non-monotonic sequence is consistent with numerical finite-grid sampling, but
-does not by itself identify one unique numerical mechanism.  The full
-machine-readable sweep is stored beside the canonical reference summary.
+out a stable missing analytic stress term at the measured scale.
+
+The non-monotonic sequence is not an ordinary smooth truncation-error curve.
+A focused yy scan locates a `5.16e-7 Ha` step in the positive-strain energy
+between `1.85e-4` and `1.86e-4`.  When that step is included in a central
+difference, it predicts spurious stress shifts of `0.02694`, `0.05387`, and
+`0.10775 GPa` at deltas `1e-3`, `5e-4`, and `2.5e-4`, respectively.  These
+values account for the observed scale and doubling of the yy error; the
+`2.5e-4` prediction agrees with the observed `0.10774 GPa` error almost
+exactly.  Deltas at or below `1.5e-4` do not cross this step.
+
+The suggested integer-grid-size explanation was checked directly and ruled
+out: every endpoint in the six-delta sweep uses the same `32 x 32 x 32`
+integration grid.  Across the exact step, the Hilbert/block layout, covering
+sets, sparse-matrix lengths, PAO and neutral-atom support membership, and
+accepted grid-point counts are also unchanged.  Tightening the SCF energy
+tolerance from `1e-10` to `1e-12 Ha` leaves the energies unchanged.  The step
+vanishes when the neutral-atom-potential formulation is disabled, while its
+sampled grid potential itself changes smoothly.  The evidence therefore
+localizes this particular discontinuity to a tiny numerical branch in the
+fixed-grid neutral-atom SCF formulation, but does not identify the lower-level
+trigger.  Disabling that formulation reduces but does not remove all
+coarse-step component errors, so those remaining errors are not assigned to
+the same mechanism.  The complete sweep and diagnostic controls are stored
+in the machine-readable files beside the canonical reference summary.
 
 ## What this checks—and what it does not
 

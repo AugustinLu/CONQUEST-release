@@ -80,5 +80,6 @@
       "absolute_error_gpa": 0.057321118
     }
   ],
-  "conclusion": "The component errors are non-monotonic with strain step and do not separate into diagonal and shear classes. At three neighboring deltas from 0.0001 through 0.00015 every component agrees within 0.00325 GPa, ruling out a stable missing analytic term at that scale. The sweep is consistent with finite-grid numerical sampling but does not uniquely identify its mechanism."
+  "followup_diagnostic": "yy_branch_diagnostic.json",
+  "conclusion": "The component errors are non-monotonic with strain step and do not separate into diagonal and shear classes. At three neighboring deltas from 0.0001 through 0.00015 every component agrees within 0.00325 GPa, ruling out a stable missing analytic term at that scale. A focused yy scan found a 5.16e-7 Ha neutral-atom-potential-dependent energy branch crossing between deltas 0.000185 and 0.000186; its central-difference amplification accounts for the yy error pattern. The whole-grid dimensions and tested support/topology counts do not change at the crossing. The precise lower-level trigger and the source of the remaining coarse-step component errors are not uniquely identified."
 }

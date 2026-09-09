@@ -1,6 +1,7 @@
 IO.Title                    primitive_si_strain_finite_difference
 IO.Coordinates              coords.dat
 IO.FractionalAtomicCoords   T
+IO.Iprint_init              1
 AtomMove.TypeOfRun          static
 AtomMove.FullStress         T
 General.NumberOfSpecies     1
