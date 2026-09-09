@@ -316,6 +316,10 @@ module DiagModule
   ! that Methfessel-Paxton approximation may casue the bracket search
   ! algorithm to fail.)
   integer :: max_brkt_iterations
+  ! Electron-count convergence for the Fermi-level bisection.  The previous
+  ! 1e-6 tolerance allowed visibly different occupations and energies to be
+  ! accepted after arbitrarily small perturbations of a gapped system.
+  real(double), parameter :: tolElec = 1.0e-10_double
   
 contains
 
@@ -2362,7 +2366,6 @@ contains
 
     ! local variables
     real(double)            :: electrons_total
-    real(double), parameter :: tolElec = 1.0e-6_double
     real(double) :: locals_occ, localt_occ
     integer :: ikp, i, ispin
 
@@ -2446,7 +2449,6 @@ contains
     integer,      dimension(nspin) :: ne
     real(double) :: electrons_total, gaussian_width
     integer      :: counter, ibrkt, lband, lkp, iband, ikp, spin
-    real(double), parameter :: tolElec = 1.0e-6_double
 
     if (nspin == 2) then
        electrons_total = electrons(1) + electrons(2)
@@ -2718,7 +2720,6 @@ contains
     real(double), dimension(nspin) :: lowEf, highEf, incEf
     real(double) :: gaussian_width, thisElec, lowElec, highElec
     integer      :: counter, ne, ibrkt, lband, lkp, iband, ikp, spin, lspin
-    real(double), parameter :: tolElec = 1.0e-6_double
 
     ! Finding the correct bracket trapping Ef
     select case (flag_smear_type)

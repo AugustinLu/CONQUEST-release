@@ -19,7 +19,7 @@ AtomMove.OptCellMethod      3
 AtomMove.OptCell.Constraint a/b
 AtomMove.NumSteps           30
 AtomMove.MaxForceTol        5.0e-4
-AtomMove.EnthalpyTolerance  1.0e-5
+AtomMove.EnthalpyTolerance  2.0e-3
 AtomMove.StressTolerance    1.0
 AtomMove.ReuseDM            T
 AtomMove.CGLineMin          safe

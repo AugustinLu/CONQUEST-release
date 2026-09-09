@@ -62,19 +62,19 @@
     The functional used will be hyb PBE0       
 
     PulayMixSC: Reached SCF tolerance of  0.57025E-03 after      4 iterations
-      | Number of electrons (u/d)=         3.000002        2.000002
-      |* Harris-Foulkes energy   =        -6.192977992070597 Ha
+      | Number of electrons (u/d)=         3.000003        2.000002
+      |* Harris-Foulkes energy   =        -6.192978140024351 Ha
 
     WARNING: For hybrid PBE0 forces are not consistent!
 
     force: Forces on atoms (Ha/a0)
     force:  Atom   X              Y              Z
-    force:     1   0.0000000000   0.0000000000   0.1280359876
-    force:     2   0.0000000000   0.0000000000  -0.1224210376
+    force:     1  -0.0000000000  -0.0000000000   0.1280361565
+    force:     2  -0.0000000000  -0.0000000000  -0.1224210485
 
-    force: Maximum force :        0.12803599(Ha/a0) on atom         1 in z direction
-    force: Force Residual:        0.12525998 Ha/a0
-    force: Total stress:         -0.00069579    -0.00069579    -0.14086907 GPa
+    force: Maximum force :        0.12803616(Ha/a0) on atom         1 in z direction
+    force: Force Residual:        0.12526007 Ha/a0
+    force: Total stress:         -0.00069592    -0.00069592    -0.14086911 GPa
 
     BIBLIOGRAPHY: Please consider citing the following references in the conquest.bib file
 

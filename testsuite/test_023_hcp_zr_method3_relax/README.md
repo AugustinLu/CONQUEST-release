@@ -19,7 +19,9 @@ NP=2 ./run_workflow.sh
 
 The workflow reuses the PBE `Zr.ion` file from test 015, runs the relaxation,
 and checks that the final determinant is positive, the angles are unchanged,
-and the `a/b` constraint is satisfied.  The illustrative input uses a
-`1 GPa` stress tolerance so that the small example terminates above the
-real-space-grid and SCF noise floor; tighten the grid, k-point mesh, electronic
-tolerance, and stress tolerance together for production lattice constants.
+and the `a/b` constraint is satisfied. The illustrative input uses a `1 GPa`
+stress tolerance and a `2e-3 Ha` enthalpy-change tolerance so that the small
+example terminates once its first cell step satisfies the force and stress
+criteria, above the real-space-grid and SCF noise floor. Tighten the grid,
+k-point mesh, electronic tolerance, and all geometry tolerances together for
+production lattice constants.
