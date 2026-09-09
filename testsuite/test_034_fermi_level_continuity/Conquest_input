@@ -1,0 +1,24 @@
+IO.Title                    primitive_si_fermi_level_continuity
+IO.Coordinates              coords.dat
+IO.FractionalAtomicCoords   T
+IO.Iprint                   3
+AtomMove.TypeOfRun          static
+General.NumberOfSpecies     1
+General.PAOFromFiles        T
+General.NeutralAtom         T
+%block ChemicalSpeciesLabel
+1 28.086 Si Si.ion
+%endblock
+Grid.PointsAlongX           32
+Grid.PointsAlongY           32
+Grid.PointsAlongZ           32
+DM.SolutionMethod           diagon
+minE.SelfConsistent         T
+minE.SCTolerance            1.0e-12
+SC.MaxIters                 250
+Diag.MPMesh                 T
+Diag.GammaCentred           T
+Diag.MPMeshX                6
+Diag.MPMeshY                6
+Diag.MPMeshZ                6
+Diag.kT                     0.001
