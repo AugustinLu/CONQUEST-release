@@ -1,85 +1,47 @@
 {
-  "tested_source_revision": "5b1aee97a8c87279d4edaf4d3b6b93e9f4c625b3",
+  "tested_source_revision": "bb1c37a0",
+  "fermi_electron_tolerance": 1e-10,
   "grid_cutoff_ha": 80,
   "component_order": ["xx", "yy", "zz", "xy", "xz", "yz"],
   "strain_step_sweep": [
     {
       "delta": 0.001,
-      "absolute_errors_gpa": [0.0103210381, 0.0302372148, 0.0166836741, 0.0177360532, 0.0251369473, 0.0044316378],
-      "maximum_absolute_error_gpa": 0.0302372148,
-      "rms_absolute_error_gpa": 0.0194303503
+      "absolute_errors_gpa": [0.0132309226, 0.0055814127, 0.0061407723, 0.0082484022, 0.0008593561, 0.0049289234],
+      "maximum_absolute_error_gpa": 0.0132309226,
+      "rms_absolute_error_gpa": 0.0074943032
     },
     {
       "delta": 0.0005,
-      "absolute_errors_gpa": [0.0002791452, 0.0547849080, 0.0449605433, 0.0050671366, 0.0519014059, 0.0035862313],
-      "maximum_absolute_error_gpa": 0.0547849080,
-      "rms_absolute_error_gpa": 0.0359518367
+      "absolute_errors_gpa": [0.0031790810, 0.0023792099, 0.0056978805, 0.0037265406, 0.0021396483, 0.0040834094],
+      "maximum_absolute_error_gpa": 0.0056978805,
+      "rms_absolute_error_gpa": 0.0037276550
     },
     {
       "delta": 0.00025,
-      "absolute_errors_gpa": [0.0041065280, 0.1077388548, 0.1037870034, 0.0020663412, 0.0003756252, 0.0018286695],
-      "maximum_absolute_error_gpa": 0.1077388548,
-      "rms_absolute_error_gpa": 0.0611064936
+      "absolute_errors_gpa": [0.0012093032, 0.0007187455, 0.0029673906, 0.0007258358, 0.0008946932, 0.0023267244],
+      "maximum_absolute_error_gpa": 0.0029673906,
+      "rms_absolute_error_gpa": 0.0017090629
     },
     {
       "delta": 0.00015,
-      "absolute_errors_gpa": [0.0032408810, 0.0008125224, 0.0028881677, 0.0010908247, 0.0005402429, 0.0007151302],
-      "maximum_absolute_error_gpa": 0.0032408810,
-      "rms_absolute_error_gpa": 0.0018928896
+      "absolute_errors_gpa": [0.0003445537, 0.0014950892, 0.0002453510, 0.0002501057, 0.0010594584, 0.0012134190],
+      "maximum_absolute_error_gpa": 0.0014950892,
+      "rms_absolute_error_gpa": 0.0009193836
     },
     {
       "delta": 0.000125,
-      "absolute_errors_gpa": [0.0025527139, 0.0005564674, 0.0024828830, 0.0011514126, 0.0006755940, 0.0000139397],
-      "maximum_absolute_error_gpa": 0.0025527139,
-      "rms_absolute_error_gpa": 0.0015691337
+      "absolute_errors_gpa": [0.0003433103, 0.0017511124, 0.0001596978, 0.0001894855, 0.0011947932, 0.0005122192],
+      "maximum_absolute_error_gpa": 0.0017511124,
+      "rms_absolute_error_gpa": 0.0009069697
     },
     {
       "delta": 0.0001,
-      "absolute_errors_gpa": [0.0021030902, 0.0011257368, 0.0019520270, 0.0007013682, 0.0007818497, 0.0004900446],
-      "maximum_absolute_error_gpa": 0.0021030902,
-      "rms_absolute_error_gpa": 0.0013443729
-    }
-  ],
-  "yy_cutoff_sweep_at_delta_0.0005": [
-    {
-      "grid_cutoff_ha": 80,
-      "analytic_gpa": -4.49169180,
-      "finite_difference_gpa": -4.546476708,
-      "absolute_error_gpa": 0.054784908
-    },
-    {
-      "grid_cutoff_ha": 120,
-      "analytic_gpa": -4.52158615,
-      "finite_difference_gpa": -4.570519789,
-      "absolute_error_gpa": 0.048933639
-    },
-    {
-      "grid_cutoff_ha": 160,
-      "analytic_gpa": -4.54227011,
-      "finite_difference_gpa": -4.592991298,
-      "absolute_error_gpa": 0.050721188
-    }
-  ],
-  "xz_cutoff_sweep_at_delta_0.0005": [
-    {
-      "grid_cutoff_ha": 80,
-      "analytic_gpa": -2.21442821,
-      "finite_difference_gpa": -2.266329616,
-      "absolute_error_gpa": 0.051901406
-    },
-    {
-      "grid_cutoff_ha": 120,
-      "analytic_gpa": -2.24216555,
-      "finite_difference_gpa": -2.296990594,
-      "absolute_error_gpa": 0.054825044
-    },
-    {
-      "grid_cutoff_ha": 160,
-      "analytic_gpa": -2.19668746,
-      "finite_difference_gpa": -2.254008578,
-      "absolute_error_gpa": 0.057321118
+      "absolute_errors_gpa": [0.0007925841, 0.0011816329, 0.0006903257, 0.0006394822, 0.0013010346, 0.0000081135],
+      "maximum_absolute_error_gpa": 0.0013010346,
+      "rms_absolute_error_gpa": 0.0008758510
     }
   ],
   "followup_diagnostic": "yy_branch_diagnostic.json",
-  "conclusion": "The component errors are non-monotonic with strain step and do not separate into diagonal and shear classes. At three neighboring deltas from 0.0001 through 0.00015 every component agrees within 0.00325 GPa, ruling out a stable missing analytic term at that scale. A focused yy scan found a 5.16e-7 Ha neutral-atom-potential-dependent energy branch crossing between deltas 0.000185 and 0.000186; its central-difference amplification accounts for the yy error pattern. The whole-grid dimensions and tested support/topology counts do not change at the crossing. The precise lower-level trigger and the source of the remaining coarse-step component errors are not uniquely identified."
+  "continuity_regression": "../../../test_034_fermi_level_continuity",
+  "conclusion": "Tightening the Fermi-level electron-count tolerance from 1e-6 to 1e-10 removes the non-monotonic finite-difference branch. All six components now converge to a small numerical floor without a diagonal-versus-shear pattern. No analytic stress formula change is indicated."
 }

@@ -1,6 +1,7 @@
 {
-  "tested_source_revision": "518bf3599ee7c16ba693d9c2d7ac2742731449eb",
-  "purpose": "Follow up the non-monotonic yy finite-difference error and test the proposed integer-grid-size mechanism.",
+  "historical_source_revision": "518bf3599ee7c16ba693d9c2d7ac2742731449eb",
+  "resolution_source_revision": "bb1c37a0",
+  "purpose": "Resolve the former non-monotonic yy finite-difference error and distinguish its Fermi-level trigger from grid-selection effects.",
   "configuration": {
     "grid_cutoff_ha": 80,
     "base_volume_bohr3": 281.9792330062192,
@@ -91,5 +92,24 @@
     ],
     "result": "Disabling the neutral-atom-potential formulation removes the localized 0.000185-to-0.000186 energy step and reduces, but does not eliminate, other coarse-step finite-difference errors."
   },
-  "conclusion": "The coarse yy pattern is not smooth O(delta^2) truncation error. It is dominated by central-difference amplification of a tiny neutral-atom-potential-dependent SCF energy branch crossing. The proposed integer whole-grid-count mechanism and several related discrete topology changes are ruled out. Small deltas at or below 0.00015 avoid this crossing and all six analytic stress components then agree with energy derivatives within 0.00325 GPa. No stress-formula change is indicated. The precise lower-level trigger of the neutral-atom SCF branch, and the source of residual coarse-step errors when that formulation is disabled, remain unidentified."
+  "grid_phase_and_electronic_controls": {
+    "translation_result": "At the historical 1e-6 Fermi electron tolerance, translating both atoms by one quarter, one half, or three quarters of a 32-point-grid spacing removes the step; a full spacing reproduces it exactly.",
+    "mesh_result": "At the same four strains, forced 28, 36, 40, 44, and 48 point meshes are smooth while 32 points crosses the branch.",
+    "kpoint_result": "At 32 points and kT=0.001 Ha, 2x2x2, 4x4x4, and 8x8x8 meshes are smooth while 6x6x6 crosses the branch.",
+    "smearing_result": "At 6x6x6, changing kT removes or moves the crossing to a neighboring strain interval.",
+    "interpretation": "Grid phase, grid size, k-point mesh, and smearing perturb the eigenvalues and therefore decide whether the loose Fermi bisection lands on one side of the discrete stopping threshold; they are triggers, not the root cause."
+  },
+  "fermi_level_root_cause": {
+    "historical_electron_tolerance": 1e-6,
+    "corrected_electron_tolerance": 1e-10,
+    "fermi_energy_before_crossing_ha": -0.18570992173,
+    "fermi_energy_after_crossing_ha": -0.18180371177,
+    "historical_maximum_fermi_step_ha": 0.00390620996,
+    "corrected_maximum_fermi_step_ha": 1.522000001e-8,
+    "historical_energy_increment_range_ha": 5.164070060e-7,
+    "corrected_energy_increment_range_ha": 3.566924534e-12,
+    "provenance": "git blame attributes the 1e-6 local tolerance in findFermi_fixspin to commit 6d0afd4c from 2012; the same tolerance is present in upstream master and develop.",
+    "regression": "test_034_fermi_level_continuity"
+  },
+  "conclusion": "The coarse yy pattern was central-difference amplification of a loose Fermi-level electron-count stopping threshold in a gapped system. Tightening that threshold from 1e-6 to 1e-10 removes the energy and Fermi-level discontinuities and reduces the canonical six-component maximum stress error from 0.0548 to 0.00570 GPa. No stress-formula or grid-selection change is indicated."
 }

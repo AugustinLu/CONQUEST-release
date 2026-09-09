@@ -55,8 +55,8 @@ background-policy jobs may otherwise use up to five ranks.
 - the 60-degree angles are retained and one-/two-rank endpoints agree to
   approximately `2e-7 A`;
 - six-strain stress check at the canonical `5e-4` step: maximum absolute error
-  `0.0548 GPa`, RMS error `0.0360 GPa`, and maximum relative component error
-  `2.34%`.
+  `0.00570 GPa`, RMS error `0.00373 GPa`, and maximum relative component error
+  `0.164%`.
 
 Compact summaries and plots are in `reference/`.
 
@@ -69,23 +69,16 @@ for every tensor component gives the following absolute errors in GPa:
 
 | strain step | xx | yy | zz | xy | xz | yz | maximum |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| `1.0e-3` | 0.010321 | 0.030237 | 0.016684 | 0.017736 | 0.025137 | 0.004432 | 0.030237 |
-| `5.0e-4` | 0.000279 | 0.054785 | 0.044961 | 0.005067 | 0.051901 | 0.003586 | 0.054785 |
-| `2.5e-4` | 0.004107 | 0.107739 | 0.103787 | 0.002066 | 0.000376 | 0.001829 | 0.107739 |
-| `1.5e-4` | 0.003241 | 0.000813 | 0.002888 | 0.001091 | 0.000540 | 0.000715 | 0.003241 |
-| `1.25e-4` | 0.002553 | 0.000556 | 0.002483 | 0.001151 | 0.000676 | 0.000014 | 0.002553 |
-| `1.0e-4` | 0.002103 | 0.001126 | 0.001952 | 0.000701 | 0.000782 | 0.000490 | 0.002103 |
+| `1.0e-3` | 0.013231 | 0.005581 | 0.006141 | 0.008248 | 0.000859 | 0.004929 | 0.013231 |
+| `5.0e-4` | 0.003179 | 0.002379 | 0.005698 | 0.003727 | 0.002140 | 0.004083 | 0.005698 |
+| `2.5e-4` | 0.001209 | 0.000719 | 0.002967 | 0.000726 | 0.000895 | 0.002327 | 0.002967 |
+| `1.5e-4` | 0.000345 | 0.001495 | 0.000245 | 0.000250 | 0.001059 | 0.001213 | 0.001495 |
+| `1.25e-4` | 0.000343 | 0.001751 | 0.000160 | 0.000189 | 0.001195 | 0.000512 | 0.001751 |
+| `1.0e-4` | 0.000793 | 0.001182 | 0.000690 | 0.000639 | 0.001301 | 0.000008 | 0.001301 |
 
-The convergence is strongly non-monotonic: xz improves at `2.5e-4`, while yy
-and zz become worse there.  At three neighboring steps from `1.0e-4` through
-`1.5e-4`, all six components agree within `0.00325 GPa`.  The behavior
-therefore does not divide into diagonal versus shear components, and an
-xz-only sweep is insufficient evidence.
-
-At fixed step `5e-4`, increasing the cutoff from 80 to 120 and 160 Ha changes
-the yy error from `0.05478` to `0.04893` and `0.05072 GPa`; the corresponding
-xz errors are `0.05190`, `0.05483`, and `0.05732 GPa`.  A simple cutoff
-increase does not monotonically eliminate either coarse-step discrepancy.
+The errors now decrease to the expected small numerical floor without the
+previous factor-of-two growth and abrupt collapse. No diagonal-versus-shear
+pattern remains.
 
 The analytic xz total includes symmetric kinetic (`+1.18685 GPa`), S-Pulay
 (`+1.77945 GPa`), Phi-Pulay (`-3.33526 GPa`), local (`+2.40136 GPa`),
@@ -100,29 +93,29 @@ variational, so their response terms cannot identify one analytic stress
 contribution as the cause.  The small-step agreement of every component rules
 out a stable missing analytic stress term at the measured scale.
 
-The non-monotonic sequence is not an ordinary smooth truncation-error curve.
-A focused yy scan locates a `5.16e-7 Ha` step in the positive-strain energy
-between `1.85e-4` and `1.86e-4`.  When that step is included in a central
-difference, it predicts spurious stress shifts of `0.02694`, `0.05387`, and
-`0.10775 GPa` at deltas `1e-3`, `5e-4`, and `2.5e-4`, respectively.  These
-values account for the observed scale and doubling of the yy error; the
-`2.5e-4` prediction agrees with the observed `0.10774 GPa` error almost
-exactly.  Deltas at or below `1.5e-4` do not cross this step.
+The former non-monotonic sequence came from the Fermi-level search, not from
+the analytic stress. Its historical `1e-6` electron-count tolerance allowed
+the bisection to stop at different positions inside the Si band gap after an
+arbitrarily small strain. Between positive yy strains `1.85e-4` and `1.86e-4`,
+the accepted Fermi energy jumped from `-0.18570992` to `-0.18180371 Ha`. This
+changed the tiny smeared occupations and produced a spurious `5.16e-7 Ha`
+energy step. A `1e-10` electron-count tolerance gives a smooth Fermi energy
+near `-0.1837568 Ha` and removes the step without changing any grid or stress
+formula. Test 034 is the focused regression for this behavior.
 
-The suggested integer-grid-size explanation was checked directly and ruled
-out: every endpoint in the six-delta sweep uses the same `32 x 32 x 32`
-integration grid.  Across the exact step, the Hilbert/block layout, covering
-sets, sparse-matrix lengths, PAO and neutral-atom support membership, and
-accepted grid-point counts are also unchanged.  Tightening the SCF energy
-tolerance from `1e-10` to `1e-12 Ha` leaves the energies unchanged.  The step
-vanishes when the neutral-atom-potential formulation is disabled, while its
-sampled grid potential itself changes smoothly.  The evidence therefore
-localizes this particular discontinuity to a tiny numerical branch in the
-fixed-grid neutral-atom SCF formulation, but does not identify the lower-level
-trigger.  Disabling that formulation reduces but does not remove all
-coarse-step component errors, so those remaining errors are not assigned to
-the same mechanism.  The complete sweep and diagnostic controls are stored
-in the machine-readable files beside the canonical reference summary.
+The grid investigation was still useful for locating the trigger. Every
+endpoint used the same `32 x 32 x 32` integration grid, and the block, cover,
+matrix, PAO, and neutral-atom support topologies were unchanged. Translating
+the atoms by a fraction of one grid spacing, selecting a neighboring grid
+size, changing the k-point mesh, or changing `Diag.kT` could remove or move the
+old jump because each perturbed the eigenvalues enough to choose a different
+acceptable Fermi level. Those controls do not identify the grid-selection
+algorithm as the cause. The loose Fermi tolerance dates to the 2012
+`findFermi` implementation and is also present in upstream master and develop;
+the general-cell branch merely exposed it with a sensitive skew-cell test.
+
+The complete before/after evidence is stored in the machine-readable files
+beside the canonical reference summary.
 
 ## What this checks—and what it does not
 

@@ -1,82 +1,82 @@
 {
   "strain_parameterization": "normal tensor strains; engineering shear with eps_ij=eps_ji=gamma/2",
   "delta": 0.0005,
-  "base_energy_ha": -8.425507579974362,
+  "base_energy_ha": -8.425507753590864,
   "base_volume_bohr3": 281.9792330062192,
   "analytic_stress_gpa": [
     [
-      -2.18716536,
-      3.21382545,
-      -2.21442821
+      -2.18715361,
+      3.21382588,
+      -2.2144272
     ],
     [
-      3.21382545,
-      -4.4916918,
-      2.58914066
+      3.21382588,
+      -4.49170506,
+      2.58914177
     ],
     [
-      -2.21442821,
-      2.58914066,
-      -3.49048433
+      -2.2144272,
+      2.58914177,
+      -3.49047444
     ]
   ],
   "stress_antisymmetry_max_gpa": 0.0,
-  "maximum_absolute_error_gpa": 0.05478490798266389,
-  "rms_absolute_error_gpa": 0.03595183671776411,
+  "maximum_absolute_error_gpa": 0.005697880509149211,
+  "rms_absolute_error_gpa": 0.0037276549886732964,
   "components": [
     {
       "component": "xx",
-      "analytic_gpa": -2.18716536,
-      "finite_difference_gpa": -2.187444505227588,
-      "absolute_error_gpa": 0.0002791452275880957,
-      "relative_error": 0.00012762877132806077,
-      "minus_energy_ha": -8.425496943006815,
-      "plus_energy_ha": -8.425517908078314
+      "analytic_gpa": -2.18715361,
+      "finite_difference_gpa": -2.190332691027938,
+      "absolute_error_gpa": 0.0031790810279379578,
+      "relative_error": 0.0014535243493656385,
+      "minus_energy_ha": -8.425497103331544,
+      "plus_energy_ha": -8.425518096084213
     },
     {
       "component": "yy",
-      "analytic_gpa": -4.4916918,
-      "finite_difference_gpa": -4.546476707982664,
-      "absolute_error_gpa": 0.05478490798266389,
-      "relative_error": 0.012196942805083797,
-      "minus_energy_ha": -8.425485844939342,
-      "plus_energy_ha": -8.425529419626162
+      "analytic_gpa": -4.49170506,
+      "finite_difference_gpa": -4.494084269866374,
+      "absolute_error_gpa": 0.0023792098663735217,
+      "relative_error": 0.0005296896912402173,
+      "minus_energy_ha": -8.425486029895204,
+      "plus_energy_ha": -8.425529102438446
     },
     {
       "component": "zz",
-      "analytic_gpa": -3.49048433,
-      "finite_difference_gpa": -3.445523786655169,
-      "absolute_error_gpa": 0.04496054334483102,
-      "relative_error": 0.012880889611336835,
-      "minus_energy_ha": -8.425491168141983,
-      "plus_energy_ha": -8.42552419099233
+      "analytic_gpa": -3.49047444,
+      "finite_difference_gpa": -3.496172320509149,
+      "absolute_error_gpa": 0.005697880509149211,
+      "relative_error": 0.0016324086043584412,
+      "minus_energy_ha": -8.425490844089763,
+      "plus_energy_ha": -8.42552435236963
     },
     {
       "component": "xy",
-      "analytic_gpa": 3.21382545,
-      "finite_difference_gpa": 3.208758313444864,
-      "absolute_error_gpa": 0.00506713655513602,
-      "relative_error": 0.001576668252202689,
-      "minus_energy_ha": -8.425522826428322,
-      "plus_energy_ha": -8.425492072803577
+      "analytic_gpa": 3.21382588,
+      "finite_difference_gpa": 3.2100993393751374,
+      "absolute_error_gpa": 0.003726540624862551,
+      "relative_error": 0.0011595340768313655,
+      "minus_energy_ha": -8.42552300658944,
+      "plus_energy_ha": -8.425492240111932
     },
     {
       "component": "xz",
-      "analytic_gpa": -2.21442821,
-      "finite_difference_gpa": -2.2663296158531776,
-      "absolute_error_gpa": 0.05190140585317771,
-      "relative_error": 0.023437836286044112,
-      "minus_energy_ha": -8.425496865895457,
-      "plus_energy_ha": -8.425518587023616
+      "analytic_gpa": -2.2144272,
+      "finite_difference_gpa": -2.212287551678939,
+      "absolute_error_gpa": 0.0021396483210609496,
+      "relative_error": 0.0009662310511092665,
+      "minus_energy_ha": -8.425497042009075,
+      "plus_energy_ha": -8.425518245183184
     },
     {
       "component": "yz",
-      "analytic_gpa": 2.58914066,
-      "finite_difference_gpa": 2.5927268913492725,
-      "absolute_error_gpa": 0.003586231349272495,
-      "relative_error": 0.0013851048746314522,
-      "minus_energy_ha": -8.425519866341622,
-      "plus_energy_ha": -8.425495016931945
+      "analytic_gpa": 2.58914177,
+      "finite_difference_gpa": 2.593225179390929,
+      "absolute_error_gpa": 0.004083409390929216,
+      "relative_error": 0.001577128544386048,
+      "minus_energy_ha": -8.425520042374663,
+      "plus_energy_ha": -8.425495188189256
     }
   ]
 }
