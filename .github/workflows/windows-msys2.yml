@@ -1,0 +1,268 @@
+name: Makefile CI
+
+on:
+  push:
+    branches: [ "develop", "f-exx-opt", "f-windows-msys2" ]
+  pull_request:
+    branches: [ "develop", "f-exx-opt", "f-windows-msys2" ]
+
+  # Manual dispatch for including all multiply kernels in matrix.
+  # We don't want this to run on every commit, but it's useful
+  # to be able to launch it manually
+  workflow_dispatch:
+    inputs:
+      multiply_kernel_test:
+        description: 'test all multiply kernels, instead of default only'
+        required: false
+        default: false
+
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # Existing Linux CI
+  # ---------------------------------------------------------------------------
+
+  build:
+    name: ${{matrix.fc}} -- ${{matrix.os}} -- ${{matrix.multiply_kernel}} multiply kernel -- ${{matrix.np}} processes -- ${{matrix.threads}} threads
+    runs-on: ${{matrix.os}}
+
+    env:
+      FC: ${{matrix.fc}}
+      F77: mpif77
+      OMP_NUM_THREADS: ${{matrix.threads}}
+      OPENBLAS_NUM_THREADS: 1
+      OMP_STACKSIZE: 100M
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        os:
+          # We could add ubuntu-latest but until 2024 it will be the same as 22.04
+          - ubuntu-22.04
+
+        fc:
+          # TODO: We could also build with `intel-oneapi-compiler-fortran`, it is available
+          #       for installation from Intel through their apt repository.
+          - mpifort
+
+        np:
+          - 1
+          - 2
+
+        threads:
+          - 1
+          - 2
+
+        # TODO: Could be worth testing on `mpich` in addition to `openmpi-bin`. Both are
+        #       available in apt
+        multiply_kernel:
+          - default
+          - gemm
+          - ompDoii
+          - ompDoik
+          - ompDoji
+          - ompDojk
+          - ompGemm
+          - ompGemm_m
+
+        # As a work-around, copy the multiply_kernel_test variable to the matrix and
+        # exclude non-default multiply kernels when it's false
+        # https://github.com/orgs/community/discussions/26253#discussioncomment-3250989
+        test_all_multiply_kernels:
+          - ${{github.event.inputs.multiply_kernel_test}}
+
+        exclude:
+          - test_all_multiply_kernels: false
+            multiply_kernel: gemm
+
+          - test_all_multiply_kernels: false
+            multiply_kernel: ompDoii
+
+          - test_all_multiply_kernels: false
+            multiply_kernel: ompDoik
+
+          - test_all_multiply_kernels: false
+            multiply_kernel: ompDoji
+
+          - test_all_multiply_kernels: false
+            multiply_kernel: ompDojk
+
+          - test_all_multiply_kernels: false
+            multiply_kernel: ompGemm
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: '0'
+
+    - name: Install Dependencies
+      run: |
+        sudo apt update
+        sudo apt install openmpi-bin libopenmpi-dev libfftw3-dev libblas3 liblapack3 libscalapack-openmpi-dev libxc-dev
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install python utilities
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install numpy
+
+    - name: Check compiler version
+      run: ${{matrix.fc}} --version
+
+    - name: Build
+      working-directory: ${{github.workspace}}/src
+      run: |
+        make -j ${{matrix.np}} SYSTEM=gha MULT_KERN=${{matrix.multiply_kernel}}
+
+    - name: Run test 001
+      working-directory: ${{github.workspace}}/testsuite/test_001_bulk_Si_1proc_Diag
+      run: |
+        mpirun -np ${{matrix.np}} ../../bin/Conquest
+        cat Conquest_out
+
+    - name: Run test 002
+      working-directory: ${{github.workspace}}/testsuite/test_002_bulk_Si_1proc_OrderN
+      run: |
+        mpirun -np ${{matrix.np}} ../../bin/Conquest
+        cat Conquest_out
+
+    - name: Run test 003
+      working-directory: ${{github.workspace}}/testsuite/test_003_bulk_BTO_polarisation
+      run: |
+        mpirun -np ${{matrix.np}} ../../bin/Conquest
+        cat Conquest_out
+
+    - name: Run test 004
+      working-directory: ${{github.workspace}}/testsuite/test_004_isol_C2H4_4proc_PBE0CRI
+      run: |
+        mpirun -np ${{matrix.np}} ../../bin/Conquest
+        cat Conquest_out
+
+    - name: Run test 005
+      working-directory: ${{github.workspace}}/testsuite/test_005_isol_C2H4_4proc_PBE0GTO
+      run: |
+        mpirun -np ${{matrix.np}} ../../bin/Conquest
+        cat Conquest_out
+
+    - name: Run test 006
+      working-directory: ${{github.workspace}}/testsuite/test_006_isol_C2H4_4proc_PBE0ERI
+      run: |
+        mpirun -np ${{matrix.np}} ../../bin/Conquest
+        cat Conquest_out
+
+    - name: Run test 007
+      working-directory: ${{github.workspace}}/testsuite/test_007_isol_CH_spinpol_1proc_PBE0CRI
+      run: |
+        mpirun -np ${{matrix.np}} ../../bin/Conquest
+        cat Conquest_out
+
+    - name: Run test 008
+      working-directory: ${{github.workspace}}/testsuite/test_008_surface_dipole
+      run: |
+        mpirun -np ${{matrix.np}} ../../bin/Conquest
+        cat Conquest_out
+
+    - name: Run test 009
+      working-directory: ${{github.workspace}}/testsuite/test_009_DFT_plus_U
+      run: |
+        mpirun -np ${{matrix.np}} ../../bin/Conquest
+        cat Conquest_out
+
+    - name: Check test results
+      working-directory: ${{github.workspace}}/testsuite
+      run: pytest test_check_output.py
+
+
+  # ---------------------------------------------------------------------------
+  # Native Windows CI using MSYS2 UCRT64 + Microsoft MPI
+  # ---------------------------------------------------------------------------
+
+  windows-msys2:
+    name: Windows MSYS2 UCRT64
+    runs-on: windows-latest
+
+    env:
+      OMP_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+      OMP_STACKSIZE: 100M
+
+    steps:
+
+    # Prevent Git from converting shell scripts / Makefiles to CRLF.
+    - name: Disable automatic CRLF conversion
+      shell: pwsh
+      run: git config --global core.autocrlf input
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: '0'
+
+    # Install the native Microsoft MPI runtime.
+    - name: Install Microsoft MPI
+      uses: mpi4py/setup-mpi@v1
+      with:
+        mpi: msmpi
+
+    # Set up the same UCRT64 environment used by system.msys2.make.
+    - name: Set up MSYS2 UCRT64
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: UCRT64
+        update: true
+
+        # Needed so that the Microsoft MPI runtime installed above is
+        # visible from inside the MSYS2 UCRT64 environment.
+        path-type: inherit
+
+        install: >-
+          make
+          git
+          mingw-w64-ucrt-x86_64-gcc-fortran
+          mingw-w64-ucrt-x86_64-msmpi
+          mingw-w64-ucrt-x86_64-openblas
+          mingw-w64-ucrt-x86_64-scalapack
+          mingw-w64-ucrt-x86_64-fftw
+          mingw-w64-ucrt-x86_64-libxc
+          mingw-w64-ucrt-x86_64-python
+          mingw-w64-ucrt-x86_64-python-pytest
+          mingw-w64-ucrt-x86_64-python-numpy
+
+    - name: Check Windows toolchain
+      shell: msys2 {0}
+      run: |
+        echo "MSYSTEM=$MSYSTEM"
+        echo "Fortran compiler:"
+        mpifort --version
+        echo "MPI launcher:"
+        which mpiexec
+        echo "Python:"
+        python --version
+
+    - name: Build CONQUEST on Windows
+      shell: msys2 {0}
+      working-directory: ${{github.workspace}}/src
+      run: |
+        make -j2 SYSTEM=msys2
+        test -f ../bin/Conquest.exe
+        ls -lh ../bin/Conquest.exe
+
+    - name: Run Windows test 001
+      shell: msys2 {0}
+      working-directory: ${{github.workspace}}/testsuite/test_001_bulk_Si_1proc_Diag
+      run: |
+        mpiexec -n 1 ../../bin/Conquest.exe
+        test -s Conquest_out
+        cat Conquest_out
+
+    - name: Check Windows test result
+      shell: msys2 {0}
+      working-directory: ${{github.workspace}}/testsuite
+      run: |
+        pytest test_check_output.py -k test_001
