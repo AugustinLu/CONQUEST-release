@@ -390,17 +390,25 @@ module rng
       ! Local variables
       integer               :: i, un, istat, dt(8), pid, t(2), s, n
       integer(8)            :: count, tms
+      logical               :: file_exists
 
       call random_seed(size=n)
       allocate(rn%seed(n))
-      ! First try if the OS provides a random number generator
-      call io_assign(un)
-      open(unit=un, file="/dev/urandom", access="stream", &
-           form="unformatted", action="read", status="old", iostat=istat)
-      if (istat == 0) then
-         read(un) rn%seed
-         close(un)
-      else
+      ! First try if the OS provides a random number generator (/dev/urandom)
+      inquire(file="/dev/urandom", exist=file_exists)
+      istat = -1
+      if (file_exists) then
+         call io_assign(un)
+         open(unit=un, file="/dev/urandom", access="stream", &
+              form="unformatted", action="read", status="old", iostat=istat)
+         if (istat == 0) then
+            read(un, iostat=istat) rn%seed
+         end if
+         call io_close(un)
+      end if
+
+      ! Fallback if /dev/urandom is missing, unreadable, or returned EOF
+      if (istat /= 0) then
          ! Fallback to XOR:ing the current time and pid. The PID is
          ! useful in case one launches multiple instances of the same
          ! program in parallel.
@@ -435,7 +443,6 @@ module rng
             rn%seed = s + 37 * (/ (i, i = 0, n - 1 ) /)
          end if
       end if
-      call io_close(un)
 
     end subroutine get_random_seed
     !!***
