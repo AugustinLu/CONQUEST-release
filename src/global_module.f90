@@ -167,6 +167,9 @@
 !!    Defined inverse output explicitly for singular lattice matrices
 !!   2026/07/29 lu
 !!    Added bounded-search diagnostics for exact minimum-image calculations
+!!   2026/10/06 lu
+!!    Added shift_in_bohr boundary tolerance to wrap_into_cell so that
+!!    read-time wrapping agrees with the partitioners
 !!  SOURCE
 !!
 module global_module
@@ -634,13 +637,23 @@ contains
 
   subroutine wrap_into_cell(x, y, z)
     real(double), intent(inout) :: x, y, z
-    real(double), dimension(3) :: r, f
+    real(double), dimension(3) :: r, f, eps_frac
+    integer :: i
     r(1) = x
     r(2) = y
     r(3) = z
     f = matmul(lat_vec_inv, r)
-    ! Map coordinates to [0, 1) instead of [-0.5, 0.5)
-    f = f - floor(f)
+    ! Map coordinates to [0, 1) instead of [-0.5, 0.5).  The wrap must use
+    ! the same positive boundary tolerance (shift_in_bohr, expressed in
+    ! fractional units) as the partitioners (sfc_partitions_module,
+    ! atom_dispenser) and wrap_xyz_atom_cell.  Without it, an atom on a cell
+    ! face whose fractional coordinate round-trips to -1e-17 is wrapped to
+    ! ~1 here but assigned to the first partition there, leaving it a full
+    ! lattice vector away from its partition and outside the covering sets.
+    do i = 1, 3
+       eps_frac(i) = shift_in_bohr*sqrt(sum(lat_vec_inv(i,:)**2))
+    end do
+    f = f - floor(f + eps_frac)
     r = matmul(lat_vec, f)
     x = r(1)
     y = r(2)
