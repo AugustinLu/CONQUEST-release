@@ -19,7 +19,7 @@ if [[ -e "$RESULTS_DIR" ]]; then
 fi
 mkdir -p "$RESULTS_DIR"
 cp "$SCRIPT_DIR/Conquest_input" "$SCRIPT_DIR/coords.dat" "$RESULTS_DIR/"
-cp "$SCRIPT_DIR/../test_010_graphite_monoclinic/band_graphene_workflow/C.ion" \
+cp "$SCRIPT_DIR/../test_010_graphite_monoclinic/C_PBE_SZP_CQ.ion" \
   "$RESULTS_DIR/C.ion"
 
 (

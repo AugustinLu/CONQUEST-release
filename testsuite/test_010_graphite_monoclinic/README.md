@@ -10,6 +10,7 @@ two-dimensional slab.
 The maintained entry points are:
 
 ```bash
+./run_workflow.sh  # all three workflows, also used by run_all_tests.py
 ./run_cell_relax.sh
 ./run_graphite_hcp.sh
 ./run_graphene.sh

@@ -11,7 +11,7 @@ codes, analytic finite differences, and the existing regression workflows.
 | --- | --- | --- |
 | BUG-01 | Valid output omission/ambiguity; the claimed electronic covariance failure is not established by the supplied comparison. | Commit `0773413b`: explicit Cartesian total, reduced coefficients, lattice contributions and quantum vectors. |
 | BUG-02 | Valid wrong cell-length driving forces and physical stress modification. The claimed constrained full-strain execution path is unreachable. | Commit `4058b8b3`: keep the physical virial intact; differentiate the full lattice in length coordinates and constrain only optimizer gradients/residuals. |
-| BUG-03 | Valid geometry/gradient error; claimed failure to preserve the requested length ratio is false. | The accompanying ratio correction: project the true gradient onto each ratio tangent, including pressure; preserve ratios exactly. |
+| BUG-03 | Valid geometry/gradient error; claimed failure to preserve the requested length ratio is false. | Commit `7a059812`: project the true gradient onto each ratio tangent, including pressure; preserve ratios exactly. |
 | BUG-04 | Documented, intentional fixed-angle Method-3 parameterization, not an independent defect. Constrained Methods 1/2 also use fixed-angle coordinates. | Clarified the existing warning and input documentation in `4058b8b3`; no change to Method 3's degrees of freedom. |
 
 The audit's assertion that every reported defect was introduced by the fork
@@ -125,6 +125,42 @@ single-thread build jobs, or simultaneous MPI tests with a total of four
 single-thread ranks. No remote machines were needed. Generated calculation
 artifacts and logs are in the parent workspace's `audit_validation/`; compact
 metrics and source hashes are recorded in `gemini_audit_verification.json`.
-The full repository suite and production-scale relaxation campaigns were not
-run. Passing the listed cases does not establish accuracy for all cell shapes,
+The initial focused verification did not run the full repository suite or
+production-scale relaxation campaigns. The full-suite follow-up is below.
+Passing these cases does not establish accuracy for all cell shapes,
 electronic states, basis choices or optimization tolerances.
+
+## Full-suite follow-up before push
+
+All numbered workflows 001–037 were rerun from isolated, fresh checkouts on
+2026-10-09: **36 passed; 009 failed its historical stress reference**. The new
+036/037 checks and the existing coupled relaxation, polarization, hybrid,
+oxide, NPT, blip, and equivalent-cell workflows passed. This is not a claim
+that the entire suite is green.
+
+Fresh runs of both the original audited revision `6c018155` and corrected
+scientific source `7a059812` on impromptu give exactly the same printed DFT+U
+diagonal stresses: `(-13.15193128, -17.85631620, -17.85631620) GPa`. Both pass
+the energy and force checks and fail the same stress comparison against
+`(-13.14995272, -17.85694357, -17.85694357) GPa` at relative tolerance `1e-4`.
+The corrected source reproduces the mismatch on the Mac as well. Reference
+data and tolerances were not changed.
+
+The fresh-clone run exposed three test-packaging omissions, now repaired:
+the missing combined carbon entrypoint, graphene NPT's stale generated-basis
+path, and ignored MoS2 coordinate fixtures. The original MoS2 fixtures were
+recovered from the earlier working checkout; its reference metadata matches
+the current checkout byte for byte. All three repaired workflows passed.
+
+Both main and post-processing executables were rebuilt. The Mac used
+gfortran 16.1.0/Open MPI 5.0.9, three build jobs, one thread per MPI rank,
+and at most four CPU cores in aggregate. Impromptu used gfortran 13.3.0/
+Open MPI 4.1.6, twelve build jobs and three allocated cores per test shard,
+with one OpenMP/BLAS thread per rank. The baseline comparison used a separate
+checkout and binary. Scientific source hashes still match the initial
+verification. Complete attempt histories and logs remain in the parent
+workspace under `audit_validation/full_suite_*`; the combined record is
+`audit_validation/full_suite_verification_20261009.json`.
+
+BUG-04 remains a deferred general-cell optimization feature. Method 3's
+fixed-angle behavior was retained and passed its existing zirconium workflow.

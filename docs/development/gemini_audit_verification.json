@@ -389,5 +389,81 @@
     "src/cell_relaxation_module.f90": "453c1f41902543dea3bb22a102b8fa8073932a70aba4a706aefdb3ea5bf60acb",
     "src/initial_read_module.f90": "dd733ef7c0ffeb86303e35d46e2e843647eb97e06bf0f0a57e1fc7602e354114"
   },
-  "binary_sha256": "5ac0c9e01f2e1fcaa988d16c3ef4da64cb75c6bf227787343f5418f53e80fd2a"
+  "binary_sha256": "5ac0c9e01f2e1fcaa988d16c3ef4da64cb75c6bf227787343f5418f53e80fd2a",
+  "full_suite_followup": {
+    "date": "2026-10-09",
+    "scientific_source_commit": "7a0598122733b5ba044106b6d86a275498279d93",
+    "numbered_workflows_completed": 37,
+    "counts": {
+      "PASS": 36,
+      "FAIL": 1
+    },
+    "passed": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37
+    ],
+    "failed": [
+      9
+    ],
+    "baseline_009_comparison": {
+      "original_commit": "6c018155b548bbb9e8121f695a9941384f620fb6",
+      "original_and_corrected_diagonal_stress_GPa": [
+        -13.15193128,
+        -17.8563162,
+        -17.8563162
+      ],
+      "historical_reference_diagonal_stress_GPa": [
+        -13.14995272,
+        -17.85694357,
+        -17.85694357
+      ],
+      "outcome": "Identical fresh original/corrected stresses to all eight printed decimal places; both fail only the same historical stress reference comparison. Energy and force comparisons pass."
+    },
+    "test_packaging_repairs": [
+      "combined carbon suite entrypoint",
+      "tracked carbon basis path for graphene NPT",
+      "restore and track original MoS2 coordinates"
+    ],
+    "maximum_local_cpu_cores_in_aggregate": 4,
+    "local_build_jobs": 3,
+    "threads_per_rank": 1,
+    "remote_host": "impromptu",
+    "remote_build_jobs": 12,
+    "raw_record": "parent workspace audit_validation/full_suite_verification_20261009.json",
+    "full_suite_is_green": false
+  }
 }

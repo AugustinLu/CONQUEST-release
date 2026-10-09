@@ -2,3 +2,5 @@ results/
 __pycache__/
 *.log
 Conquest_warnings
+!coords_ideal.dat
+!coords_relax_start.dat
