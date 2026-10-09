@@ -1471,6 +1471,7 @@ contains
     real(double) :: k3_old, k3_local, kmin_old
     real(double) :: alpha = one
     real(double) :: c1, c2, orcellx, orcelly, orcellz
+    real(double) :: length_grad(3), cell_residual(3)
 
     integer :: ig, both, mat
     character(len=20) :: subname = "back_lm_cell: "
@@ -1493,12 +1494,9 @@ contains
 
     c1 = 0.01_double
     c2 = 0.9_double
-    ! grad f dot p  Note that the ordering of direction and tot_force is different
-    grad_f_dot_p = zero
-    ! Plus here I think
-    grad_f_dot_p = grad_f_dot_p + direction(1)*stress(1,1)
-    grad_f_dot_p = grad_f_dot_p + direction(2)*stress(2,2)
-    grad_f_dot_p = grad_f_dot_p + direction(3)*stress(3,3)
+    call cell_length_gradient(length_grad,cell_residual,target_press)
+    grad_f_dot_p = sum(direction*length_grad)
+    if (grad_f_dot_p >= zero) call cq_abort("backtrack_linemin_cell: direction is not downhill")
     if(inode==ionode .and. iprint_MD + min_layer > 2) then
        write(io_lun, fmt='(4x,a,3e16.6)') trim(prefix)//" direction: ", direction
        write(io_lun, fmt='(4x,a,3e16.6)') trim(prefix)//" diagonal virial: ", &
@@ -1570,10 +1568,8 @@ contains
             L_tolerance, sc_tolerance, e3, .false.)
     end if
     ! Evaluate new grad f dot p
-    grad_fp_dot_p = zero
-    grad_fp_dot_p = grad_f_dot_p + direction(1)*stress(1,1)
-    grad_fp_dot_p = grad_f_dot_p + direction(2)*stress(2,2)
-    grad_fp_dot_p = grad_f_dot_p + direction(3)*stress(3,3)
+    call cell_length_gradient(length_grad,cell_residual,target_press)
+    grad_fp_dot_p = sum(direction*length_grad)
     if(inode==ionode.AND.iprint_MD + min_layer>3) &
          write(io_lun,fmt='(4x,a,e11.4," < ",e11.4)') &
          trim(prefix)//" Second Wolfe: ",&
@@ -5677,6 +5673,19 @@ contains
 
   end subroutine cq_to_vector
   !!***
+
+  ! Gradient in actual length coordinates, plus a stress-like residual for
+  ! convergence tests on only the free cell degrees of freedom.
+  subroutine cell_length_gradient(gradient, residual, target_press)
+    use global_module, only: lat_vec, lat_vec_inv, cell_vec_len, cell_vol, cell_constraint_flag
+    use force_module, only: stress
+    use cell_relaxation, only: length_gradient, project_length_gradient
+    real(double), intent(out) :: gradient(3), residual(3)
+    real(double), intent(in) :: target_press
+    call length_gradient(lat_vec,lat_vec_inv,cell_vec_len,stress,target_press*abs(cell_vol),gradient)
+    call project_length_gradient(gradient,cell_vec_len,cell_constraint_flag)
+    residual = gradient*cell_vec_len/abs(cell_vol)
+  end subroutine cell_length_gradient
 
   !!****f* move_atoms/method3_cell_gradient *
   !!

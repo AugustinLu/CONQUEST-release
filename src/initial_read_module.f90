@@ -357,7 +357,7 @@ contains
          cell_has_nonorthogonal_vectors()) then
        call cq_warn(sub_name, &
             "AtomMove.OptCellMethod 3 preserves initial lattice angles; "// &
-            "use method 1 to relax shear and cell shape")
+            "use method 1 with AtomMove.OptCell.Constraint none to relax shear and cell shape")
     end if
     if(iprint_init>4) call print_process_info()
     ! By now, we'll have unit cell sizes and grid cutoff

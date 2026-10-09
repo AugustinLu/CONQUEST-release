@@ -3115,7 +3115,7 @@ contains
     use minimise,      only: get_E_and_F
     use move_atoms,    only: safemin_cell, enthalpy, enthalpy_tolerance, &
          backtrack_linemin_cell, backtrack_linemin_lattice, &
-         adapt_backtrack, backtrack, safe, cg_line_min
+         adapt_backtrack, backtrack, safe, cg_line_min, cell_length_gradient
     use GenComms,      only: gsum, myid, inode, ionode
     use GenBlas,       only: dot
     use force_module,  only: stress, tot_force
@@ -3145,7 +3145,7 @@ contains
          search_dir_z, stressx, stressy, stressz, RMSstress, newRMSstress,&
          dRMSstress, search_dir_mean, mean_stress, max_stress, &
          stress_diff, volume, stress_target, grad_dot_dir
-    real(double), dimension(3) :: cg
+    real(double), dimension(3) :: cg, length_grad, cell_residual
     real(double), dimension(3,3) :: lattice_direction, effective_stress
 
     character(len=20) :: subname = "cell_cg_run: "
@@ -3197,20 +3197,8 @@ contains
     enthalpy0 = enthalpy(energy0, press)
     enthalpy1 = enthalpy0
     dH = zero
-    max_stress = zero
     volume = abs(cell_vol)
-    do i=1,3
-       stress_diff = abs(press*volume + stress(i,i))/volume
-       if (stress_diff > max_stress) max_stress = stress_diff
-    end do
-    if (full_lattice_relax) then
-       do i=1,3
-          do j=i+1,3
-             stress_diff = abs(stress(i,j))/volume
-             if (stress_diff > max_stress) max_stress = stress_diff
-          end do
-       end do
-    end if
+    call cell_max_stress(press,full_lattice_relax,max_stress)
     if (inode==ionode) then
        write(io_lun,'(/4x,a,i4," MaxStr: ",f12.8," GPa H: ",f16.8,x,a2," dH: ",f12.8,a2/)') &
             trim(prefixGO)//" - Iter: ",0, max_stress*HaBohr3ToGPa, en_conv*enthalpy0, &
@@ -3231,12 +3219,13 @@ contains
     do while (.not. done)
        call start_timer(tmr_l_iter, WITH_LEVEL)
        volume = abs(cell_vol)
-       ! Keep these as stresses
-       stressx = -stress(1,1)!/volume
-       stressy = -stress(2,2)!/volume
-       stressz = -stress(3,3)!/volume
+       ! Derivatives in lattice-length coordinates, including pressure.
+       call cell_length_gradient(length_grad,cell_residual,press)
+       stressx = -length_grad(1)
+       stressy = -length_grad(2)
+       stressz = -length_grad(3)
        mean_stress = (stressx + stressy + stressz)/3
-       RMSstress = sqrt(((stressx*stressx) + (stressy*stressy) + (stressz*stressz))/3)
+       RMSstress = sqrt(sum(cell_residual*cell_residual)/3)
 
        ! Construct ratio for conjugacy. Constraints are initially applied within
        ! get_gamma_cell_cg.
@@ -3263,34 +3252,11 @@ contains
        end if
        ggold = gg
 
-       !Build search direction.
-       ! If the volume constraint is set, there is only one search direction!
-       ! This is the direction which minimises the mean stress.
-       if (leqi(cell_constraint_flag, 'volume')) then
-          search_dir_mean = gamma*search_dir_mean + mean_stress - press*volume
-       else
-          search_dir_x = gamma*search_dir_x + stressx - press*volume
-          search_dir_y = gamma*search_dir_y + stressy - press*volume
-          search_dir_z = gamma*search_dir_z + stressz - press*volume
-
-          ! Fletcher-Reeves can cease to be a descent direction after a
-          ! finite/noisy cell line minimisation.  Restart with steepest
-          ! descent instead of handing a non-descent direction to the line
-          ! search, which otherwise shrinks the step until it aborts.
-          grad_dot_dir = (stress(1,1) + press*volume)*search_dir_x + &
-                         (stress(2,2) + press*volume)*search_dir_y + &
-                         (stress(3,3) + press*volume)*search_dir_z
-          if (grad_dot_dir >= zero) then
-             gamma = zero
-             search_dir_x = -stress(1,1) - press*volume
-             search_dir_y = -stress(2,2) - press*volume
-             search_dir_z = -stress(3,3) - press*volume
-             reset_iter = 0
-             if (inode == ionode .and. iprint_MD + min_layer > 1) &
-                  write(io_lun,fmt='(4x,a)') trim(prefix)// &
-                  " restarting non-descent cell CG direction"
-          end if
-       end if
+       ! The projected length gradient already includes the target pressure.
+       search_dir_x = -length_grad(1)
+       search_dir_y = -length_grad(2)
+       search_dir_z = -length_grad(3)
+       search_dir_mean = -(sum(length_grad)/3)
 
        new_rcellx = cell_vec_len(1)
        new_rcelly = cell_vec_len(2)
@@ -3329,6 +3295,7 @@ contains
              cg(1) = search_dir_x
              cg(2) = search_dir_y
              cg(3) = search_dir_z
+             if (leqi(cell_constraint_flag,'volume')) cg = search_dir_mean
              call backtrack_linemin_cell(cg, press, enthalpy0, &
                   enthalpy1, fixed_potential, vary_mu)
           end if
@@ -3345,27 +3312,14 @@ contains
        ! Analyse Stresses and energies
        dH = enthalpy1 - enthalpy0
        volume = abs(cell_vol)
-       newRMSstress = sqrt(((stress(1,1)*stress(1,1)) + &
-            (stress(2,2)*stress(2,2)) + &
-            (stress(3,3)*stress(3,3)))/3)
-       dRMSstress = (RMSstress - newRMSstress)/volume
+       call cell_length_gradient(length_grad,cell_residual,press)
+       newRMSstress = sqrt(sum(cell_residual*cell_residual)/3)
+       dRMSstress = RMSstress - newRMSstress
 
        enthalpy0 = enthalpy1
        total_energy = enthalpy1
        ! Check exit criteria
-       max_stress = zero
-       do i=1,3
-          stress_diff = abs(press*volume + stress(i,i))/volume
-          if (stress_diff > max_stress) max_stress = stress_diff
-       end do
-       if (full_lattice_relax) then
-          do i=1,3
-             do j=i+1,3
-                stress_diff = abs(stress(i,j))/volume
-                if (stress_diff > max_stress) max_stress = stress_diff
-             end do
-          end do
-       end if
+       call cell_max_stress(press,full_lattice_relax,max_stress)
 
        reset_iter = reset_iter +1
 
@@ -3430,6 +3384,30 @@ contains
   end subroutine cell_cg_run
 
   !!***
+
+  ! Test only free length coordinates for constrained/fixed-angle steps.
+  ! The unconstrained full-lattice path also checks shear.
+  subroutine cell_max_stress(press, full_lattice, max_stress)
+    use numbers, only: zero
+    use global_module, only: cell_vol
+    use force_module, only: stress
+    use move_atoms, only: cell_length_gradient
+    real(double), intent(in) :: press
+    logical, intent(in) :: full_lattice
+    real(double), intent(out) :: max_stress
+    real(double) :: gradient(3), residual(3), effective_stress(3,3)
+    integer :: i
+    if (full_lattice) then
+       effective_stress = stress/abs(cell_vol)
+       do i=1,3
+          effective_stress(i,i) = effective_stress(i,i) + press
+       end do
+       max_stress = maxval(abs(effective_stress))
+    else
+       call cell_length_gradient(gradient,residual,press)
+       max_stress = maxval(abs(residual))
+    end if
+  end subroutine cell_max_stress
 
   !!****f* control/get_gamma_cell_cg *
   !!
@@ -3646,19 +3624,7 @@ contains
     enthalpy0 = enthalpy(energy0, press)
     dH = zero
     volume = abs(cell_vol)
-    max_stress = zero
-    do i=1,3
-       stress_diff = abs(press*volume + stress(i,i))/volume
-       if (stress_diff > max_stress) max_stress = stress_diff
-    end do
-    if (flag_full_stress .and. leqi(cell_constraint_flag,'none')) then
-       do i=1,3
-          do j=i+1,3
-             stress_diff = abs(stress(i,j))/volume
-             if (stress_diff > max_stress) max_stress = stress_diff
-          end do
-       end do
-    end if
+    call cell_max_stress(press,flag_full_stress .and. leqi(cell_constraint_flag,'none'),max_stress)
     if (inode==ionode) then
        write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," H: " ,f16.8,x,a2," MaxS: ",f12.8," GPa")') &
             trim(prefixGO)//" + Iter: ",0, for_conv*max, en_units(energy_units), d_units(dist_units), &
@@ -3707,19 +3673,7 @@ contains
             (stress(3,3)*stress(3,3)))/three)
        dRMSstress = (RMSstress - newRMSstress)/volume
 
-       max_stress = zero
-       do i=1,3
-          stress_diff = abs(press*volume + stress(i,i))/volume
-          if (stress_diff > max_stress) max_stress = stress_diff
-       end do
-       if (flag_full_stress .and. leqi(cell_constraint_flag,'none')) then
-          do i=1,3
-             do j=i+1,3
-                stress_diff = abs(stress(i,j))/volume
-                if (stress_diff > max_stress) max_stress = stress_diff
-             end do
-          end do
-       end if
+       call cell_max_stress(press,flag_full_stress .and. leqi(cell_constraint_flag,'none'),max_stress)
        ! Test for finish
        if (abs(max) < MDcgtol .and. max_stress < stress_target) then
           done_cell = .true.
@@ -3756,19 +3710,7 @@ contains
        dRMSstress = (RMSstress - newRMSstress)/volume
 
        volume = abs(cell_vol)
-       max_stress = zero
-       do i=1,3
-          stress_diff = abs(press*volume + stress(i,i))/volume
-          if (stress_diff > max_stress) max_stress = stress_diff
-       end do
-       if (flag_full_stress .and. leqi(cell_constraint_flag,'none')) then
-          do i=1,3
-             do j=i+1,3
-                stress_diff = abs(stress(i,j))/volume
-                if (stress_diff > max_stress) max_stress = stress_diff
-             end do
-          end do
-       end if
+       call cell_max_stress(press,flag_full_stress .and. leqi(cell_constraint_flag,'none'),max_stress)
        ! Test for finish
        if (inode==ionode) then
           write(io_lun,'(/4x,a,i4," MaxF: ",f12.8,x,a2,"/",a2," H: " ,f16.8,x,a2," MaxS: ",f12.8," GPa/")') &

@@ -1,7 +1,8 @@
 # -*- mode: Makefile -*-
 # $Id: ionics.obj,v 1.2 2002/11/06 14:43:49 mjg Exp $
 #
-IONICS_OBJS =  atomic_density.o \
+IONICS_OBJS = cell_relaxation_module.o \
+               atomic_density.o \
                ionic_data.o \
                pao_format.o \
                read_pao_info.o

@@ -967,19 +967,25 @@ AtomMove.OptCell.Constraint (*string*)
     components are varied for a general cell.  Methods 1 and 2 automatically
     enable full stress and select the backtracking line minimizer in this case.
 
+    For Methods 1 and 2, length and ratio constraints preserve the initial
+    lattice-vector directions and therefore all lattice angles. The stress
+    printed in output and trajectories remains the physical Cartesian tensor;
+    only the optimizer gradient and convergence residual are constrained.
+    Shear and angle relaxation requires ``none`` with full-stress backtracking.
+
     *Fixing a single cell dimension:*
 
-    ``a``: Fix the x-dimension of the simulation cell
+    ``a``: Fix the length of the first lattice vector
 
-    ``b``: Fix the y-dimension of the simulation cell
+    ``b``: Fix the length of the second lattice vector
 
-    ``c``: Fix the z-dimension of the simulation cell
+    ``c``: Fix the length of the third lattice vector
 
     *Fixing multiple cell dimensions:*
 
 
     Any combination of the above separated by a space character. e.g: ``a b`` fixes
-    both the x- and y-dimensions of the simulation cell.
+    the lengths of the first and second lattice vectors.
 
     *Fixing Ratios:*
 
