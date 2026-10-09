@@ -1,0 +1,393 @@
+{
+  "date": "2026-10-09",
+  "timezone": "Asia/Tokyo",
+  "audited_head": "6c018155b548bbb9e8121f695a9941384f620fb6",
+  "tested_source": "4058b8b3 plus the ratio/uniform-scaling correction accompanying this record",
+  "maximum_local_cpu_cores": 4,
+  "build_jobs": 4,
+  "omp_threads_per_rank": 1,
+  "blas_threads": 1,
+  "verdicts": {
+    "BUG-01": "valid output omission; supplied covariance proof incomplete",
+    "BUG-02": "valid length-gradient/stress-output defects; constrained full-strain path claim disproved",
+    "BUG-03": "valid gradient error; ratio-preservation failure claim disproved",
+    "BUG-04": "intentional documented fixed-angle limitation; no independent defect"
+  },
+  "raw_logs_and_calculations": "../../../audit_validation",
+  "regressions": {
+    "polarisation_before": {
+      "energy_residual_ha": 2.1316282072803006e-14,
+      "coefficient_residual_modulo_quantum": 4.180487844784864e-09,
+      "branch_change": [
+        -0.0,
+        -0.0,
+        -0.0
+      ]
+    },
+    "polarisation_after": {
+      "energy_residual_ha": 2.1316282072803006e-14,
+      "coefficient_residual_modulo_quantum": 4.180487844784864e-09,
+      "branch_change": [
+        -0.0,
+        -0.0,
+        -0.0
+      ],
+      "cartesian_rotation_residual_e_per_bohr2": 3.894999947573474e-11
+    },
+    "fixed_lengths_before": {
+      "m1_p0_lattice_rotation_error_bohr": 0.023098959222449977,
+      "m1_p0_fixed_a_error_bohr": 0.0
+    },
+    "fixed_lengths_ratios_uniform_after": {
+      "m1_p0_lattice_rotation_error_bohr": 5.773159728050814e-13,
+      "m1_p0_fixed_a_error_bohr": 0.0,
+      "m1_p2_lattice_rotation_error_bohr": 6.199485369506874e-13,
+      "m1_p2_fixed_a_error_bohr": 0.0,
+      "m2_p0_lattice_rotation_error_bohr": 5.773159728050814e-13,
+      "m2_p0_fixed_a_error_bohr": 0.0,
+      "m2_p2_lattice_rotation_error_bohr": 6.199485369506874e-13,
+      "m2_p2_fixed_a_error_bohr": 0.0,
+      "static_stress_constraint_error_gpa": 0.0,
+      "a_b_constraint_error": 2.220446049250313e-16,
+      "a_c_constraint_error": 0.0,
+      "b_c_constraint_error": 0.0,
+      "volume_constraint_error": 0.0
+    },
+    "equivalent_cell_polarisation": {
+      "status": "pass",
+      "basis_transform_rows": [
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "cases": {
+        "base": {
+          "lattice_bohr": [
+            [
+              0.0,
+              5.18,
+              5.18
+            ],
+            [
+              5.18,
+              0.0,
+              5.18
+            ],
+            [
+              5.18,
+              5.18,
+              0.0
+            ]
+          ],
+          "volume_bohr3": 277.9836639999999,
+          "energy_ha": -7.818804541031747,
+          "cartesian_polarisation": [
+            0.0372683695231,
+            0.0186342450598,
+            0.0186340698058
+          ],
+          "polarisation": [
+            -3.86486670705e-08,
+            0.0263525928902,
+            0.0263528407368
+          ],
+          "quantum": [
+            0.0263527221265,
+            0.0263527221265,
+            0.0263527221265
+          ],
+          "coefficients": [
+            -1.4665910749172792e-06,
+            0.9999950959032096,
+            1.0000045008746887
+          ],
+          "quantum_error": 2.053218706166149e-14,
+          "extxyz_lattice_error_angstrom": 2.477539506884341e-09,
+          "extxyz_stress_ev_per_angstrom3": [
+            [
+              -0.23754132,
+              0.01191111,
+              0.00075021
+            ],
+            [
+              0.01191111,
+              -0.24528986,
+              -0.03591811
+            ],
+            [
+              0.00075021,
+              -0.03591811,
+              -0.24468553
+            ]
+          ],
+          "extxyz_stress_error_gpa": 7.927003740082483e-07
+        },
+        "sheared": {
+          "lattice_bohr": [
+            [
+              0.0,
+              5.18,
+              5.18
+            ],
+            [
+              5.18,
+              5.18,
+              10.36
+            ],
+            [
+              5.18,
+              5.18,
+              0.0
+            ]
+          ],
+          "volume_bohr3": 277.9836639999999,
+          "energy_ha": -7.818502043283562,
+          "cartesian_polarisation": [
+            0.0372682566867,
+            0.0372685013476,
+            0.0372682060633
+          ],
+          "polarisation": [
+            3.46002779479e-07,
+            0.0456437445948,
+            0.0263528458237
+          ],
+          "quantum": [
+            0.0263527221265,
+            0.0456442536408,
+            0.0263527221265
+          ],
+          "coefficients": [
+            1.3129678893060672e-05,
+            0.9999888475337114,
+            1.0000046939059808
+          ],
+          "quantum_error": 2.053218706166149e-14,
+          "extxyz_lattice_error_angstrom": 4.955079013768682e-09,
+          "extxyz_stress_ev_per_angstrom3": [
+            [
+              -0.23888542,
+              0.01164416,
+              0.00062706
+            ],
+            [
+              0.01164416,
+              -0.24691987,
+              -0.03607443
+            ],
+            [
+              0.00062706,
+              -0.03607443,
+              -0.24588751
+            ]
+          ],
+          "extxyz_stress_error_gpa": 7.669131392162853e-07
+        }
+      },
+      "metrics": {
+        "cartesian_vector_residual_modulo_quantum": 1.1283640000137041e-07,
+        "volume_difference_bohr3": 0.0,
+        "energy_difference_ha": 0.0003024977481844715,
+        "maximum_quantum_error_e_per_bohr2": 2.053218706166149e-14,
+        "maximum_polarisation_coefficient_residual_modulo_quantum": 9.69217317758897e-06,
+        "maximum_extxyz_lattice_error_angstrom": 4.955079013768682e-09,
+        "maximum_extxyz_stress_error_gpa": 7.927003740082483e-07
+      },
+      "limits": {
+        "cartesian_vector_residual_modulo_quantum": 2e-06,
+        "volume_difference_bohr3": 1e-10,
+        "energy_difference_ha": 0.0005,
+        "maximum_quantum_error_e_per_bohr2": 5e-12,
+        "maximum_polarisation_coefficient_residual_modulo_quantum": 5e-05,
+        "maximum_extxyz_lattice_error_angstrom": 1e-07,
+        "maximum_extxyz_stress_error_gpa": 2e-05
+      },
+      "failed_metrics": []
+    },
+    "npt_and_method3": {
+      "initial_lattice_rows_bohr": [
+        [
+          0.0,
+          5.18,
+          5.18
+        ],
+        [
+          5.18,
+          0.0,
+          5.18
+        ],
+        [
+          5.18,
+          5.18,
+          0.0
+        ]
+      ],
+      "initial_volume_bohr3": 277.9836639999999,
+      "cases": {
+        "volume": {
+          "md_frame_lattice_rows_bohr": [
+            [
+              0.0,
+              5.18,
+              5.18
+            ],
+            [
+              5.18,
+              0.0,
+              5.18
+            ],
+            [
+              5.18,
+              5.18,
+              0.0
+            ]
+          ],
+          "final_extxyz_lattice_rows_angstrom": [
+            [
+              0.0,
+              2.94359642,
+              2.94359642
+            ],
+            [
+              2.94359642,
+              0.0,
+              2.94359642
+            ],
+            [
+              2.94359642,
+              2.94359642,
+              0.0
+            ]
+          ],
+          "final_volume_angstrom3": 51.01111234844335,
+          "md_frame_initial_error_bohr": 0.0,
+          "final_offdiagonal_norm_angstrom": 7.210309237683284,
+          "initial_xsf_lattice_error_angstrom": 2.477539506884341e-09,
+          "final_xsf_lattice_error_angstrom": 0.0,
+          "completed_md_steps": 1,
+          "isotropic_shape_residual": 2.220446049250313e-16
+        },
+        "xyz": {
+          "md_frame_lattice_rows_bohr": [
+            [
+              0.0,
+              5.18,
+              5.18
+            ],
+            [
+              5.18,
+              0.0,
+              5.18
+            ],
+            [
+              5.18,
+              5.18,
+              0.0
+            ]
+          ],
+          "final_extxyz_lattice_rows_angstrom": [
+            [
+              0.0,
+              2.98584574,
+              2.98587614
+            ],
+            [
+              2.98587991,
+              0.0,
+              2.98587614
+            ],
+            [
+              2.98587991,
+              2.98584574,
+              0.0
+            ]
+          ],
+          "final_volume_angstrom3": 53.24042178874338,
+          "md_frame_initial_error_bohr": 0.0,
+          "final_offdiagonal_norm_angstrom": 7.313851234943058,
+          "initial_xsf_lattice_error_angstrom": 2.477539506884341e-09,
+          "final_xsf_lattice_error_angstrom": 0.0,
+          "completed_md_steps": 1
+        }
+      },
+      "method3": {
+        "final_lattice_rows_bohr": [
+          [
+            0.0,
+            7.873983727703319,
+            7.873983727703319
+          ],
+          [
+            7.873983727703319,
+            0.0,
+            7.873983727703319
+          ],
+          [
+            7.873983727703319,
+            7.873983727703319,
+            0.0
+          ]
+        ],
+        "final_volume_bohr3": 976.3679939782502,
+        "volume_constraint_shape_residual": 4.440892098500626e-16,
+        "final_offdiagonal_norm_bohr": 19.287242375850933
+      },
+      "status": "pass",
+      "failures": []
+    },
+    "safe_and_fixed_cell_compatibility": {
+      "extxyz_checked_cases": 18,
+      "reference_validation": "maintained reader and precision functions (pytest unavailable in system Python)",
+      "safe_a": [
+        10.0,
+        11.87808802339308,
+        11.805415205478909
+      ],
+      "safe_a_b": [
+        10.591023821218169,
+        11.120575012279087,
+        11.40645692927938
+      ],
+      "safe_volume": [
+        10.952689441906662,
+        11.500323914002003,
+        10.95268944190667
+      ],
+      "test_001_bulk_Si_1proc_Diag_energy_error_ha": 1.9671375639518374e-10,
+      "test_002_bulk_Si_1proc_OrderN_energy_error_ha": 2.3000765736469475e-09
+    },
+    "default_full_lattice": {
+      "status": "pass",
+      "initial_max_stress_gpa": 0.74251855,
+      "final_max_stress_gpa": 0.0082388,
+      "method2_smoke": "pass"
+    },
+    "analytic_gradients": {
+      "status": "pass",
+      "bounds_checking": true,
+      "inherited_ratio_projector_test_exit": 6,
+      "corrected_projector_test_exit": 0
+    }
+  },
+  "source_sha256": {
+    "src/polarisation_module.f90": "95690cc522e1ae437c14860cbb53fad3bd05694c757f4cff81eca8fdb0b24d88",
+    "src/force_module.f90": "89408cbc78fd6595d7d2732f455f5251d0f21a021c372e7ee8c50260114b47ea",
+    "src/control.f90": "20c0f13548061fc7df55015d10f2f5bb55ed71c96a4c37043c7e133349f153b7",
+    "src/move_atoms.module.f90": "d826f4be47e1406f3d3f463ccaf085da164824f201a3cb7445f1858c5fe79a0f",
+    "src/cell_relaxation_module.f90": "453c1f41902543dea3bb22a102b8fa8073932a70aba4a706aefdb3ea5bf60acb",
+    "src/initial_read_module.f90": "dd733ef7c0ffeb86303e35d46e2e843647eb97e06bf0f0a57e1fc7602e354114"
+  },
+  "binary_sha256": "5ac0c9e01f2e1fcaa988d16c3ef4da64cb75c6bf227787343f5418f53e80fd2a"
+}

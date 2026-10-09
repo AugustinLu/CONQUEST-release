@@ -4975,8 +4975,8 @@ contains
 
     else if (leqi(cell_constraint_flag, 'volume')) then
         cell_vec_len(1) = start_rcellx + k * search_dir_mean
-        cell_vec_len(2) = start_rcelly + k * search_dir_mean
-        cell_vec_len(3) = start_rcellz + k * search_dir_mean
+        cell_vec_len(2) = start_rcelly * (one + k * search_dir_mean/start_rcellx)
+        cell_vec_len(3) = start_rcellz * (one + k * search_dir_mean/start_rcellx)
 
     ! Fix a single dimension?
     else if (leqi(cell_constraint_flag, 'a')) then

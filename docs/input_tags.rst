@@ -990,12 +990,13 @@ AtomMove.OptCell.Constraint (*string*)
     *Fixing Ratios:*
 
     Any combination of a, b or c separated by a "/" character, e.g ``c/a`` fixes
-    the initial ratio of the z-dimension to the x-dimension.
+    the initial ratio of the third lattice-vector length to the first.
 
     *Global scaling factor:*
 
     ``volume``: minimize the total energy by scaling each simulation cell vector
-    by the same global scaling factor. Search directions are set by the mean stress.
+    by the same global scaling factor (this does not fix the volume). The
+    enthalpy gradient is projected onto the uniform-scaling direction.
 
 AtomMove.TestSpecificForce (*integer*)
     Label for which force contribution to test. Note that for PAOs non-local Pulay

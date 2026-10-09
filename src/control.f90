@@ -3256,7 +3256,7 @@ contains
        search_dir_x = -length_grad(1)
        search_dir_y = -length_grad(2)
        search_dir_z = -length_grad(3)
-       search_dir_mean = -(sum(length_grad)/3)
+       search_dir_mean = -length_grad(1)
 
        new_rcellx = cell_vec_len(1)
        new_rcelly = cell_vec_len(2)
@@ -3295,7 +3295,6 @@ contains
              cg(1) = search_dir_x
              cg(2) = search_dir_y
              cg(3) = search_dir_z
-             if (leqi(cell_constraint_flag,'volume')) cg = search_dir_mean
              call backtrack_linemin_cell(cg, press, enthalpy0, &
                   enthalpy1, fixed_potential, vary_mu)
           end if

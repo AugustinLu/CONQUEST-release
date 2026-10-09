@@ -70,6 +70,13 @@ Diag.MPMeshZ 1
     assert 'Reached SCF tolerance' in text
     tensor = stress_tensors(text)
     assert tensor
+    # Check the trajectory also receives the physical tensor, including
+    # components forbidden to move by the optimizer's length constraints.
+    trajectory = (directory / 'trajectory.xyz').read_text().splitlines()
+    match = re.search(r'stress="([^"]+)"', trajectory[-3])
+    assert match is not None
+    serialized = np.array([float(x) for x in match[1].split()]).reshape(3,3)
+    np.testing.assert_allclose(serialized*160.2176634,tensor[-1],atol=2.e-5)
     final = lattice if static else np.loadtxt(directory / 'coord_next.dat', max_rows=3)
     return final, tensor
 
@@ -80,6 +87,7 @@ def main():
     parser.add_argument('--results',type=Path,required=True)
     parser.add_argument('--baseline',action='store_true')
     parser.add_argument('--ratios',action='store_true')
+    parser.add_argument('--safe-checks',action='store_true')
     args = parser.parse_args()
     binary = args.binary.resolve()
     rotation = np.array([[0.,-1.,0.],[1.,0.,0.],[0.,0.,1.]])
@@ -123,6 +131,20 @@ def main():
                 i,j = ('abc'.index(x) for x in constraint.split('/'))
                 error = abs(after[i]/after[j]-before[i]/before[j])
             metrics[label+'_constraint_error'] = float(error)
+            assert error < 1.e-9
+    if args.safe_checks:
+        for constraint in ('a','a/b','volume'):
+            label = constraint.replace('/','_')
+            final, _ = run(binary,args.results / ('safe_'+label),lattice,constraint,safe=True)
+            lengths = np.linalg.norm(final,axis=1)
+            if constraint == 'a':
+                error = abs(lengths[0]-10.)
+            elif constraint == 'a/b':
+                error = abs(lengths[0]/lengths[1]-10./10.5)
+            else:
+                ratios = lengths/np.diag(lattice)
+                error = float(np.max(np.abs(ratios-ratios[0])))
+            metrics['safe_'+label+'_constraint_error'] = float(error)
             assert error < 1.e-9
     print(json.dumps(metrics,indent=2))
     (args.results / 'summary.json').write_text(json.dumps(metrics,indent=2)+'\n')

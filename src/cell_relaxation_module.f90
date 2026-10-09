@@ -30,7 +30,7 @@ contains
     real(double), intent(in) :: lengths(3)
     character(len=*), intent(in) :: constraint
     character(len=len(constraint)) :: flag
-    real(double) :: ratio
+    real(double) :: ratio, tangent(3)
     integer :: i, code
     flag = adjustl(constraint)
     do i=1,len_trim(flag)
@@ -52,18 +52,23 @@ contains
     case('b c','c b')
        gradient(2:3) = 0.0_double
     case('volume')
-       gradient = sum(gradient)/3.0_double
+       ! The legacy name means uniform scaling, not fixed determinant volume.
+       ! The length-space tangent is (a,b,c), not (1,1,1).
+       tangent = lengths/sqrt(sum(lengths*lengths))
+       gradient = tangent*sum(tangent*gradient)
+    ! A fixed L_j/L_i ratio has tangent (1,r). Orthogonal projection
+    ! gives (g_i+r*g_j)/(1+r*r) along the first coordinate.
     case('a/b','b/a')
        ratio = lengths(2)/lengths(1)
-       gradient(1) = (gradient(1)+gradient(2))/(1.0_double+ratio)
+       gradient(1) = (gradient(1)+ratio*gradient(2))/(1.0_double+ratio*ratio)
        gradient(2) = ratio*gradient(1)
     case('a/c','c/a')
        ratio = lengths(3)/lengths(1)
-       gradient(1) = (gradient(1)+gradient(3))/(1.0_double+ratio)
+       gradient(1) = (gradient(1)+ratio*gradient(3))/(1.0_double+ratio*ratio)
        gradient(3) = ratio*gradient(1)
     case('b/c','c/b')
        ratio = lengths(3)/lengths(2)
-       gradient(2) = (gradient(2)+gradient(3))/(1.0_double+ratio)
+       gradient(2) = (gradient(2)+ratio*gradient(3))/(1.0_double+ratio*ratio)
        gradient(3) = ratio*gradient(2)
     end select
   end subroutine project_length_gradient
