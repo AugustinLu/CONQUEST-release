@@ -22,7 +22,7 @@
 module polarisation
 
   use datatypes
-  use global_module, ONLY: cell_vec_len, cell_vol, lat_vec_inv
+  use global_module, ONLY: cell_vec_len, cell_vol, lat_vec, lat_vec_inv
 
   implicit none
 
@@ -93,8 +93,8 @@ contains
     integer :: stat, tmp_fn, size, i, spin
     character(len=20) :: subname = "get_polarisation: "
     complex(double_cplx) :: detS
-    real(double), dimension(3) :: Pion, cell_vec
-    real(double) :: volume
+    real(double), dimension(3) :: Pion, cell_vec, reduced_pol, cartesian_pol
+    real(double) :: volume, si_conversion
 
     if(inode==ionode) then
        if(iprint>1) then
@@ -171,9 +171,39 @@ contains
     deallocate(polS)
     ! Get ionic contribution
     call get_P_ionic(Pion)
+    reduced_pol = zero
+    do direction = i_pol_dir_st, i_pol_dir_end
+       i = i_pol_dir(direction)
+       reduced_pol(i) = Pel_gamma(direction) + Pion(i)
+    end do
+    cartesian_pol = matmul(lat_vec,reduced_pol)/volume
+    si_conversion = eVToJ/(BohrToAng*BohrToAng*1e-20_double)
     ! Output - include quantum of polarisation
     ! The quantum is \frac{e}{V_{cell}} \mathbf{R} for lattice vector R
     if(inode==ionode) then
+       ! Retain the legacy scalar output for existing readers, but state its
+       ! meaning: p_i |a_i| / V is a signed lattice contribution magnitude,
+       ! neither a Cartesian component nor P projected onto a_i.
+       write(io_lun,'(4x,a)') &
+            "Polarisation directions are lattice indices; scalar totals are signed lattice contributions."
+       do direction = i_pol_dir_st, i_pol_dir_end
+          i = i_pol_dir(direction)
+          write(io_lun,'(4x,"Reduced polarisation (lattice ",i1,"): ",e20.12)') i,reduced_pol(i)
+          write(io_lun,'(4x,"Polarisation contribution (lattice ",i1,"): ",3e20.12," e / Bohr^2")') &
+               i,reduced_pol(i)*lat_vec(:,i)/volume
+          write(io_lun,'(4x,"Polarisation quantum vector (lattice ",i1,"): ",3e20.12," e / Bohr^2")') &
+               i,lat_vec(:,i)/volume
+       end do
+       ! A single calculated reciprocal direction cannot determine the full
+       ! vector in a general cell. Never silently fill uncomputed phases.
+       if (i_pol_dir_end-i_pol_dir_st == 2) then
+          write(io_lun,'(4x,"Cartesian total polarisation: ",3e20.12," e / Bohr^2")') cartesian_pol
+          write(io_lun,'(4x,"Cartesian total polarisation: ",3e20.12," C / m^2")') &
+               cartesian_pol*si_conversion
+       else
+          write(io_lun,'(4x,a)') "Full Cartesian polarisation requires General.PolDir 0."
+       end if
+       write(io_lun,'(4x,a)') "Polarisation is defined modulo integer lattice quantum vectors."
        if(iprint>1) then
           ! NB we always calculate all three directions for ionic, but potentially limit electronic
           ! so the indexing is different - this is correct

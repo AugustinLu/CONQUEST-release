@@ -31,6 +31,12 @@ def parse_output(filename: Path):
     )
     if not energy or len(total) != 3 or len(quantum) != 3:
         raise ValueError(f"Missing energy or three polarization directions in {filename}")
+    cartesian = re.search(
+        r"Cartesian total polarisation:\s+(.+?)\s+e / Bohr\^2", text
+    )
+    if cartesian is None:
+        raise ValueError(f"Missing Cartesian polarization vector in {filename}")
+    vector = np.asarray([float(value) for value in cartesian[1].split()])
     stress_starts = [
         index for index, line in enumerate(lines) if "force: Total stress:" in line
     ]
@@ -46,6 +52,7 @@ def parse_output(filename: Path):
          for offset in (1, 2)]
     )
     return {
+        "cartesian_polarisation": vector,
         "energy_ha": float(energy[-1]),
         "polarisation_e_per_bohr2": np.asarray([float(value) for value in total]),
         "quantum_e_per_bohr2": np.asarray([float(value) for value in quantum]),
@@ -87,6 +94,7 @@ def main():
             "lattice_bohr": lattice,
             "volume_bohr3": volume,
             "energy_ha": output["energy_ha"],
+            "cartesian_polarisation": output["cartesian_polarisation"],
             "polarisation": output["polarisation_e_per_bohr2"],
             "quantum": output["quantum_e_per_bohr2"],
             "coefficients": (
@@ -117,7 +125,15 @@ def main():
     coefficient_residual = wrapped_residual(
         cases["sheared"]["coefficients"] - expected_sheared
     )
+    # Compare the physical vectors after bringing them onto the same branch.
+    branch = np.rint(cases["sheared"]["coefficients"] - expected_sheared)
+    vector_residual = (
+        cases["sheared"]["cartesian_polarisation"]
+        - branch @ cases["sheared"]["lattice_bohr"] / cases["sheared"]["volume_bohr3"]
+        - cases["base"]["cartesian_polarisation"]
+    )
     metrics = {
+        "cartesian_vector_residual_modulo_quantum": float(np.max(np.abs(vector_residual))),
         "volume_difference_bohr3": abs(
             cases["base"]["volume_bohr3"] - cases["sheared"]["volume_bohr3"]
         ),
@@ -138,6 +154,7 @@ def main():
         ),
     }
     limits = {
+        "cartesian_vector_residual_modulo_quantum": 2.0e-6,
         "volume_difference_bohr3": 1.0e-10,
         "energy_difference_ha": 5.0e-4,
         "maximum_quantum_error_e_per_bohr2": 5.0e-12,
