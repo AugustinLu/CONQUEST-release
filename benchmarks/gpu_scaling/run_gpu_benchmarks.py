@@ -4,12 +4,14 @@ Runs each Si supercell (diagonalisation, Gamma point) in several configurations,
 stores every run in runs[_<host>]/<system>__<config>/ and appends a JSON line per
 run to results[_<host>].jsonl (the Windows desktop results are in results.jsonl).
 
-A configuration is <kind>_<ranks>x<threads>[_diag]:
+A configuration is <kind>_<ranks>x<threads>[_diag][_1gpu]:
   upstream  unmodified upstream build (CONQUEST_REF_EXE), ScaLAPACK
   cpu       patched build (CONQUEST_EXE) with CONQUEST_USE_CUDA=0
   gpu       patched build with the GPU; with more than one rank, H and S are
             gathered to the first rank of the group for cuSOLVER
   _diag     GEMMs kept on the CPU (CONQUEST_CUDA_MIN_FLOPS=1e18)
+  _1gpu     every process uses GPU 0 (CONQUEST_CUDA_DEVICE=0), e.g. to compare k-point groups
+            sharing one GPU with one GPU per group
 "all" runs the configurations used on the Windows desktop (8 cores) or, on
 Linux/macOS, upstream/cpu/gpu at BENCH_NP ranks (default: SLURM_NTASKS or the
 number of cores).
@@ -52,12 +54,16 @@ else:
 
 def config(name):
     """(executable, MPI ranks, OpenMP/BLAS threads, use CUDA, extra environment) for a config name."""
-    m = re.fullmatch(r"(upstream|cpu|gpu)_(\d+)x(\d+)(_diag)?", name)
+    m = re.fullmatch(r"(upstream|cpu|gpu)_(\d+)x(\d+)((?:_diag|_1gpu)*)", name)
     if not m:
-        sys.exit(f"unknown configuration {name!r}: expected <upstream|cpu|gpu>_<ranks>x<threads>[_diag]")
-    kind, nproc, nthr, diag = m.group(1), int(m.group(2)), int(m.group(3)), bool(m.group(4))
+        sys.exit(f"unknown configuration {name!r}: expected <upstream|cpu|gpu>_<ranks>x<threads>[_diag][_1gpu]")
+    kind, nproc, nthr, suffix = m.group(1), int(m.group(2)), int(m.group(3)), m.group(4)
     exe = EXE_REF if kind == "upstream" else EXE_NEW
-    extra = {"CONQUEST_CUDA_MIN_FLOPS": "1e18"} if diag else {}
+    extra = {}
+    if "_diag" in suffix:
+        extra["CONQUEST_CUDA_MIN_FLOPS"] = "1e18"
+    if "_1gpu" in suffix:
+        extra["CONQUEST_CUDA_DEVICE"] = "0"
     return exe, nproc, nthr, kind == "gpu", extra
 
 

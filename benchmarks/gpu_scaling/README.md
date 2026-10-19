@@ -41,6 +41,7 @@ offloaded routine.
 
 ## Benchmarks
 
+* `Si256_k222/`, `Si512_k222/` – Si256/Si512 with a 2x2x2 MP mesh and `Diag.KProcGroups 4`, for one GPU per k-point group.
 * `Si*_diag/` – bulk Si supercells (64 to 1280 atoms, SZP basis, 9 orbitals/atom,
   Gamma point, 50 Ha grid). `Si1024_diag` and `Si1280_diag` stop after 5 and 3 SCF
   iterations (`SC.MaxIters`, `SC.ContinueOnSCFail T`), so that CPU and GPU do

@@ -1,0 +1,15 @@
+AtomMove.TypeOfRun static
+IO.Coordinates coords.dat
+IO.Iprint 0
+IO.WriteOutToFile T
+Grid.GridCutoff  50
+DM.SolutionMethod diagon
+General.NumberOfSpecies  1
+%block ChemicalSpeciesLabel
+ 1 28.086 Si
+%endblock
+Diag.MPMesh T
+Diag.MPMeshX 2
+Diag.MPMeshY 2
+Diag.MPMeshZ 2
+Diag.KProcGroups 4
