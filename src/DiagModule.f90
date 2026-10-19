@@ -154,7 +154,8 @@ module DiagModule
   use timer_module,           only: start_timer, stop_timer
   use timer_stdclocks_module, only: tmr_std_matrices
   use cuda_module,            only: flag_cuda_ready, flag_use_cuda, conquest_cusolver_zhegv, conquest_cublas_zgemm, &
-                                    cuda_diag_min_n, cuda_diag_max_n, conquest_cuda_set_device_hint
+                                    cuda_diag_min_n, cuda_diag_max_n, conquest_cuda_set_device_hint, &
+                                    cuda_gather_panel_mb
 
   implicit none
 
@@ -4431,7 +4432,7 @@ contains
     integer, intent(out) :: info
 
     complex(double_cplx), dimension(:,:), allocatable :: Hfull, Sfull
-    integer :: n, stat, ibuf(1)
+    integer :: n, stat, ibuf(1), j, w, panel
 
     n = matrix_size_padH
     if (gpu_root) then
@@ -4448,8 +4449,14 @@ contains
        return
     end if
 
-    call pzgemr2d(n, n, SCHmat(:,:,spin), 1, 1, desca, Hfull, 1, 1, desc_gpu, context)
-    call pzgemr2d(n, n, SCSmat(:,:,spin), 1, 1, descb, Sfull, 1, 1, desc_gpu, context)
+    ! Redistribute in column panels: reference ScaLAPACK's pzgemr2d sizes its buffers with
+    ! 32-bit byte counts and aborts ("xxmr2d:out of memory") once a piece exceeds 2 GB
+    panel = max(1, min(n, int(cuda_gather_panel_mb * 1048576.0_double / (16.0_double * real(n, double)))))
+    do j = 1, n, panel
+       w = min(panel, n - j + 1)
+       call pzgemr2d(n, w, SCHmat(:,:,spin), 1, j, desca, Hfull, 1, j, desc_gpu, context)
+       call pzgemr2d(n, w, SCSmat(:,:,spin), 1, j, descb, Sfull, 1, j, desc_gpu, context)
+    end do
 
     info = 0
     if (gpu_root) then
@@ -4463,8 +4470,12 @@ contains
        if (info == 0) call dgebr2d(context, 'All', ' ', n, 1, local_evals(:,spin), n, 0, 0)
     end if
 
-    if (info == 0 .and. (mode == 'V' .or. mode == 'v')) &
-         call pzgemr2d(n, n, Hfull, 1, 1, desc_gpu, z(:,:,spin), 1, 1, descz, context)
+    if (info == 0 .and. (mode == 'V' .or. mode == 'v')) then
+       do j = 1, n, panel
+          w = min(panel, n - j + 1)
+          call pzgemr2d(n, w, Hfull, 1, j, desc_gpu, z(:,:,spin), 1, j, descz, context)
+       end do
+    end if
 
     deallocate(Hfull, Sfull)
   end subroutine gathered_gpu_zhegv

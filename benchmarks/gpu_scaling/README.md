@@ -15,6 +15,7 @@ to build. Without a GPU or the DLLs, everything runs on the CPU as before.
 | `CONQUEST_CUDA_MIN_FLOPS` | off (`1e30`) | smallest GEMM (in FLOP) sent to cuBLAS; `1e9` is the single-thread break-even, but FP64 cuBLAS never clearly beat 8 CPU cores here |
 | `CONQUEST_CUDA_MIN_FFT` | `48` | smallest 3D FFT edge sent to cuFFT (EXX Poisson solver) |
 | `CONQUEST_CUDA_IN_PARALLEL` | `0` | `1` also offloads GEMM/FFT calls made from inside OpenMP teams |
+| `CONQUEST_CUDA_GATHER_PANEL_MB` | `1024` | column-panel size for gathering H, S and scattering the eigenvectors (below 2048: reference ScaLAPACK's `pzgemr2d` aborts with `xxmr2d:out of memory` on pieces over 2 GB) |
 
 The defaults are the break-even points measured on a Quadro RTX 5000 against
 a Ryzen 7 5700X (`microbench_results.txt`, produced by `bench_gpu.f90`).

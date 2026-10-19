@@ -17,6 +17,7 @@ module cuda_module
   ! Public configuration flags and parameters
   public :: flag_use_cuda, flag_cuda_ready
   public :: cuda_diag_min_n, cuda_diag_max_n, cuda_gemm_min_flops, cuda_fft3d_min_n, cuda_in_parallel
+  public :: cuda_gather_panel_mb
   public :: conquest_cuda_init, conquest_cuda_finalize, conquest_cuda_set_device_hint
   public :: conquest_cusolver_zhegv
   public :: conquest_cublas_dgemm, conquest_cublas_zgemm
@@ -34,6 +35,10 @@ module cuda_module
   integer, save :: cuda_diag_min_n = 200
   ! The legacy cuSOLVER zhegvd API takes 32-bit sizes, so N*N must stay below 2^31
   integer, parameter :: cuda_diag_max_n = 46340
+  ! Column-panel size (MB) for gathering H, S and scattering Z in the gathered eigensolver;
+  ! must stay below 2048 (32-bit buffer sizes in reference ScaLAPACK's pzgemr2d).
+  ! Override with CONQUEST_CUDA_GATHER_PANEL_MB.
+  real(double), save :: cuda_gather_panel_mb = 1024.0_double
   real(double), save :: cuda_gemm_min_flops = 1.0e30_double
   integer, save :: cuda_fft3d_min_n = 48
   ! GEMM/FFT calls made from inside an active OpenMP team would only queue on the
@@ -154,6 +159,12 @@ contains
     if (stat == 0) then
        read(env_val, *, iostat=stat) rc
        if (stat == 0) cuda_in_parallel = (rc /= 0)
+    end if
+
+    call get_environment_variable("CONQUEST_CUDA_GATHER_PANEL_MB", env_val, status=stat)
+    if (stat == 0) then
+       read(env_val, *, iostat=stat) rflops
+       if (stat == 0 .and. rflops > 0.0_double .and. rflops < 2048.0_double) cuda_gather_panel_mb = rflops
     end if
 
     call get_environment_variable("CONQUEST_CUDA_MIN_FFT", env_val, status=stat)
