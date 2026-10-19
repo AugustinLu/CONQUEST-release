@@ -1,28 +1,38 @@
-"""Run one CONQUEST case and record peak memory (per rank and summed) by polling."""
+"""Run one CONQUEST case and record peak memory (per rank and summed) by polling.
+
+Usage: python measure_mem.py <input dir> <work dir> <MPI ranks> <use CUDA 0|1>
+
+Every process whose name starts with the executable's name is sampled once per
+second (psutil RSS), so short runs can be missed. Uses the same executable and
+launcher settings as run_gpu_benchmarks.py (CONQUEST_EXE, MPIRUN, MPIRUN_OPTS
+on Linux/macOS; MS-MPI on Windows).
+"""
 import os, re, shutil, subprocess, sys, time
 import psutil
 
-MSYS_BIN = r"C:\msys64\ucrt64\bin"
-MSMPI_BIN = r"C:\Program Files\Microsoft MPI\Bin"
-EXE = r"D:\Documents\Projects\CONQUEST\conquest_for_windows\bin\Conquest.exe"
-CUDA_DIR = r"C:\Users\Khoa\.conda\envs\AtoMROle\Library\bin"
+from run_gpu_benchmarks import WINDOWS, EXE_NEW, CUDA_DIR, launcher
 
 src, wd, nproc, cuda = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4] == "1"
 if os.path.isdir(wd):
     shutil.rmtree(wd)
 shutil.copytree(src, wd)
 env = os.environ.copy()
-env["PATH"] = f"{MSYS_BIN};{MSMPI_BIN};{env['PATH']}"
-env.update(OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", OMP_STACKSIZE="100M",
-           CONQUEST_USE_CUDA="1" if cuda else "0", CONQUEST_CUDA_PATH=CUDA_DIR)
+if WINDOWS:
+    from run_gpu_benchmarks import MSYS_BIN, MSMPI_BIN
+    env["PATH"] = f"{MSYS_BIN};{MSMPI_BIN};{env['PATH']}"
+env.update(OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1", OMP_STACKSIZE="100M",
+           CONQUEST_USE_CUDA="1" if cuda else "0")
+if CUDA_DIR:
+    env["CONQUEST_CUDA_PATH"] = CUDA_DIR
+exe_name = os.path.basename(EXE_NEW)
 t0 = time.time()
-p = subprocess.Popen([os.path.join(MSMPI_BIN, "mpiexec.exe"), "-priority", "1", "-n", str(nproc), EXE],
+p = subprocess.Popen(launcher(nproc, 1, EXE_NEW),
                      cwd=wd, stdout=open(os.path.join(wd, "stdout.log"), "w"), stderr=subprocess.STDOUT, env=env)
 peak_rank, peak_sum, min_free = {}, 0, 1e18
 while p.poll() is None:
     tot = 0
     for q in psutil.process_iter(["name", "pid"]):
-        if q.info["name"] == "Conquest.exe":
+        if (q.info["name"] or "").startswith(exe_name[:15]):   # Linux truncates names to 15 characters
             try:
                 rss = q.memory_info().rss
             except psutil.Error:
