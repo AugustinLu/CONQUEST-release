@@ -154,7 +154,7 @@ module DiagModule
   use timer_module,           only: start_timer, stop_timer
   use timer_stdclocks_module, only: tmr_std_matrices
   use cuda_module,            only: flag_cuda_ready, flag_use_cuda, conquest_cusolver_zhegv, conquest_cublas_zgemm, &
-                                    cuda_diag_min_n
+                                    cuda_diag_min_n, cuda_diag_max_n, conquest_cuda_set_device_hint
 
   implicit none
 
@@ -4370,6 +4370,12 @@ contains
           end if
        else if( flag_gpu_gather ) then
           call gathered_gpu_zhegv(mode, spin, info)
+          if( info /= 0 ) then
+             ! Do not gather again for the rest of the run (info is the same on all processes)
+             flag_gpu_gather = .false.
+             if( myid == 0 ) write(io_lun,fmt='(4x,"Gathered GPU eigensolver failed (code ",i0, &
+                  &"); using the CPU eigensolver from now on")') info
+          end if
        end if
 
        if( info /= 0 ) then
@@ -4558,7 +4564,10 @@ contains
     ! 1x1 grid holding the first process of this group, for the gathered GPU eigensolver
     ! (blacs_gridmap is collective, so every process takes part)
     flag_gpu_gather = flag_cuda_ready .and. flag_use_cuda .and. proc_rows * proc_cols > 1 .and. &
-                      matrix_size_padH >= cuda_diag_min_n
+                      matrix_size_padH >= cuda_diag_min_n .and. matrix_size_padH <= cuda_diag_max_n
+    ! The first process of each group solves on GPU (group index) modulo the number of GPUs
+    if (flag_cuda_ready .and. flag_use_cuda .and. myid == procid(pgid, 1, 1) - 1) &
+         call conquest_cuda_set_device_hint(pgid - 1)
     if (flag_gpu_gather) then
        allocate(imap(1, 1), STAT=stat)
        if (stat /= 0) call cq_abort('initDiag: Failed to allocate imap', stat)

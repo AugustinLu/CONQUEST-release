@@ -16,8 +16,8 @@ module cuda_module
 
   ! Public configuration flags and parameters
   public :: flag_use_cuda, flag_cuda_ready
-  public :: cuda_diag_min_n, cuda_gemm_min_flops, cuda_fft3d_min_n, cuda_in_parallel
-  public :: conquest_cuda_init, conquest_cuda_finalize
+  public :: cuda_diag_min_n, cuda_diag_max_n, cuda_gemm_min_flops, cuda_fft3d_min_n, cuda_in_parallel
+  public :: conquest_cuda_init, conquest_cuda_finalize, conquest_cuda_set_device_hint
   public :: conquest_cusolver_zhegv
   public :: conquest_cublas_dgemm, conquest_cublas_zgemm
   public :: conquest_cufft_3d_z2z
@@ -32,6 +32,8 @@ module cuda_module
   ! 4000^3 and lost when several MPI ranks shared the GPU. 1e9 is the
   ! single-thread break-even if you want to try it (CONQUEST_CUDA_MIN_FLOPS=1e9).
   integer, save :: cuda_diag_min_n = 200
+  ! The legacy cuSOLVER zhegvd API takes 32-bit sizes, so N*N must stay below 2^31
+  integer, parameter :: cuda_diag_max_n = 46340
   real(double), save :: cuda_gemm_min_flops = 1.0e30_double
   integer, save :: cuda_fft3d_min_n = 48
   ! GEMM/FFT calls made from inside an active OpenMP team would only queue on the
@@ -51,6 +53,11 @@ module cuda_module
      subroutine c_cq_cuda_finalize() bind(C, name="cq_cuda_finalize")
        use, intrinsic :: iso_c_binding
      end subroutine c_cq_cuda_finalize
+
+     subroutine c_cq_cuda_set_device_hint(hint) bind(C, name="cq_cuda_set_device_hint")
+       use, intrinsic :: iso_c_binding
+       integer(c_int), value :: hint
+     end subroutine c_cq_cuda_set_device_hint
 
      function c_cq_cuda_is_available() bind(C, name="cq_cuda_is_available")
        use, intrinsic :: iso_c_binding
@@ -164,6 +171,13 @@ contains
     end if
   end subroutine conquest_cuda_init
 
+  ! Suggest which GPU this process should use (taken modulo the number of
+  ! visible devices). Only effective before the process first uses the GPU.
+  subroutine conquest_cuda_set_device_hint(hint)
+    integer, intent(in) :: hint
+    if (flag_cuda_ready) call c_cq_cuda_set_device_hint(int(hint, c_int))
+  end subroutine conquest_cuda_set_device_hint
+
   subroutine conquest_cuda_finalize()
     if (flag_cuda_ready) then
        call c_cq_cuda_finalize()
@@ -182,7 +196,7 @@ contains
 
     integer(c_int) :: mode_v, rc
 
-    if (.not. flag_cuda_ready .or. .not. flag_use_cuda .or. n < cuda_diag_min_n) then
+    if (.not. flag_cuda_ready .or. .not. flag_use_cuda .or. n < cuda_diag_min_n .or. n > cuda_diag_max_n) then
        info = -999 ! Signal caller to fall back to ScaLAPACK / LAPACK
        return
     end if

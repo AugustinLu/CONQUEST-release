@@ -9,13 +9,25 @@
  *
  * Library search order (all libraries are taken from the same directory):
  *   1. $CONQUEST_CUDA_PATH
- *   2. $CUDA_PATH/bin  (CUDA toolkit installer sets this on Windows)
+ *   2. Windows: $CUDA_PATH/bin (set by the CUDA toolkit installer)
+ *      Linux:   $CUDA_PATH/lib64, $CUDA_HOME/lib64, /usr/local/cuda/lib64
  *   3. the normal system search path (PATH / LD_LIBRARY_PATH)
+ * cuBLAS, cuSOLVER and cuFFT are taken from the same CUDA release as cudart.
+ *
+ * Loading the libraries does not create a CUDA context. The context, the
+ * cuBLAS/cuSOLVER handles and the device buffers are created on first use, so
+ * MPI ranks that never offload (e.g. all but the gathering rank of each group
+ * in the gathered eigensolver) use no GPU memory. The device is chosen as
+ *   $CONQUEST_CUDA_DEVICE if set, else
+ *   the hint from cq_cuda_set_device_hint (the process group index), else
+ *   the node-local MPI rank,
+ * modulo the number of visible devices.
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 #include "cuda_bridge.h"
 
 #ifdef _WIN32
@@ -146,8 +158,12 @@ typedef int (*pfn_cufftDestroy)(cufftHandle);
 
 // Internal state
 static int g_cuda_initialized = 0;
-static int g_cuda_available = 0;
+static int g_cuda_available = 0;   /* libraries loaded and at least one device visible */
+static int g_ctx_state = 0;        /* 0: not created yet, 1: ready, -1: creation failed */
 static int g_myid = 0;
+static int g_dev_count = 0;
+static int g_device_hint = -1;
+static int g_device_id = -1;
 
 static lib_handle_t h_cudart = NULL;
 static lib_handle_t h_cublas = NULL;
@@ -205,7 +221,7 @@ static int g_cached_fft_nx = 0;
 static int g_cached_fft_ny = 0;
 static int g_cached_fft_nz = 0;
 
-// Usage statistics (printed by cq_cuda_finalize on rank 0)
+// Usage statistics (printed by cq_cuda_finalize on rank 0 and on the other k-point group roots)
 enum { ST_ZHEGV = 0, ST_DGEMM, ST_ZGEMM, ST_FFT, ST_N };
 static const char *st_names[ST_N] = {"cuSOLVER zhegvd", "cuBLAS dgemm", "cuBLAS zgemm", "cuFFT 3D z2z"};
 static long st_calls[ST_N] = {0};
@@ -237,42 +253,153 @@ static int ensure_device_buffer(void **ptr, size_t *cur_bytes, size_t req_bytes)
     return -1;
 }
 
+static lib_handle_t h_extra[4] = {NULL, NULL, NULL, NULL};
+
 static void unload_all(void) {
     if (h_cufft) CLOSE_LIB(h_cufft);
     if (h_cusolver) CLOSE_LIB(h_cusolver);
     if (h_cublas) CLOSE_LIB(h_cublas);
     if (h_cudart) CLOSE_LIB(h_cudart);
+    for (int i = 3; i >= 0; i--) {
+        if (h_extra[i]) CLOSE_LIB(h_extra[i]);
+        h_extra[i] = NULL;
+    }
     h_cufft = h_cusolver = h_cublas = h_cudart = NULL;
 }
 
 static lib_handle_t load_first(const char *dir, const char *names[], int n) {
     for (int i = 0; i < n; i++) {
+        if (names[i] == NULL) continue;
         lib_handle_t h = load_lib(dir, names[i]);
         if (h) return h;
     }
     return NULL;
 }
 
-// Try to load a consistent set of CUDA libraries from one directory (NULL = system search)
-static int load_cuda_libs(const char *dir) {
+#define NELEM(a) ((int)(sizeof(a)/sizeof((a)[0])))
+
+/* Library names of one CUDA major release. cublasLt and nvJitLink are loaded
+   first (optional) so that cuBLAS/cuSOLVER find them in a directory that is not
+   on the system search path. */
+typedef struct {
+    int major;
+    const char *cublas, *cusolver, *cufft, *cublaslt, *nvjitlink;
+} cuda_libset_t;
+
 #ifdef _WIN32
-    const char *cudart_names[]   = {"cudart64_12.dll", "cudart64_110.dll", "cudart64_11.dll", "cudart64_101.dll"};
-    const char *cublas_names[]   = {"cublas64_12.dll", "cublas64_11.dll", "cublas64_10.dll"};
-    const char *cusolver_names[] = {"cusolver64_11.dll", "cusolver64_12.dll", "cusolver64_10.dll"};
-    const char *cufft_names[]    = {"cufft64_11.dll", "cufft64_10.dll", "cufft64_12.dll"};
+static const char *cudart_names[] = {"cudart64_13.dll", "cudart64_12.dll", "cudart64_110.dll",
+                                     "cudart64_11.dll", "cudart64_101.dll"};
+static const cuda_libset_t libsets[] = {
+    {13, "cublas64_13.dll", "cusolver64_12.dll", "cufft64_12.dll", "cublasLt64_13.dll", "nvJitLink_130_0.dll"},
+    {12, "cublas64_12.dll", "cusolver64_11.dll", "cufft64_11.dll", "cublasLt64_12.dll", "nvJitLink_120_0.dll"},
+    {11, "cublas64_11.dll", "cusolver64_11.dll", "cufft64_10.dll", "cublasLt64_11.dll", NULL},
+};
+/* Used when the release of cudart cannot be matched (any combination found) */
+static const char *cublas_any[]   = {"cublas64_13.dll", "cublas64_12.dll", "cublas64_11.dll", "cublas64_10.dll"};
+static const char *cusolver_any[] = {"cusolver64_12.dll", "cusolver64_11.dll", "cusolver64_10.dll"};
+static const char *cufft_any[]    = {"cufft64_12.dll", "cufft64_11.dll", "cufft64_10.dll"};
 #else
-    const char *cudart_names[]   = {"libcudart.so", "libcudart.so.12", "libcudart.so.11.0"};
-    const char *cublas_names[]   = {"libcublas.so", "libcublas.so.12", "libcublas.so.11"};
-    const char *cusolver_names[] = {"libcusolver.so", "libcusolver.so.11", "libcusolver.so.12"};
-    const char *cufft_names[]    = {"libcufft.so", "libcufft.so.11", "libcufft.so.10"};
+static const char *cudart_names[] = {"libcudart.so.13", "libcudart.so.12", "libcudart.so.11.0", "libcudart.so"};
+static const cuda_libset_t libsets[] = {
+    {13, "libcublas.so.13", "libcusolver.so.12", "libcufft.so.12", "libcublasLt.so.13", "libnvJitLink.so.13"},
+    {12, "libcublas.so.12", "libcusolver.so.11", "libcufft.so.11", "libcublasLt.so.12", "libnvJitLink.so.12"},
+    {11, "libcublas.so.11", "libcusolver.so.11", "libcufft.so.10", "libcublasLt.so.11", NULL},
+};
+static const char *cublas_any[]   = {"libcublas.so"};
+static const char *cusolver_any[] = {"libcusolver.so"};
+static const char *cufft_any[]    = {"libcufft.so"};
 #endif
-    h_cudart = load_first(dir, cudart_names, (int)(sizeof(cudart_names)/sizeof(cudart_names[0])));
-    h_cublas = load_first(dir, cublas_names, (int)(sizeof(cublas_names)/sizeof(cublas_names[0])));
-    h_cusolver = load_first(dir, cusolver_names, (int)(sizeof(cusolver_names)/sizeof(cusolver_names[0])));
-    h_cufft = load_first(dir, cufft_names, (int)(sizeof(cufft_names)/sizeof(cufft_names[0])));
+
+/* Try to load a consistent set of CUDA libraries from one directory (NULL = system search) */
+static int load_cuda_libs(const char *dir) {
+    h_cudart = load_first(dir, cudart_names, NELEM(cudart_names));
+    if (!h_cudart) return 0;
+
+    int rt_ver = 0;
+    pfn_cudaRuntimeGetVersion get_ver = (pfn_cudaRuntimeGetVersion)GET_SYM(h_cudart, "cudaRuntimeGetVersion");
+    if (get_ver) get_ver(&rt_ver);
+    int major = rt_ver / 1000;
+
+    for (int i = 0; i < NELEM(libsets); i++) {
+        if (libsets[i].major != major) continue;
+        if (libsets[i].cublaslt) h_extra[0] = load_lib(dir, libsets[i].cublaslt);
+        if (libsets[i].nvjitlink) h_extra[1] = load_lib(dir, libsets[i].nvjitlink);
+        h_cublas = load_lib(dir, libsets[i].cublas);
+        h_cusolver = load_lib(dir, libsets[i].cusolver);
+        h_cufft = load_lib(dir, libsets[i].cufft);
+        break;
+    }
+    /* Unversioned names (e.g. development symlinks), only if the matching set was not found */
+    if (!h_cublas) h_cublas = load_first(dir, cublas_any, NELEM(cublas_any));
+    if (!h_cusolver) h_cusolver = load_first(dir, cusolver_any, NELEM(cusolver_any));
+    if (!h_cufft) h_cufft = load_first(dir, cufft_any, NELEM(cufft_any));
     if (h_cudart && h_cublas && h_cusolver) return 1;
     unload_all();
     return 0;
+}
+
+/* Node-local MPI rank from the launcher's environment, or -1 if unknown */
+static int local_rank_from_env(void) {
+    const char *vars[] = {"OMPI_COMM_WORLD_LOCAL_RANK", "MPI_LOCALRANKID", "MV2_COMM_WORLD_LOCAL_RANK",
+                          "PMI_LOCAL_RANK", "SLURM_LOCALID"};
+    for (int i = 0; i < NELEM(vars); i++) {
+        const char *v = getenv(vars[i]);
+        if (v && v[0]) return atoi(v);
+    }
+    return -1;
+}
+
+void cq_cuda_set_device_hint(int hint) {
+    if (hint >= 0) g_device_hint = hint;
+}
+
+/* Create the CUDA context, the library handles and the info buffer on first use.
+   Must be called with the CUDA lock held. Returns 1 when the GPU can be used. */
+static int ensure_context(void) {
+    if (g_ctx_state != 0) return g_ctx_state > 0;
+    g_ctx_state = -1;
+
+    int dev = -1;
+    const char *env_dev = getenv("CONQUEST_CUDA_DEVICE");
+    if (env_dev && env_dev[0]) dev = atoi(env_dev);
+    else if (g_device_hint >= 0) dev = g_device_hint;
+    else dev = local_rank_from_env();
+    if (dev < 0) dev = g_myid;
+    dev = dev % g_dev_count;
+
+    if (fn_cudaSetDevice(dev) != CUDA_SUCCESS ||
+        fn_cublasCreate(&g_cublas) != CUBLAS_STATUS_SUCCESS) {
+        printf("[CONQUEST CUDA Bridge] rank %d: cuBLAS initialisation on GPU %d failed; using CPU.\n", g_myid, dev);
+        fflush(stdout);
+        g_cublas = NULL;
+        return 0;
+    }
+    if (fn_cusolverDnCreate(&g_cusolver) != CUSOLVER_STATUS_SUCCESS) {
+        printf("[CONQUEST CUDA Bridge] rank %d: cuSOLVER initialisation on GPU %d failed; using CPU.\n", g_myid, dev);
+        fflush(stdout);
+        fn_cublasDestroy(g_cublas);
+        g_cublas = NULL;
+        g_cusolver = NULL;
+        return 0;
+    }
+    if (fn_cudaMalloc((void**)&d_pool_info, sizeof(int)) != CUDA_SUCCESS) {
+        d_pool_info = NULL;
+        fn_cusolverDnDestroy(g_cusolver);
+        fn_cublasDestroy(g_cublas);
+        g_cusolver = NULL;
+        g_cublas = NULL;
+        return 0;
+    }
+    g_device_id = dev;
+    g_ctx_state = 1;
+
+    /* One line per rank that actually uses the GPU */
+    size_t free_b = 0, total_b = 0;
+    if (fn_cudaMemGetInfo) fn_cudaMemGetInfo(&free_b, &total_b);
+    printf("[CONQUEST CUDA Bridge] rank %d uses GPU %d (%.2f GB free of %.2f GB)\n", g_myid, dev,
+           (double)free_b / (1024.0*1024.0*1024.0), (double)total_b / (1024.0*1024.0*1024.0));
+    fflush(stdout);
+    return 1;
 }
 
 int cq_cuda_init(int myid, int *dev_count_out) {
@@ -283,18 +410,25 @@ int cq_cuda_init(int myid, int *dev_count_out) {
     g_myid = myid;
 
     const char *found_dir = NULL;
-    char cuda_bin[2048];
+    static char cuda_dir[2048];
     const char *env_cq = getenv("CONQUEST_CUDA_PATH");
-    const char *env_cuda = getenv("CUDA_PATH");
     int ok = 0;
     if (env_cq && env_cq[0]) {
         ok = load_cuda_libs(env_cq);
         if (ok) found_dir = env_cq;
     }
-    if (!ok && env_cuda && env_cuda[0]) {
-        snprintf(cuda_bin, sizeof(cuda_bin), "%s" PATH_SEP "bin", env_cuda);
-        ok = load_cuda_libs(cuda_bin);
-        if (ok) found_dir = cuda_bin;
+#ifdef _WIN32
+    const char *roots[] = {getenv("CUDA_PATH")};
+    const char *subdir = "bin";
+#else
+    const char *roots[] = {getenv("CUDA_PATH"), getenv("CUDA_HOME"), "/usr/local/cuda"};
+    const char *subdir = "lib64";
+#endif
+    for (int i = 0; !ok && i < NELEM(roots); i++) {
+        if (!roots[i] || !roots[i][0]) continue;
+        snprintf(cuda_dir, sizeof(cuda_dir), "%s" PATH_SEP "%s", roots[i], subdir);
+        ok = load_cuda_libs(cuda_dir);
+        if (ok) found_dir = cuda_dir;
     }
     if (!ok) {
         ok = load_cuda_libs(NULL);
@@ -303,7 +437,7 @@ int cq_cuda_init(int myid, int *dev_count_out) {
     if (!ok) {
         if (myid == 0) {
             printf("[CONQUEST CUDA Bridge] CUDA libraries (cudart/cublas/cusolver) not found; using CPU.\n"
-                   "                       Set CONQUEST_CUDA_PATH to the directory holding the CUDA DLLs.\n");
+                   "                       Set CONQUEST_CUDA_PATH to the directory holding the CUDA libraries.\n");
         }
         return 0;
     }
@@ -356,44 +490,20 @@ int cq_cuda_init(int myid, int *dev_count_out) {
     }
     if (dev_count_out) *dev_count_out = dev_count;
 
-    int device_id = myid % dev_count;
-    if (fn_cudaSetDevice(device_id) != CUDA_SUCCESS ||
-        fn_cublasCreate(&g_cublas) != CUBLAS_STATUS_SUCCESS) {
-        if (myid == 0) printf("[CONQUEST CUDA Bridge] cuBLAS initialisation failed; using CPU.\n");
-        g_cublas = NULL;
-        return 0;
-    }
-    if (fn_cusolverDnCreate(&g_cusolver) != CUSOLVER_STATUS_SUCCESS) {
-        if (myid == 0) printf("[CONQUEST CUDA Bridge] cuSOLVER initialisation failed; using CPU.\n");
-        fn_cublasDestroy(g_cublas);
-        g_cublas = NULL;
-        g_cusolver = NULL;
-        return 0;
-    }
-    if (fn_cudaMalloc((void**)&d_pool_info, sizeof(int)) != CUDA_SUCCESS) {
-        d_pool_info = NULL;
-        fn_cusolverDnDestroy(g_cusolver);
-        fn_cublasDestroy(g_cublas);
-        g_cusolver = NULL;
-        g_cublas = NULL;
-        return 0;
-    }
+    g_dev_count = dev_count;
 
     INIT_CUDA_LOCK();
     g_cuda_available = 1;
 
     if (myid == 0) {
-        size_t free_b = 0, total_b = 0;
         int rt_ver = 0;
-        if (fn_cudaMemGetInfo) fn_cudaMemGetInfo(&free_b, &total_b);
         if (fn_cudaRuntimeGetVersion) fn_cudaRuntimeGetVersion(&rt_ver);
         printf("--------------------------------------------------------------------\n");
-        printf(" [CONQUEST CUDA GPU Bridge] initialised\n");
+        printf(" [CONQUEST CUDA GPU Bridge] libraries loaded\n");
         printf("   Libraries         : %s (CUDA runtime %d.%d)\n", found_dir, rt_ver / 1000, (rt_ver % 1000) / 10);
-        printf("   Active GPU Device : %d (of %d available)\n", device_id, dev_count);
-        printf("   GPU VRAM Capacity : %.2f GB (Free: %.2f GB)\n",
-               (double)total_b / (1024.0*1024.0*1024.0), (double)free_b / (1024.0*1024.0*1024.0));
+        printf("   Visible GPUs      : %d\n", dev_count);
         printf("   Offload targets   : cuSOLVER zhegvd%s%s\n", ", cuBLAS gemm", fn_cufftExecZ2Z ? ", cuFFT 3D z2z" : "");
+        printf("   (a GPU context is created only on ranks that offload work)\n");
         printf("--------------------------------------------------------------------\n");
         fflush(stdout);
     }
@@ -409,9 +519,12 @@ static void print_stats(void) {
     int any = 0;
     for (int i = 0; i < ST_N; i++) if (st_calls[i] || st_fail[i]) any = 1;
     printf("--------------------------------------------------------------------\n");
-    printf(" [CONQUEST CUDA GPU Bridge] usage on rank %d\n", g_myid);
+    if (g_device_id >= 0)
+        printf(" [CONQUEST CUDA GPU Bridge] usage on rank %d (GPU %d)\n", g_myid, g_device_id);
+    else
+        printf(" [CONQUEST CUDA GPU Bridge] usage on rank %d (no GPU context)\n", g_myid);
     if (!any) {
-        printf("   No operation was offloaded to the GPU (all below size thresholds).\n");
+        printf("   No operation was offloaded to the GPU.\n");
     } else {
         printf("   %-16s %10s %8s %12s %10s\n", "routine", "calls", "failed", "time (s)", "GFLOP/s");
         for (int i = 0; i < ST_N; i++) {
@@ -428,7 +541,15 @@ static void print_stats(void) {
 void cq_cuda_finalize(void) {
     if (!g_cuda_available) return;
 
-    if (g_myid == 0) print_stats();
+    /* Rank 0, plus the other k-point group roots that used a GPU */
+    if (g_myid == 0 || (g_device_hint > 0 && g_ctx_state > 0)) print_stats();
+    if (g_ctx_state <= 0) {
+        g_cuda_available = 0;
+        g_cuda_initialized = 0;
+        g_ctx_state = 0;
+        DELETE_CUDA_LOCK();
+        return;
+    }
 
     if (g_have_fft_plan && fn_cufftDestroy) {
         fn_cufftDestroy(g_cached_fft_plan);
@@ -455,6 +576,7 @@ void cq_cuda_finalize(void) {
 
     g_cuda_available = 0;
     g_cuda_initialized = 0;
+    g_ctx_state = 0;
 }
 
 #define H2D(dst, src, bytes) (fn_cudaMemcpy((dst), (src), (bytes), cudaMemcpyHostToDevice) == CUDA_SUCCESS)
@@ -475,13 +597,16 @@ void cq_cuda_finalize(void) {
  *   0 on success, non-zero on error (host arrays then untouched).
  */
 int cq_cusolver_zhegv(int mode_v, int n, void *h_A, int lda, void *h_B, int ldb, double *h_W) {
-    if (!g_cuda_available || !g_cusolver) return -1;
+    if (!g_cuda_available) return -1;
     if (n <= 0) return 0;
     if (lda < n || ldb < n) return -4;
+    /* The legacy cuSOLVER API takes 32-bit sizes */
+    if ((size_t)lda * (size_t)n > (size_t)INT_MAX || (size_t)ldb * (size_t)n > (size_t)INT_MAX) return -7;
 
     ENTER_CUDA_LOCK();
     double t0 = wall_time();
     int ret = 0;
+    if (!ensure_context()) { LEAVE_CUDA_LOCK(); return -1; }
 
     size_t a_bytes = (size_t)lda * n * sizeof(cq_cplx_t);
     size_t b_bytes = (size_t)ldb * n * sizeof(cq_cplx_t);
@@ -504,6 +629,7 @@ int cq_cusolver_zhegv(int mode_v, int n, void *h_A, int lda, void *h_B, int ldb,
                                               d_pool_A, lda, d_pool_B, ldb,
                                               (const double*)d_pool_W, &lwork);
     if (stat != CUSOLVER_STATUS_SUCCESS) { ret = 1000 + stat; goto done; }
+    if (lwork <= 0) { ret = -7; goto done; }   /* 32-bit workspace size overflowed */
 
     if (ensure_device_buffer(&d_pool_work, &d_pool_work_bytes, (size_t)lwork * sizeof(cq_cplx_t))) {
         ret = -3; goto done;
@@ -547,12 +673,13 @@ int cq_cublas_dgemm(int op_a, int op_b, int m, int n, int k,
                     double alpha, const double *h_A, int lda,
                     const double *h_B, int ldb,
                     double beta, double *h_C, int ldc) {
-    if (!g_cuda_available || !g_cublas) return -1;
+    if (!g_cuda_available) return -1;
     if (m <= 0 || n <= 0) return 0;
 
     ENTER_CUDA_LOCK();
     double t0 = wall_time();
     int ret = 0;
+    if (!ensure_context()) { LEAVE_CUDA_LOCK(); return -1; }
 
     /* Only the last column needs to be read up to its last used row, so the transfer
        size is ld*(cols-1)+rows; this never reads past the end of a tightly sized array. */
@@ -601,12 +728,13 @@ int cq_cublas_zgemm(int op_a, int op_b, int m, int n, int k,
                     const void *alpha, const void *h_A, int lda,
                     const void *h_B, int ldb,
                     const void *beta, void *h_C, int ldc) {
-    if (!g_cuda_available || !g_cublas) return -1;
+    if (!g_cuda_available) return -1;
     if (m <= 0 || n <= 0) return 0;
 
     ENTER_CUDA_LOCK();
     double t0 = wall_time();
     int ret = 0;
+    if (!ensure_context()) { LEAVE_CUDA_LOCK(); return -1; }
 
     size_t a_rows = (op_a == CUBLAS_OP_N) ? (size_t)m : (size_t)k;
     size_t a_cols = (op_a == CUBLAS_OP_N) ? (size_t)k : (size_t)m;
@@ -660,6 +788,7 @@ int cq_cufft_3d_z2z(int nx, int ny, int nz, void *h_data, int isign) {
     ENTER_CUDA_LOCK();
     double t0 = wall_time();
     int ret = 0;
+    if (!ensure_context()) { LEAVE_CUDA_LOCK(); return -1; }
 
     if (!g_have_fft_plan || g_cached_fft_nx != nx || g_cached_fft_ny != ny || g_cached_fft_nz != nz) {
         if (g_have_fft_plan) {

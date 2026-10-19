@@ -13,6 +13,7 @@ extern "C" {
 int cq_cuda_init(int myid, int *dev_count);
 void cq_cuda_finalize(void);
 int cq_cuda_is_available(void);
+void cq_cuda_set_device_hint(int hint);
 
 int cq_cusolver_zhegv(int mode_v, int n, void *h_A, int lda, void *h_B, int ldb, double *h_W);
 
