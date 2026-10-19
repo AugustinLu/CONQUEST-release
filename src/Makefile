@@ -56,6 +56,7 @@ include exx.obj
 
 #List of all object files
 NODE_OBJECTS = main.o datatypes_module.o numbers_module.o datestamp.o                   \
+               cuda_bridge.o cuda_module.o                                              \
                $(MATRIX_OBJS) $(COMM_OBJS) $(ODD_OBJS) $(OVERLAP_OBJS) $(ENERGY_OBJS)   \
                $(IONICS_OBJS) $(FORCES_OBJS) $(SETGRID_NEW_OBJS) $(PAO2BLIP_OBJS)       \
                $(PS_TM_OBJS)  $(EXX_OBJS)
@@ -87,8 +88,19 @@ $(TARGET) : $(NODE_OBJECTS)
 %.o: %.f90
 	$(FC) $(COMPFLAGS) -c $<
 
+%.o: %.c
+	$(CC) $(CFLAGS) -c $<
+
 .f.o:
 	$(FC) $(COMPFLAGS) -c $<
+
+cuda_bridge.o: cuda_bridge.c cuda_bridge.h
+cuda_module.o: cuda_module.f90 datatypes_module.o mpi.o
+DiagModule.o: cuda_module.o
+main.o: cuda_module.o
+calc_matrix_elements_module.o: cuda_module.o
+fft_fftw3.o: cuda_module.o
+multiply_kernel_ompGemm_m.o: cuda_module.o
 
 #Dependencies
 include deps.obj

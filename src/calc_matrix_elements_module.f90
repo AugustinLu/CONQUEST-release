@@ -47,6 +47,7 @@ module calc_matrix_elements_module
   use timer_stdclocks_module, only: tmr_std_integration,     &
                                     tmr_std_allocation,      &
                                     tmr_std_matrices
+  use cuda_module,            only: conquest_cublas_dgemm, flag_cuda_ready, flag_use_cuda
 
 
   implicit none
@@ -159,7 +160,7 @@ contains
     integer :: naba1, naba2, ind_halo1, ind_halo2, nsf1, nsf2
     integer :: nonef, ntwof, bucket, i_acc_b, ii, stat
     integer :: size_send_array
-    integer :: na1, na2
+    integer :: na1, na2, ierr
 
     ! acc_block = zero
 
@@ -190,10 +191,10 @@ contains
     !$omp             schedule(dynamic) &
     !$omp             reduction(+: send_array) &
     !$omp             shared(naba_atm1, naba_atm2, gridfunctions, n_pts_in_block, loc_bucket, &
-    !$omp                    domain, gridone, gridtwo) &
+    !$omp                    domain, gridone, gridtwo, flag_cuda_ready, flag_use_cuda) &
     !$omp             private(iprim_blk, n_dim_one, n_dim_two, i_beg_one, i_beg_two, &
     !$omp                     stat, ind_halo1, ind_halo2, na1, na2, bucket, nonef, ntwof, &
-    !$omp                     naba1, naba2, ii, nsf2, i_acc_b, acc_block)
+    !$omp                     naba1, naba2, ii, nsf2, i_acc_b, acc_block, ierr)
     do iprim_blk=1, domain%groups_on_node
 
        n_dim_one     = naba_atm1%no_of_orb(iprim_blk) !left
@@ -219,10 +220,19 @@ contains
           !     =\sum_{r_l in block} [ phi_{i alpha} (r_l) * psi_{j beta} (r_l) ]
           !     =\sum_{r_l in block} [ psi_{j beta} (r_l)  * phi_{i alpha} (r_l)]
           !
-          call gemm ( 'T', 'N', n_dim_one, n_dim_two, n_pts_in_block, &
-               ONE, gridfunctions(gridone)%griddata(i_beg_one:), n_pts_in_block, &
-               gridfunctions(gridtwo)%griddata(i_beg_two:), n_pts_in_block, &
-               ZERO, acc_block, n_dim_one )
+          ierr = -999
+          if (flag_cuda_ready .and. flag_use_cuda) then
+             call conquest_cublas_dgemm('T', 'N', n_dim_one, n_dim_two, n_pts_in_block, &
+                  ONE, gridfunctions(gridone)%griddata(i_beg_one), n_pts_in_block, &
+                  gridfunctions(gridtwo)%griddata(i_beg_two), n_pts_in_block, &
+                  ZERO, acc_block, n_dim_one, ierr)
+          end if
+          if (ierr /= 0) then
+             call gemm ( 'T', 'N', n_dim_one, n_dim_two, n_pts_in_block, &
+                  ONE, gridfunctions(gridone)%griddata(i_beg_one:), n_pts_in_block, &
+                  gridfunctions(gridtwo)%griddata(i_beg_two:), n_pts_in_block, &
+                  ZERO, acc_block, n_dim_one )
+          end if
 
           ! and accumulate it into the node accumulator
 

@@ -153,6 +153,8 @@ module DiagModule
   use GenComms,               only: cq_abort, inode, ionode, myid, cq_warn
   use timer_module,           only: start_timer, stop_timer
   use timer_stdclocks_module, only: tmr_std_matrices
+  use cuda_module,            only: flag_cuda_ready, flag_use_cuda, conquest_cusolver_zhegv, conquest_cublas_zgemm, &
+                                    cuda_diag_min_n
 
   implicit none
 
@@ -304,6 +306,13 @@ module DiagModule
   integer :: context
   integer, dimension(50) :: desca, descz, descb
   real(double) :: abstol = 1e-30_double ! pdlamch (context,'U')
+  ! GPU eigensolver on a multi-process BLACS grid: H and S are gathered onto the
+  ! first process of the group (a 1x1 grid), solved there with cuSOLVER and the
+  ! eigenvectors are scattered back
+  logical :: flag_gpu_gather = .false.
+  logical :: gpu_root = .false.
+  integer :: context_gpu = -1
+  integer, dimension(9) :: desc_gpu
 
   ! Max number of iterations when searching for E_Fermi
   integer :: maxefermi
@@ -3586,9 +3595,9 @@ contains
     real(double) :: phase, rfac, ifac, rcc, icc, rsum, exp_X_value_real, exp_X_value_imag, Siajb, SFcoeffTran_iajb
     complex(double_cplx) :: zsum, exp_X_value
     complex(double_cplx), dimension(:,:), allocatable :: RecvBuffer, &
-         SendBuffer
-    logical :: flag, flag_write_out
-    integer :: FSCpart, ipart, iband, iwf, len_occ, jband, dir
+         SendBuffer, G_block
+    logical :: flag, flag_write_out, use_gemm
+    integer :: FSCpart, ipart, iband, iwf, len_occ, jband, dir, norb_prim, norb_recv
     ! for spin polarisation
     real(double) :: occ_correction
 
@@ -3873,6 +3882,38 @@ contains
                 RecvBuffer(j,1:recv_info(recv_proc+1)%orbs) = RecvBuffer(j,1:recv_info(recv_proc+1)%orbs)*occ_correction*occs(j)
              end do
           end if
+
+          norb_prim = size(localEig, 2)
+          norb_recv = recv_info(recv_proc+1)%orbs
+          ! Form all (prim orbital, received orbital) products with one GEMM
+          ! (G_block is limited to 4 GB; beyond that keep the per-pair dot products)
+          use_gemm = .false.
+          if (len_occ > 0 .and. norb_prim > 0 .and. norb_recv > 0 .and. &
+              real(norb_prim, double) * real(norb_recv, double) <= 2.5e8_double .and. &
+              .not.(flag_pDOS_buildK .or. flag_WFatomf_buildK)) then
+             allocate(G_block(norb_prim, norb_recv), stat=stat)
+             if (stat == 0) then
+                use_gemm = .true.
+                ierr = -999
+                if (flag_cuda_ready .and. flag_use_cuda) then
+                   call conquest_cublas_zgemm('C', 'N', norb_prim, norb_recv, len_occ, &
+                        cmplx(1.0_double, 0.0_double, double_cplx), &
+                        localEig, size(localEig, 1), &
+                        RecvBuffer, size(RecvBuffer, 1), &
+                        cmplx(0.0_double, 0.0_double, double_cplx), &
+                        G_block, norb_prim, ierr)
+                end if
+                if (ierr /= 0) then
+                   call zgemm('C', 'N', norb_prim, norb_recv, len_occ, &
+                        cmplx(1.0_double, 0.0_double, double_cplx), &
+                        localEig, size(localEig, 1), &
+                        RecvBuffer, size(RecvBuffer, 1), &
+                        cmplx(0.0_double, 0.0_double, double_cplx), &
+                        G_block, norb_prim)
+                end if
+             end if
+          end if
+
           orb_count = 0
           do atom = 1,current_loc_atoms(recv_proc+1)
              locatom = mapchunk(atom)
@@ -3921,7 +3962,11 @@ contains
                       end if
                       ! Build K or M3
                       whereMat = matrix_pos(matA, prim, jatom, col_sup, row_sup)
-                      zsum = dot(len_occ,localEig(1:len_occ,prim_orbs(prim)+col_sup),1,RecvBuffer(1:len_occ,orb_count+row_sup),1)
+                      if (use_gemm) then
+                         zsum = G_block(prim_orbs(prim)+col_sup, orb_count+row_sup)
+                      else
+                         zsum = dot(len_occ,localEig(1:len_occ,prim_orbs(prim)+col_sup),1,RecvBuffer(1:len_occ,orb_count+row_sup),1)
+                      end if
                       call store_matrix_value_pos(matA,whereMat,real(zsum*cmplx(rfac,ifac,double_cplx),double))
                    end do ! col_sup=nsf
                    ! projected DOS in atomf basis
@@ -3952,6 +3997,7 @@ contains
              ! Careful - we only want to increment after ALL interactions done
              orb_count = orb_count + recv_info(recv_proc+1)%ndimj(locatom)
           end do ! atom=current_loc_atoms
+          if (allocated(G_block)) deallocate(G_block)
        end if ! recv_size>0
        if(iprint_DM + min_layer>=4.AND.myid==0) &
             write(io_lun,fmt='(10x,a)') 'Calling MPI_Wait'
@@ -4315,17 +4361,30 @@ contains
 
        ! Call the diagonalisation routine for generalised problem
        ! H.psi = E.S.psi
-       if( flag_use_elpa ) then
-          call ELPA_zhegv(mode, matrix_size_padH, row_size, col_size, &
-               SCHmat(:,:,spin), SCSmat(:,:,spin), local_evals(:,spin), z(:,:,spin), info )
-       else
-          call pzhegvx(1, mode, 'A', 'U', matrix_size_padH, SCHmat(:,:,spin), &
-               1, 1, desca, SCSmat(:,:,spin), 1, 1, descb,      &
-               vl, vu, il, iu, abstol, m, mz, local_evals(:,spin),  &
-               orfac, z(:,:,spin), 1, 1, descz, work, lwork,    &
-               rwork, lrwork, iwork, liwork, ifail, iclustr,    &
-               gap, info)
-       endif
+       info = -999
+       if( proc_rows == 1 .and. proc_cols == 1 .and. flag_cuda_ready .and. flag_use_cuda ) then
+          call conquest_cusolver_zhegv(mode, matrix_size_padH, SCHmat(:,:,spin), &
+               matrix_size_padH, SCSmat(:,:,spin), matrix_size_padH, local_evals(:,spin), info)
+          if( info == 0 .and. (mode == 'V' .or. mode == 'v') ) then
+             z(:,:,spin) = SCHmat(:,:,spin)
+          end if
+       else if( flag_gpu_gather ) then
+          call gathered_gpu_zhegv(mode, spin, info)
+       end if
+
+       if( info /= 0 ) then
+          if( flag_use_elpa ) then
+             call ELPA_zhegv(mode, matrix_size_padH, row_size, col_size, &
+                  SCHmat(:,:,spin), SCSmat(:,:,spin), local_evals(:,spin), z(:,:,spin), info )
+          else
+             call pzhegvx(1, mode, 'A', 'U', matrix_size_padH, SCHmat(:,:,spin), &
+                  1, 1, desca, SCSmat(:,:,spin), 1, 1, descb,      &
+                  vl, vu, il, iu, abstol, m, mz, local_evals(:,spin),  &
+                  orfac, z(:,:,spin), 1, 1, descz, work, lwork,    &
+                  rwork, lrwork, iwork, liwork, ifail, iclustr,    &
+                  gap, info)
+          endif
+       end if
 
        if (info /= 0) then
           if(info==2.OR.info==4) then ! These are safe to continue
@@ -4349,6 +4408,60 @@ contains
     end if ! End if (i<=N_kpoints_in_pg(pgid))
   end subroutine distrib_and_diag
   !!***
+
+  ! Gathers the distributed H and S onto the first process of the group, solves
+  ! the generalised eigenproblem there with cuSOLVER and scatters the eigenvectors
+  ! back into z. Collective over the process group. On return info is the same on
+  ! all processes; when it is non-zero SCHmat/SCSmat are untouched, so the caller
+  ! can fall back to ScaLAPACK.
+  subroutine gathered_gpu_zhegv(mode, spin, info)
+
+    use ScalapackFormat, only: matrix_size_padH
+
+    implicit none
+
+    character(len=1), intent(in) :: mode
+    integer, intent(in) :: spin
+    integer, intent(out) :: info
+
+    complex(double_cplx), dimension(:,:), allocatable :: Hfull, Sfull
+    integer :: n, stat, ibuf(1)
+
+    n = matrix_size_padH
+    if (gpu_root) then
+       allocate(Hfull(n,n), Sfull(n,n), STAT=stat)
+    else
+       allocate(Hfull(1,1), Sfull(1,1), STAT=stat)
+    end if
+    ibuf(1) = stat
+    call igsum2d(context, 'All', ' ', 1, 1, ibuf, 1, -1, -1)
+    if (ibuf(1) /= 0) then
+       if (allocated(Hfull)) deallocate(Hfull)
+       if (allocated(Sfull)) deallocate(Sfull)
+       info = -998
+       return
+    end if
+
+    call pzgemr2d(n, n, SCHmat(:,:,spin), 1, 1, desca, Hfull, 1, 1, desc_gpu, context)
+    call pzgemr2d(n, n, SCSmat(:,:,spin), 1, 1, descb, Sfull, 1, 1, desc_gpu, context)
+
+    info = 0
+    if (gpu_root) then
+       call conquest_cusolver_zhegv(mode, n, Hfull, n, Sfull, n, local_evals(:,spin), info)
+       ibuf(1) = info
+       call igebs2d(context, 'All', ' ', 1, 1, ibuf, 1)
+       if (info == 0) call dgebs2d(context, 'All', ' ', n, 1, local_evals(:,spin), n)
+    else
+       call igebr2d(context, 'All', ' ', 1, 1, ibuf, 1, 0, 0)
+       info = ibuf(1)
+       if (info == 0) call dgebr2d(context, 'All', ' ', n, 1, local_evals(:,spin), n, 0, 0)
+    end if
+
+    if (info == 0 .and. (mode == 'V' .or. mode == 'v')) &
+         call pzgemr2d(n, n, Hfull, 1, 1, desc_gpu, z(:,:,spin), 1, 1, descz, context)
+
+    deallocate(Hfull, Sfull)
+  end subroutine gathered_gpu_zhegv
 
   !!****f*  DiagModule/init_blacs_pg
   !!
@@ -4441,6 +4554,33 @@ contains
     call descinit(descz, matrix_size_padH, matrix_size_padH, block_size_r, block_size_c, 0, 0, context, row_size, info)
     ! Find scratch space requirements for ScaLAPACk
     if (info /= 0) call cq_abort("initDiag: descinit(z) failed !", info)
+
+    ! 1x1 grid holding the first process of this group, for the gathered GPU eigensolver
+    ! (blacs_gridmap is collective, so every process takes part)
+    flag_gpu_gather = flag_cuda_ready .and. flag_use_cuda .and. proc_rows * proc_cols > 1 .and. &
+                      matrix_size_padH >= cuda_diag_min_n
+    if (flag_gpu_gather) then
+       allocate(imap(1, 1), STAT=stat)
+       if (stat /= 0) call cq_abort('initDiag: Failed to allocate imap', stat)
+       imap(1, 1) = procid(pgid, 1, 1) - 1
+       gpu_root = (myid == imap(1, 1))
+       call blacs_get(0, 0, context_gpu)
+       call blacs_gridmap(context_gpu, imap, 1, 1, 1)
+       deallocate(imap)
+       desc_gpu = 0
+       if (gpu_root) then
+          call descinit(desc_gpu, matrix_size_padH, matrix_size_padH, block_size_r, block_size_c, &
+                        0, 0, context_gpu, matrix_size_padH, info)
+          if (info /= 0) call cq_abort("initDiag: descinit(gpu) failed !", info)
+       else
+          ! Processes outside the target grid must pass a descriptor with context -1
+          desc_gpu(1) = 1
+          desc_gpu(2) = -1
+       end if
+       if (iprint_DM + min_layer > 0 .and. myid == 0) &
+            write (io_lun, fmt='(4x,"Eigensolver: gathered onto one process for cuSOLVER (N = ",i0,")")') &
+            matrix_size_padH
+    end if
 1   format(10x, 'Proc: ', i5, ' BLACS proc, row, col: ', 3i5)
 12  format(10x, 'Proc: ', i5, ' row, col size: ', 2i5)
     

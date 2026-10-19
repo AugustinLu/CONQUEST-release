@@ -174,16 +174,24 @@ contains
 
   subroutine fft3_exec_wrapper( cdata, nsize, isign )
     use datatypes
+    use cuda_module, only: conquest_cufft_3d_z2z, flag_cuda_ready, flag_use_cuda
 
     implicit none
 
-    integer :: nsize, isign
+    integer :: nsize, isign, ierr
     complex(double_cplx), intent(inout) :: cdata(nsize,nsize,nsize)
 
-    if( (-1)*isign == -1 ) then ! forward
-       call dfftw_execute_dft( plan3_for, cdata, cdata )
-    else if( (-1)*isign == +1 ) then ! reverse
-       call dfftw_execute_dft( plan3_rev, cdata, cdata )
+    ierr = -999
+    if (flag_cuda_ready .and. flag_use_cuda) then
+       call conquest_cufft_3d_z2z(nsize, nsize, nsize, cdata, (-1)*isign, ierr)
+    end if
+
+    if (ierr /= 0) then
+       if( (-1)*isign == -1 ) then ! forward
+          call dfftw_execute_dft( plan3_for, cdata, cdata )
+       else if( (-1)*isign == +1 ) then ! reverse
+          call dfftw_execute_dft( plan3_rev, cdata, cdata )
+       end if
     end if
 
     return

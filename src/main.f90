@@ -104,6 +104,7 @@ program Conquest
   use timer_stdclocks_module
   use references, only: compile_biblio
   use omp_module, only: init_threads
+  use cuda_module, only: conquest_cuda_init, conquest_cuda_finalize
   !use output_module
   !use complete_module
 
@@ -127,6 +128,7 @@ program Conquest
   fixed_potential = .false.
   ! identify what node we are on
   call init_comms(myid, numprocs)
+  call conquest_cuda_init(myid)
 
   ! initialise reads in data and builds an initial Hamiltonian
   call initialise(vary_mu, fixed_potential, mu, total_energy)
@@ -150,6 +152,7 @@ program Conquest
   call my_barrier ()
   !call save_state( inode, ionode, mu, expected_reduction, n_run, output_file)
   !call save_blip(inode, ionode)
+  call conquest_cuda_finalize()
   call end_comms ()
 
 end program Conquest

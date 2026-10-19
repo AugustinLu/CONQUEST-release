@@ -136,6 +136,7 @@ contains
     use datatypes
     use matrix_module
     use numbers,        only: zero, one
+    use cuda_module,    only: conquest_cublas_dgemm, flag_cuda_ready, flag_use_cuda
 
     implicit none
 
@@ -165,6 +166,7 @@ contains
     real(double), allocatable, dimension(:,:) :: tempc
     integer :: maxnd1, maxnd2, maxnd3, maxlen
     integer :: nbbeg, nbend, tbend
+    integer :: ierr
     external :: dgemm
     ! OpenMP required indexing variables
     integer :: nd1_vector(at%mx_halo), nd2_vector(mx_absb), nd2_array(mx_absb)
@@ -205,8 +207,15 @@ contains
           naend = nabeg + (nd1 * nd3 - 1)
 
           ! Compute A*B using and store the result in tempc
-          call dgemm('t', 'n', nd1, tbend, nd3, one, A(nabeg:naend), &
-               nd3, B(nbbeg:nbend), nd3, zero, tempc, maxnd1)
+          ierr = -999
+          if (flag_cuda_ready .and. flag_use_cuda) then
+             call conquest_cublas_dgemm('t', 'n', nd1, tbend, nd3, one, A(nabeg:naend), &
+                  nd3, B(nbbeg:nbend), nd3, zero, tempc, maxnd1, ierr)
+          end if
+          if (ierr /= 0) then
+             call dgemm('t', 'n', nd1, tbend, nd3, one, A(nabeg:naend), &
+                  nd3, B(nbbeg:nbend), nd3, zero, tempc, maxnd1)
+          end if
 
           ! Copy result back from tempc and add to C
           copy_c: do j = 1, nbnab(k_in_part)
@@ -339,6 +348,7 @@ contains
     use datatypes
     use matrix_module
     use numbers,        only: one, zero
+    use cuda_module,    only: conquest_cublas_dgemm, flag_cuda_ready, flag_use_cuda
 
     implicit none
 
@@ -368,6 +378,7 @@ contains
     integer :: nd1, nd2, nd3
     integer :: maxlen, maxnd1, maxnd2, maxnd3
     real(double), allocatable, dimension(:,:) :: tempb, tempc
+    integer :: ierr
     external :: dgemm
     ! OpenMP required indexing variables
     integer :: nd1_vector(at%mx_halo), nd2_vector(mx_absb), nd2_array(mx_absb)
@@ -431,8 +442,15 @@ contains
 
           if (sofar > 0) then
              ! m, n, k, alpha, a, lda, b, ldb, beta, c, ldc
-             call dgemm('n', 'n', nd3, nd1, sofar, one, tempb, &
-                       maxnd3, tempc, maxlen, one, a(nabeg:), nd3)
+             ierr = -999
+             if (flag_cuda_ready .and. flag_use_cuda) then
+                call conquest_cublas_dgemm('n', 'n', nd3, nd1, sofar, one, tempb, &
+                     maxnd3, tempc, maxlen, one, a(nabeg:), nd3, ierr)
+             end if
+             if (ierr /= 0) then
+                call dgemm('n', 'n', nd3, nd1, sofar, one, tempb, &
+                          maxnd3, tempc, maxlen, one, a(nabeg:), nd3)
+             end if
           end if
 
        end do
