@@ -1,0 +1,31 @@
+2026-10-19 01:43:21  Si64_diag      upstream_8x1  exit=0 wall=     10.3s cq=8.873 E=-269.3798803188171 gpu={}
+2026-10-19 01:43:29  Si64_diag      cpu_8x1       exit=0 wall=      8.5s cq=7.999 E=-269.3798803188172 gpu={}
+2026-10-19 01:43:47  Si64_diag      cpu_1x8       exit=0 wall=     17.4s cq=17.164 E=-269.3798803188297 gpu={}
+2026-10-19 01:44:01  Si64_diag      gpu_1x8       exit=0 wall=     14.8s cq=14.443 E=-269.3798803188297 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 0.565}}
+2026-10-19 01:44:36  Si64_diag      gpu_1x1       exit=0 wall=     34.6s cq=34.251 E=-269.3798803188274 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 1.242}}
+2026-10-19 01:44:55  Si128_diag     upstream_8x1  exit=0 wall=     18.7s cq=18.348 E=-539.0448961323893 gpu={}
+2026-10-19 01:45:14  Si128_diag     cpu_8x1       exit=0 wall=     18.9s cq=18.476 E=-539.0448961323891 gpu={}
+2026-10-19 01:45:59  Si128_diag     cpu_1x8       exit=0 wall=     45.0s cq=44.642 E=-539.044896132375 gpu={}
+2026-10-19 01:46:31  Si128_diag     gpu_1x8       exit=0 wall=     32.4s cq=32.001 E=-539.0448961323749 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 2.509}, 'cuBLAS zgemm': {'calls': 8, 'failed': 0, 'time': 0.117}}
+2026-10-19 01:47:42  Si128_diag     gpu_1x1       exit=0 wall=     71.2s cq=70.785 E=-539.0448961323743 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 2.523}, 'cuBLAS zgemm': {'calls': 8, 'failed': 0, 'time': 0.12}}
+2026-10-19 02:02:56  Si64_diag      gpu_8x1       exit=0 wall=     10.0s cq=9.354 E=-269.3798803188171 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 0.429}}
+2026-10-19 02:03:05  Si64_diag      gpu_8x1_diag  exit=0 wall=      9.5s cq=8.841 E=-269.3798803188171 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 0.438}}
+2026-10-19 02:03:24  Si128_diag     gpu_8x1       exit=0 wall=     18.5s cq=17.924 E=-539.0448961323892 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 1.536}}
+2026-10-19 02:03:42  Si128_diag     gpu_8x1_diag  exit=0 wall=     18.4s cq=17.857 E=-539.0448961323892 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 1.54}}
+2026-10-19 02:04:52  Si128_diag     gpu_1x1       exit=0 wall=     70.0s cq=69.617 E=-539.0448961323743 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 2.579}, 'cuBLAS zgemm': {'calls': 8, 'failed': 0, 'time': 0.115}}
+2026-10-19 02:05:37  Si256_diag     gpu_8x1       exit=0 wall=     44.4s cq=43.735 E=-1078.387765051601 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 8.396}}
+2026-10-19 02:06:21  Si256_diag     gpu_8x1_diag  exit=0 wall=     44.1s cq=43.428 E=-1078.387765051601 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 8.586}}
+2026-10-19 02:07:15  Si256_diag     cpu_8x1       exit=0 wall=     54.0s cq=53.666 E=-1078.3877650516008 gpu={}
+2026-10-19 02:08:08  Si256_diag     upstream_8x1  exit=0 wall=     53.9s cq=53.403 E=-1078.387765051601 gpu={}
+2026-10-19 02:09:18  Si256_diag     gpu_1x8       exit=0 wall=     69.9s cq=69.343 E=-1078.387765051504 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 8.609}, 'cuBLAS zgemm': {'calls': 8, 'failed': 0, 'time': 0.683}}
+2026-10-19 02:11:30  Si256_diag     cpu_1x8       exit=0 wall=    131.2s cq=130.847 E=-1078.3877650515035 gpu={}
+2026-10-19 02:13:45  Si512_diag     gpu_8x1       exit=0 wall=    135.4s cq=134.531 E=-2156.837780020201 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 52.744}, 'cuBLAS zgemm': {'calls': 64, 'failed': 0, 'time': 3.817}}
+2026-10-19 02:18:13  Si512_diag     cpu_8x1       exit=0 wall=    268.3s cq=267.931 E=-2156.8377800202015 gpu={}
+2026-10-19 02:22:34  Si512_diag     upstream_8x1  exit=0 wall=    260.4s cq=260.014 E=-2156.837780020202 gpu={}
+2026-10-19 02:25:36  Si512_diag     gpu_1x8       exit=0 wall=    182.5s cq=181.798 E=-2156.8377800195917 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 52.572}, 'cuBLAS zgemm': {'calls': 8, 'failed': 0, 'time': 4.635}}
+2026-10-19 02:35:40  Si1024_diag    gpu_8x1       exit=0 wall=    603.4s cq=602.19 E=-4313.724730824459 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 393.146}, 'cuBLAS zgemm': {'calls': 48, 'failed': 0, 'time': 18.057}}
+2026-10-19 03:07:11  Si1024_diag    cpu_8x1       exit=0 wall=   1890.9s cq=1890.412 E=-4313.724730824455 gpu={}
+2026-10-19 03:12:06  Si512_diag     gpu_8x1_diag  exit=0 wall=    129.9s cq=128.996 E=-2156.837780020202 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 52.56}}
+2026-10-19 03:43:48  Si1024_diag    upstream_8x1  exit=0 wall=   1901.8s cq=1901.019 E=-4313.724730824462 gpu={}
+2026-10-19 03:46:53  Si512_diag     gpu_8x1       exit=0 wall=    131.7s cq=130.125 E=-2156.837780020202 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 52.782}}
+2026-10-19 03:56:41  Si1024_diag    gpu_8x1       exit=0 wall=    587.8s cq=586.982 E=-4313.7247308244605 gpu={'cuSOLVER zhegvd': {'calls': 8, 'failed': 0, 'time': 392.872}}

@@ -1,0 +1,10 @@
+# Peak memory (psutil RSS polled every 1 s), 8 MPI ranks, 2026-10-19, other desktop apps open (~24 GB used by OS/apps)
+# Si64_mssf sum_peak=0 is a sampling miss (run too short)
+Si64_mssf_gpu: exit=0 time=11.951s E=-269.363812272332154 sum_peak=0.00GB rank_peaks_GB=[] min_free_RAM=39.4GB wall=14s
+Si256_gpu: exit=0 time=47.282s E=-1078.387765051601036 sum_peak=10.09GB rank_peaks_GB=[1.32, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25, 1.25] min_free_RAM=29.9GB wall=49s
+Si512_gpu: exit=0 time=143.364s E=-2156.837780020201990 sum_peak=19.82GB rank_peaks_GB=[2.58, 2.46, 2.46, 2.46, 2.46, 2.46, 2.46, 2.46] min_free_RAM=20.1GB wall=145s
+Si512_cpu: exit=0 time=314.587s E=-2156.837780020201535 sum_peak=17.73GB rank_peaks_GB=[2.22, 2.22, 2.22, 2.22, 2.22, 2.22, 2.22, 2.22] min_free_RAM=20.7GB wall=316s
+Si512_mssf_gpu: exit=0 time=99.196s E=-2156.682397631947879 sum_peak=18.78GB rank_peaks_GB=[2.4, 2.34, 2.34, 2.34, 2.34, 2.34, 2.34, 2.34] min_free_RAM=20.2GB wall=101s
+Si512_mssf_cpu: exit=0 time=105.849s E=-2156.682397631942877 sum_peak=17.01GB rank_peaks_GB=[2.13, 2.13, 2.13, 2.13, 2.13, 2.13, 2.13, 2.13] min_free_RAM=21.4GB wall=106s
+
+[exited with code 0]

@@ -1,0 +1,12 @@
+AtomMove.TypeOfRun static
+IO.Coordinates coords.dat
+IO.Iprint 0
+IO.WriteOutToFile T
+Grid.GridCutoff  50
+DM.SolutionMethod diagon
+General.NumberOfSpecies  1
+%block ChemicalSpeciesLabel
+ 1 28.086 Si
+%endblock
+SC.MaxIters 3
+SC.ContinueOnSCFail T
