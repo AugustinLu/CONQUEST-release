@@ -1,0 +1,18 @@
+AtomMove.TypeOfRun static
+IO.Coordinates coords.dat
+IO.Iprint 0
+IO.WriteOutToFile T
+Grid.GridCutoff  150
+DM.SolutionMethod diagon
+Basis.BasisSet PAOs
+Basis.MultisiteSF T
+Multisite.LFD T
+General.NumberOfSpecies  1
+%block ChemicalSpeciesLabel
+ 1 28.086 Si
+%endblock
+%block Si
+Atom.NumberOfSupports 4
+Atom.MultisiteRange 8.0
+Atom.LFDRange 8.0
+%endblock

@@ -41,6 +41,10 @@ offloaded routine.
 
 ## Benchmarks
 
+* `Si*_dzp150/` (64 to 1024 atoms) and `Si*_mssf150/` (256 to 1024 atoms) – the same cells with a DZP basis
+  (13 orbitals per atom, generated with MakeIonFiles from `pseudo-and-pao/PBE/Si`, BasisSize medium)
+  and a 150 Ha grid, closer to production settings; MSSF contracts DZP to 4 support functions per atom.
+  Si1024 stops after 5 SCF iterations.
 * `Si256_k222/`, `Si512_k222/` – Si256/Si512 with a 2x2x2 MP mesh and `Diag.KProcGroups 4`, for one GPU per k-point group.
 * `Si*_diag/` – bulk Si supercells (64 to 1280 atoms, SZP basis, 9 orbitals/atom,
   Gamma point, 50 Ha grid). `Si1024_diag` and `Si1280_diag` stop after 5 and 3 SCF
