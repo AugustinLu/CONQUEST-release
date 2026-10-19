@@ -16,6 +16,7 @@
 #   MPIRUN        launcher (default mpirun)
 #   MPIRUN_OPTS   extra launcher options, e.g. "--oversubscribe"
 #   OUTROOT       output directory (default results_<short hostname>)
+#   PYTHON        Python with pytest for the checks (default python3)
 #   CONQUEST_USE_CUDA, CONQUEST_CUDA_MIN_N, ... are passed through, e.g. to
 #   force every GPU path:
 #     CONQUEST_CUDA_MIN_N=1 CONQUEST_CUDA_MIN_FFT=1 CONQUEST_CUDA_MIN_FLOPS=1e5 \
@@ -26,6 +27,7 @@ MODES=${*:-"1x1 4x1 1x4 2x2"}
 CONQUEST=${CONQUEST:-$(cd ../bin && pwd)/Conquest}
 MPIRUN=${MPIRUN:-mpirun}
 OUTROOT=${OUTROOT:-results_$(hostname -s)}
+PYTHON=${PYTHON:-python3}
 export OMP_STACKSIZE=100M
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
@@ -73,7 +75,7 @@ do
         cp "$dn/Conquest_out" "$out/$dn.Conquest_out" 2>/dev/null
         mv "$dn/stdout.log" "$out/$dn.stdout.log"
     done
-    python3 -m pytest -q test_check_output.py > "$out/pytest.log" 2>&1
+    "$PYTHON" -m pytest -q test_check_output.py > "$out/pytest.log" 2>&1
     result=$(tail -1 "$out/pytest.log")
     echo "  pytest: $result"
     summary="$summary\n  $mode: $result"
