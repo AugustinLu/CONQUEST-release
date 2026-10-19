@@ -2043,7 +2043,7 @@ contains
     real(double) :: dx, dy, dz, r2, trace, fac, val_Satomf
     type(cq_timer) :: tmr_l_tmp1   
     integer :: spin, ipao, loc, npao_i, jpao, npao_j, pao_i, pao_j, pao_k, wheremat
-    integer :: matW, matV, matnUP, matUP, matUW
+    integer :: matW, matV, matnUP, matUP, matUW, mat_proj
     integer, dimension(2) :: matnUW, matSKS
     integer :: iU, l1, nacz1, m1, n_U, l_U, z_U, m_U, m2, i_ang, i_zeta, z_temp, prncpl
 
@@ -2141,7 +2141,7 @@ contains
 
     ! Create PU, which is V.UW (include U here to allow different U for different atoms)
     call matrix_product(matV, matUW, matUP, mult(S_S_S))!S_S_S
-    matnUP = allocate_temp_matrix(aHa_range, aSa_trans, atomf, atomf)
+    matnUP = allocate_temp_matrix(aSa_range, aSa_trans, atomf, atomf)
     ! Make nUP
     do spin=1,nspin
        ! Probably we need to zero rows of PK before doing this for safety
@@ -2151,7 +2151,11 @@ contains
        call matrix_sum(zero, matHplusUatomf(spin), one , matUP)
        call matrix_sum(one,  matHplusUatomf(spin), -two, matnUP)
        ! Double counting term
-       trace = spin_factor*matrix_product_trace(matKatomf(spin),matnUP)
+       ! Project matnUP (aSa_range) to aHa_range for matrix_product_trace with matKatomf
+       mat_proj = allocate_temp_matrix(aHa_range, aSa_trans, atomf, atomf)
+       call matrix_sum(zero, mat_proj, one, matnUP)
+       trace = spin_factor*matrix_product_trace(matKatomf(spin),mat_proj)
+       call free_temp_matrix(mat_proj)
        delta_E_plusU = delta_E_plusU + trace ! Includes gsum
     enddo ! spin
     call free_temp_matrix(matnUP)
