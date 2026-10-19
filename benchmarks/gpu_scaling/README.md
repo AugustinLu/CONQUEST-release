@@ -9,7 +9,7 @@ to build. Without a GPU or the DLLs, everything runs on the CPU as before.
 | Variable | Default | Meaning |
 |---|---|---|
 | `CONQUEST_USE_CUDA` | `1` | `0` disables all GPU offload |
-| `CONQUEST_CUDA_PATH` | – | directory holding the CUDA libraries, searched first. Then Windows: `%CUDA_PATH%\bin`, `PATH`; Linux: `$CUDA_PATH/lib64`, `$CUDA_HOME/lib64`, `/usr/local/cuda/lib64`, `LD_LIBRARY_PATH`. cuBLAS, cuSOLVER and cuFFT are taken from the same CUDA release (11, 12 or 13) as cudart |
+| `CONQUEST_CUDA_PATH` | – | directory holding the CUDA libraries, searched first. Then Windows: `%CUDA_PATH%\bin`, `PATH`; Linux: `$CUDA_PATH/lib64`, `$CUDA_HOME/lib64`, `/usr/local/cuda/lib64`, `/usr/local/cuda-<version>/lib64` (newest first), `LD_LIBRARY_PATH`. An installation whose runtime sees no device (toolkit newer than the driver, or a GPU architecture it no longer supports) is skipped. cuBLAS, cuSOLVER and cuFFT are taken from the same CUDA release (11, 12 or 13) as cudart |
 | `CONQUEST_CUDA_DEVICE` | – | GPU index for every process (modulo the number of visible GPUs). By default, the first process of k-point group *g* uses GPU *g*, and other processes use their node-local rank |
 | `CONQUEST_CUDA_MIN_N` | `200` | smallest matrix size sent to cuSOLVER `zhegvd` |
 | `CONQUEST_CUDA_MIN_FLOPS` | off (`1e30`) | smallest GEMM (in FLOP) sent to cuBLAS; `1e9` is the single-thread break-even, but FP64 cuBLAS never clearly beat 8 CPU cores here |

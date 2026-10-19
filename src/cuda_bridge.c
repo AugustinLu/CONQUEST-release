@@ -10,8 +10,11 @@
  * Library search order (all libraries are taken from the same directory):
  *   1. $CONQUEST_CUDA_PATH
  *   2. Windows: $CUDA_PATH/bin (set by the CUDA toolkit installer)
- *      Linux:   $CUDA_PATH/lib64, $CUDA_HOME/lib64, /usr/local/cuda/lib64
+ *      Linux:   $CUDA_PATH/lib64, $CUDA_HOME/lib64, /usr/local/cuda/lib64, then
+ *               /usr/local/cuda-<version>/lib64, newest version first
  *   3. the normal system search path (PATH / LD_LIBRARY_PATH)
+ * A directory whose runtime sees no device (toolkit newer than the driver, or a GPU
+ * architecture the toolkit dropped) is skipped and the next one is tried.
  * cuBLAS, cuSOLVER and cuFFT are taken from the same CUDA release as cudart.
  *
  * Loading the libraries does not create a CUDA context. The context, the
@@ -62,6 +65,7 @@ static double wall_time(void) {
 
 #else
 #include <dlfcn.h>
+#include <glob.h>
 #include <pthread.h>
 #include <time.h>
 typedef void* lib_handle_t;
@@ -402,46 +406,9 @@ static int ensure_context(void) {
     return 1;
 }
 
-int cq_cuda_init(int myid, int *dev_count_out) {
-    if (dev_count_out) *dev_count_out = 0;
-    if (g_cuda_initialized) return g_cuda_available;
-    g_cuda_initialized = 1;
-    g_cuda_available = 0;
-    g_myid = myid;
-
-    const char *found_dir = NULL;
-    static char cuda_dir[2048];
-    const char *env_cq = getenv("CONQUEST_CUDA_PATH");
-    int ok = 0;
-    if (env_cq && env_cq[0]) {
-        ok = load_cuda_libs(env_cq);
-        if (ok) found_dir = env_cq;
-    }
-#ifdef _WIN32
-    const char *roots[] = {getenv("CUDA_PATH")};
-    const char *subdir = "bin";
-#else
-    const char *roots[] = {getenv("CUDA_PATH"), getenv("CUDA_HOME"), "/usr/local/cuda"};
-    const char *subdir = "lib64";
-#endif
-    for (int i = 0; !ok && i < NELEM(roots); i++) {
-        if (!roots[i] || !roots[i][0]) continue;
-        snprintf(cuda_dir, sizeof(cuda_dir), "%s" PATH_SEP "%s", roots[i], subdir);
-        ok = load_cuda_libs(cuda_dir);
-        if (ok) found_dir = cuda_dir;
-    }
-    if (!ok) {
-        ok = load_cuda_libs(NULL);
-        if (ok) found_dir = "(system search path)";
-    }
-    if (!ok) {
-        if (myid == 0) {
-            printf("[CONQUEST CUDA Bridge] CUDA libraries (cudart/cublas/cusolver) not found; using CPU.\n"
-                   "                       Set CONQUEST_CUDA_PATH to the directory holding the CUDA libraries.\n");
-        }
-        return 0;
-    }
-
+/* Resolve every symbol the bridge uses from the loaded libraries; 1 when all required ones exist */
+static int resolve_symbols(void) {
+    fn_cufftPlan3d = NULL; fn_cufftExecZ2Z = NULL; fn_cufftDestroy = NULL;
     fn_cudaGetDeviceCount = (pfn_cudaGetDeviceCount)GET_SYM(h_cudart, "cudaGetDeviceCount");
     fn_cudaSetDevice = (pfn_cudaSetDevice)GET_SYM(h_cudart, "cudaSetDevice");
     fn_cudaDeviceSynchronize = (pfn_cudaDeviceSynchronize)GET_SYM(h_cudart, "cudaDeviceSynchronize");
@@ -470,22 +437,86 @@ int cq_cuda_init(int myid, int *dev_count_out) {
         }
     }
 
-    if (!fn_cudaGetDeviceCount || !fn_cudaSetDevice || !fn_cudaMalloc || !fn_cudaFree || !fn_cudaMemcpy ||
-        !fn_cublasCreate || !fn_cublasDestroy || !fn_cublasDgemm || !fn_cublasZgemm ||
-        !fn_cusolverDnCreate || !fn_cusolverDnDestroy || !fn_cusolverDnZhegvd_bufferSize || !fn_cusolverDnZhegvd) {
-        if (myid == 0) {
-            printf("[CONQUEST CUDA Bridge] Incomplete CUDA symbols in %s; using CPU.\n", found_dir);
-        }
-        unload_all();
-        return 0;
-    }
+    return fn_cudaGetDeviceCount && fn_cudaSetDevice && fn_cudaMalloc && fn_cudaFree && fn_cudaMemcpy &&
+           fn_cublasCreate && fn_cublasDestroy && fn_cublasDgemm && fn_cublasZgemm &&
+           fn_cusolverDnCreate && fn_cusolverDnDestroy && fn_cusolverDnZhegvd_bufferSize && fn_cusolverDnZhegvd;
+}
 
-    int dev_count = 0;
-    if (fn_cudaGetDeviceCount(&dev_count) != CUDA_SUCCESS || dev_count <= 0) {
-        if (myid == 0) {
-            printf("[CONQUEST CUDA Bridge] No usable CUDA device detected; using CPU.\n");
+int cq_cuda_init(int myid, int *dev_count_out) {
+    if (dev_count_out) *dev_count_out = 0;
+    if (g_cuda_initialized) return g_cuda_available;
+    g_cuda_initialized = 1;
+    g_cuda_available = 0;
+    g_myid = myid;
+
+    /* Candidate library directories, tried in order. A directory is accepted only if its
+       libraries load, every symbol resolves and the runtime sees a device: a toolkit newer than
+       the driver (or one that dropped the GPU's architecture) reports no device and is skipped. */
+    enum { MAX_CAND = 24 };
+    static char cand_buf[MAX_CAND][1024];
+    const char *cand[MAX_CAND];
+    int ncand = 0;
+    const char *env_cq = getenv("CONQUEST_CUDA_PATH");
+    if (env_cq && env_cq[0]) cand[ncand++] = env_cq;
+#ifdef _WIN32
+    const char *roots[] = {getenv("CUDA_PATH")};
+    const char *subdir = "bin";
+#else
+    const char *roots[] = {getenv("CUDA_PATH"), getenv("CUDA_HOME"), "/usr/local/cuda"};
+    const char *subdir = "lib64";
+#endif
+    for (int i = 0; i < NELEM(roots) && ncand < MAX_CAND - 1; i++) {
+        if (!roots[i] || !roots[i][0]) continue;
+        snprintf(cand_buf[ncand], sizeof(cand_buf[0]), "%s" PATH_SEP "%s", roots[i], subdir);
+        cand[ncand] = cand_buf[ncand]; ncand++;
+    }
+#ifndef _WIN32
+    /* Versioned toolkits (/usr/local/cuda-13.0, cuda-12.6, ...), newest first */
+    glob_t gl;
+    if (glob("/usr/local/cuda-*/lib64", 0, NULL, &gl) == 0) {
+        for (int i = (int)gl.gl_pathc - 1; i >= 0 && ncand < MAX_CAND - 1; i--) {
+            snprintf(cand_buf[ncand], sizeof(cand_buf[0]), "%s", gl.gl_pathv[i]);
+            cand[ncand] = cand_buf[ncand]; ncand++;
         }
-        unload_all();
+        globfree(&gl);
+    }
+#endif
+    cand[ncand++] = NULL;   /* system search path */
+
+    const char *found_dir = NULL;
+    int dev_count = 0, any_loaded = 0;
+    for (int c = 0; c < ncand && !found_dir; c++) {
+        const char *dir = cand[c];
+        if (!load_cuda_libs(dir)) continue;
+        any_loaded = 1;
+        const char *label = dir ? dir : "(system search path)";
+        if (!resolve_symbols()) {
+            if (myid == 0) printf("[CONQUEST CUDA Bridge] Incomplete CUDA symbols in %s; skipped.\n", label);
+            unload_all();
+            continue;
+        }
+        int rt_ver = 0;
+        if (fn_cudaRuntimeGetVersion) fn_cudaRuntimeGetVersion(&rt_ver);
+        dev_count = 0;
+        int err = fn_cudaGetDeviceCount(&dev_count);
+        if (err != CUDA_SUCCESS || dev_count <= 0) {
+            if (myid == 0)
+                printf("[CONQUEST CUDA Bridge] %s (CUDA runtime %d.%d): no usable device "
+                       "(error %d: driver too old or GPU not supported); skipped.\n",
+                       label, rt_ver / 1000, (rt_ver % 1000) / 10, err);
+            unload_all();
+            continue;
+        }
+        found_dir = label;
+    }
+    if (!found_dir) {
+        if (myid == 0) {
+            if (!any_loaded)
+                printf("[CONQUEST CUDA Bridge] CUDA libraries (cudart/cublas/cusolver) not found; using CPU.\n"
+                       "                       Set CONQUEST_CUDA_PATH to the directory holding the CUDA libraries.\n");
+            else
+                printf("[CONQUEST CUDA Bridge] No CUDA installation usable with this driver and GPU; using CPU.\n");
+        }
         return 0;
     }
     if (dev_count_out) *dev_count_out = dev_count;
