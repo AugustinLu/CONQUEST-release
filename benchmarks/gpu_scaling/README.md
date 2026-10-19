@@ -33,8 +33,10 @@ grid, H and S are gathered onto the first rank of the group (`pzgemr2d`),
 solved there, and the eigenvectors are scattered back. Plain MPI is the fastest
 setup on Windows, e.g. `mpiexec -n 8 Conquest.exe` with `OMP_NUM_THREADS=1`.
 The gathering rank needs room for two extra N x N complex matrices
-(2 x 16 N^2 bytes). The legacy cuSOLVER API takes 32-bit sizes, so matrices
-with N > 46340 stay on the CPU eigensolver. If the gathered eigensolver fails
+(2 x 16 N^2 bytes). The legacy cuSOLVER API takes 32-bit sizes and its workspace is about
+4N² elements, so matrices with N > 23170 stay on the CPU eigensolver. The GPU needs about
+96N² bytes (H, S and the workspace): N ≈ 11 000 on a 12 GB card, 13 300 on 16 GB, 23 000 (the
+32-bit limit) on 96 GB. If the gathered eigensolver fails
 once, the run continues with the CPU eigensolver.
 
 At the end of a run, rank 0 prints a usage table: calls, failures and time per

@@ -33,8 +33,10 @@ module cuda_module
   ! 4000^3 and lost when several MPI ranks shared the GPU. 1e9 is the
   ! single-thread break-even if you want to try it (CONQUEST_CUDA_MIN_FLOPS=1e9).
   integer, save :: cuda_diag_min_n = 200
-  ! The legacy cuSOLVER zhegvd API takes 32-bit sizes, so N*N must stay below 2^31
-  integer, parameter :: cuda_diag_max_n = 46340
+  ! The legacy cuSOLVER zhegvd API takes 32-bit sizes, and its workspace is about 4*N*N elements
+  ! (measured with cusolverDnZhegvd_bufferSize, CUDA 12.6), so it fails above N = 23170.
+  ! GPU memory needed: about 96*N*N bytes (H, S and the workspace).
+  integer, parameter :: cuda_diag_max_n = 23170
   ! Column-panel size (MB) for gathering H, S and scattering Z in the gathered eigensolver;
   ! must stay below 2048 (32-bit buffer sizes in reference ScaLAPACK's pzgemr2d).
   ! Override with CONQUEST_CUDA_GATHER_PANEL_MB.

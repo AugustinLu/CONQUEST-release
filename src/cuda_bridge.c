@@ -631,7 +631,8 @@ int cq_cusolver_zhegv(int mode_v, int n, void *h_A, int lda, void *h_B, int ldb,
     if (!g_cuda_available) return -1;
     if (n <= 0) return 0;
     if (lda < n || ldb < n) return -4;
-    /* The legacy cuSOLVER API takes 32-bit sizes */
+    /* The legacy cuSOLVER API takes 32-bit sizes; its workspace (about 4 n^2 elements) is the
+       first to overflow, at n = 23170, which zhegvd_bufferSize reports as an error */
     if ((size_t)lda * (size_t)n > (size_t)INT_MAX || (size_t)ldb * (size_t)n > (size_t)INT_MAX) return -7;
 
     ENTER_CUDA_LOCK();
