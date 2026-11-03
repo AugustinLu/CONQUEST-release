@@ -3147,6 +3147,8 @@ contains
          stress_diff, volume, stress_target, grad_dot_dir
     real(double), dimension(3) :: cg, length_grad, cell_residual
     real(double), dimension(3,3) :: lattice_direction, effective_stress
+    ! Converts stress to a trial strain for the full-lattice search (GPa)
+    real(double), parameter :: cell_reference_modulus = 100.0_double
 
     character(len=20) :: subname = "cell_cg_run: "
     character(len=120) :: prefix, prefixGO
@@ -3280,8 +3282,11 @@ contains
              ! cell-search coordinate.  This is independent of the
              ! Cartesian orientation of the input lattice, unlike updating
              ! only the upper triangle of lat_vec.
+             ! The stress array is a virial (Ha): divide by volume and a
+             ! reference modulus to obtain a dimensionless strain.
              lattice_direction = -half*(effective_stress + &
-                  transpose(effective_stress))
+                  transpose(effective_stress))* &
+                  HaBohr3ToGPa/(volume*cell_reference_modulus)
              call backtrack_linemin_lattice(lattice_direction,press, &
                   enthalpy0,enthalpy1,fixed_potential,vary_mu, &
                   lattice_step_accepted)
