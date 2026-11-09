@@ -12,6 +12,7 @@ on:
     inputs:
       multiply_kernel_test:
         description: 'test all multiply kernels, instead of default only'
+        type: boolean
         required: false
         default: false
 
@@ -43,33 +44,11 @@ jobs:
           - 2
         # TODO: Could be worth testing on `mpich` in addition to `openmpi-bin`. Both are
         #       available in apt
-        multiply_kernel:
-          - default
-          - gemm
-          - ompDoii
-          - ompDoik
-          - ompDoji
-          - ompDojk
-          - ompGemm
-          - ompGemm_m
-        # As a work-around, copy the multiply_kernel_test variable to the matrix and
-        # exclude non-default multiply kernels when it's false
-        # https://github.com/orgs/community/discussions/26253#discussioncomment-3250989
-        test_all_multiply_kernels:
-          - ${{github.event.inputs.multiply_kernel_test}}
-        exclude:
-          - test_all_multiply_kernels: false
-            multiply_kernel: gemm
-          - test_all_multiply_kernels: false
-            multiply_kernel: ompDoii
-          - test_all_multiply_kernels: false
-            multiply_kernel: ompDoik
-          - test_all_multiply_kernels: false
-            multiply_kernel: ompDoji
-          - test_all_multiply_kernels: false
-            multiply_kernel: ompDojk
-          - test_all_multiply_kernels: false
-            multiply_kernel: ompGemm
+        # The kernel list is chosen by an expression: all kernels only for a manual
+        # dispatch with the box ticked, the default kernel otherwise (push, pull request,
+        # or dispatch with the box unticked). `inputs` is a real boolean and is empty
+        # (null) outside workflow_dispatch; fromJSON turns the chosen string into a list.
+        multiply_kernel: ${{ fromJSON(inputs.multiply_kernel_test && '["default","gemm","ompDoii","ompDoik","ompDoji","ompDojk","ompGemm","ompGemm_m"]' || '["default"]') }}
 
     steps:
     - uses: actions/checkout@v4
