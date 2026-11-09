@@ -17,7 +17,7 @@ on:
 
 jobs:
   build:
-    name: ${{matrix.fc}} -- ${{matrix.os}} -- ${{matrix.multiply_kernel}} multiply kernel -- ${{matrix.np}} processes -- ${{matrix.threads}} threads
+    name: ${{matrix.fc}} -- ${{matrix.os}} -- ${{matrix.multiply_kernel}} multiply kernel -- ${{matrix.np}} processes -- ${{matrix.threads}} threads -- ${{matrix.group}} tests
     runs-on: ${{matrix.os}}
     env:
       FC: ${{matrix.fc}}
@@ -57,6 +57,13 @@ jobs:
         # https://github.com/orgs/community/discussions/26253#discussioncomment-3250989
         test_all_multiply_kernels:
           - ${{github.event.inputs.multiply_kernel_test}}
+        # Split the test cases over two parallel jobs to shorten the wall-clock time.
+        # A "Run test" step without an `if:` runs in both groups, and the final check
+        # runs every test not listed for the ground-state group in the exx group, so a
+        # newly added test cannot be skipped silently: give it an `if:` below.
+        group:
+          - ground-state
+          - exx
         exclude:
           - test_all_multiply_kernels: false
             multiply_kernel: gemm
@@ -88,9 +95,7 @@ jobs:
 
     - name: Install python utilities
       run: |
-        python -m pip install --upgrade pip
-        pip install pytest
-        pip install numpy
+        pip install pytest numpy
 
     - name: Check compiler version
       run: ${{matrix.fc}} --version
@@ -98,57 +103,66 @@ jobs:
     - name: Build
       working-directory: ${{github.workspace}}/src
       run: |
-        make -j ${{matrix.np}} SYSTEM=gha MULT_KERN=${{matrix.multiply_kernel}}
+        make -j $(nproc) SYSTEM=gha MULT_KERN=${{matrix.multiply_kernel}}
 
     - name: Run test 001
+      if: matrix.group == 'ground-state'
       working-directory: ${{github.workspace}}/testsuite/test_001_bulk_Si_1proc_Diag
       run: |
         mpirun -np ${{matrix.np}} ../../bin/Conquest
         cat Conquest_out
 
     - name: Run test 002
+      if: matrix.group == 'ground-state'
       working-directory: ${{github.workspace}}/testsuite/test_002_bulk_Si_1proc_OrderN
       run: |
         mpirun -np ${{matrix.np}} ../../bin/Conquest
         cat Conquest_out
 
     - name: Run test 003
+      if: matrix.group == 'ground-state'
       working-directory: ${{github.workspace}}/testsuite/test_003_bulk_BTO_polarisation
       run: |
         mpirun -np ${{matrix.np}} ../../bin/Conquest
         cat Conquest_out
 
     - name: Run test 004
+      if: matrix.group == 'exx'
       working-directory: ${{github.workspace}}/testsuite/test_004_isol_C2H4_4proc_PBE0CRI
       run: |
         mpirun -np ${{matrix.np}} ../../bin/Conquest
         cat Conquest_out
 
     - name: Run test 005
+      if: matrix.group == 'exx'
       working-directory: ${{github.workspace}}/testsuite/test_005_isol_C2H4_4proc_PBE0GTO
       run: |
         mpirun -np ${{matrix.np}} ../../bin/Conquest
         cat Conquest_out
     
     - name: Run test 006
+      if: matrix.group == 'exx'
       working-directory: ${{github.workspace}}/testsuite/test_006_isol_C2H4_4proc_PBE0ERI
       run: |
         mpirun -np ${{matrix.np}} ../../bin/Conquest
         cat Conquest_out
 
     - name: Run test 007
+      if: matrix.group == 'exx'
       working-directory: ${{github.workspace}}/testsuite/test_007_isol_CH_spinpol_1proc_PBE0CRI
       run: |
         mpirun -np ${{matrix.np}} ../../bin/Conquest
         cat Conquest_out
 
     - name: Run test 008
+      if: matrix.group == 'ground-state'
       working-directory: ${{github.workspace}}/testsuite/test_008_surface_dipole
       run: |
         mpirun -np ${{matrix.np}} ../../bin/Conquest
         cat Conquest_out
 
     - name: Run test 009
+      if: matrix.group == 'ground-state'
       working-directory: ${{github.workspace}}/testsuite/test_009_DFT_plus_U
       run: |
         mpirun -np ${{matrix.np}} ../../bin/Conquest
@@ -156,4 +170,10 @@ jobs:
 
     - name: Check test results
       working-directory: ${{github.workspace}}/testsuite
-      run: pytest test_check_output.py
+      run: |
+        GS='test_001 or test_002 or test_003 or test_008 or test_009'
+        if [ "${{matrix.group}}" = "ground-state" ]; then
+          pytest test_check_output.py -k "$GS"
+        else
+          pytest test_check_output.py -k "not ($GS)"
+        fi
