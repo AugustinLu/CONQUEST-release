@@ -63,7 +63,7 @@ What changes: **only `Fe.ion` and `Conquest_out.ref`**. `Conquest_input` and `bc
 
 * Cause of the cost [M]: the CONQUEST "maximum core radius" (nonlocal range) follows the largest PAO
   radius, so a 4s/4p radius of 8.63 bohr in a 5.365 bohr cell makes every grid point overlap many
-  atoms. Test with the regenerated basis and the earlier proposed input, 1x1, load about 9:
+  atoms [J]. Test with the regenerated basis and the earlier proposed input, 1x1, load about 9:
 
   | 4s/4p radius (bohr) | max core radius | wall s | SCF its |
   |---|---|---|---|
@@ -78,8 +78,10 @@ What changes: **only `Fe.ion` and `Conquest_out.ref`**. `Conquest_input` and `bc
   not the basis; 7.0 bohr was slower (97 s, 35 its). 3s, 3p, 3d (DFT+U acts on 3d zeta 1) are unchanged.
 * How it was made [M]: `tools/BasisGeneration` built from this develop, run on the same
   `pseudo-and-pao/PBE/Fe/Fe.in` and `Fe.pot`, with an explicit `Atom.BasisBlock` (radii 2.78; 3.13;
-  5.23 2.50; 6.00 3.50; 6.00; `Atom.Perturbative_Polarised F`). The projector part of the new file
-  matches the old one to 1e-11 (one line differs in the last digit). **Caveat:** I could not reproduce
+  5.23 2.50; 6.00 3.50; 6.00; `Atom.Perturbative_Polarised F`). Compared with the committed file [M]: the
+  KB projector and core tables are identical; `Vlocal` agrees to 7e-5 (old table interpolated to the new,
+  shorter grid); `Vna` (neutral-atom potential) differs by up to 0.054 Ha, as expected when the atomic density
+  is confined at a shorter radius. **Caveat:** I could not reproduce
   the committed `Fe.ion` exactly (the block interface gave an 8-orbital basis for its radii), so the
   committed file was made some other way. Regenerating with the same procedure is reproducible, but
   the maintainers should confirm they are happy with a basis generated this way.
@@ -110,8 +112,9 @@ iterations, and could fail intermittently. Test 002 is also slower with 2 OpenMP
 The SCF is erratic (metallic, Gamma-only, 5 atoms; README calls it unphysical on purpose). I scanned
 `SC.LinearMixingFactor` (0.3, 0.8), `SC.MaxPulay` (3, 8), `SC.KerkerFactor` (0.03, 0.5),
 `SC.KerkerPreCondition F`, `SC.MaxEarly 1` at 1x1 against the **unchanged** reference. Control: 28
-iterations. Every variant needed 40+ iterations, three failed to converge in 50, and one converged to a
-result 11x outside tolerance (mixing 0.8: margin 0.09). No change proposed. Smearing or a larger cell
+iterations. `SC.MaxEarly 1` changed nothing (28 iterations, identical result). Every other variant needed
+40+ iterations; three failed to converge in 50 (`MaxPulay` 3 and 8, Kerker off), and two converged to a
+result outside tolerance (mixing 0.8: 11x outside; `KerkerFactor` 0.5: 1.3x outside). No change proposed. Smearing or a larger cell
 would change the test, not just its cost.
 
 ### 3.4 Tests 004-007 and 002 [J]
@@ -119,8 +122,9 @@ would change the test, not just its cost.
 005 and 006 cover two different EXX integral paths (GTO ERI, grid ERI) on the same molecule; 005's cost
 is the ERI evaluation, 90 % of its time. A smaller molecule or screening thresholds would reduce the
 cost but would stop exercising the 3- and 4-centre integral code or change numerics, so I did not
-touch them. 007 has the thinnest margin, so changing it is the wrong direction. These five tests cost
-about 2 min per job on CI (1x1) after the 009 change.
+touch them. 007 has the thinnest margin, so changing it is the wrong direction. Together with 003
+they still cost about 10 min of a 1x1 job on CI (002+004+005+006+007 = 439 s, 003 = 160 s), which is why
+the job is still about 15 min; that is the remaining target if more savings are wanted.
 
 ## 4. Workflow changes
 
@@ -153,7 +157,7 @@ Not done, with reason [J]:
   has no load log; later runs log load. Ratios between configurations agree with CI, but absolute local times
   are inflated (test 009 baseline 211 s vs 189 s measured earlier on a quieter machine). **No clean-machine
   pass has been done.**
-* Runner speed varies: `Install Dependencies` took 19-30 s normally but 130-260 s in 4 of about 50 fork jobs
+* Runner speed varies: `Install Dependencies` took 19-30 s normally but 190-260 s in 6 of 64 fork jobs
   (slow Azure mirror downloads); a few jobs run 2x slower than others for the same work. Fork samples are 2-3
   per variant, so differences of a few minutes between variants are not established.
 * Only the `default` and `ompGemm_m` kernels were run. No Ubuntu local timings. No repeated OpenBLAS or binding tests.
