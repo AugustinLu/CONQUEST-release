@@ -20,8 +20,9 @@ There are a number of different analyses which can be performed:
 coordinate conversion (to formats which can be plotted); conversion of
 total charge density to CUBE file format; production of band-resolved
 (optionally k-point resolved) densities in CUBE file format; simple
-Tersoff-Hamann STM simulation; and calculation of densities of states,
-including projected DOS.  You should ensure that all the files
+Tersoff-Hamann STM simulation; calculation of densities of states,
+including projected DOS; and Berry-phase polarisation, mode effective
+charges and Born effective charges (:ref:`pp_berry`).  You should ensure that all the files
 produced during the CONQUEST run are available for the post-processing
 (including ``eigenvalues.dat``, ``chden.NNN``, ``make_blk.dat`` or
 ``hilbert_make_blk.dat`` and ``ProcessNNNNNNNWF.dat`` and
@@ -363,3 +364,170 @@ with ``Process.min_DOS_E`` and ``Process.max_DOS_E``.
 
 Go to :ref:`top <post-proc>`.
 
+.. _pp_berry:
+
+Berry-phase polarisation and Born effective charges
++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+``PostProcessCQ`` can calculate the macroscopic polarisation of an
+insulator from the Berry phase of the occupied Bloch states on strings
+of k-points (the method of King-Smith and Vanderbilt
+:cite:`pp-KingSmith:1993aa`), and from several such calculations the
+change of polarisation between structures, the mode effective charge of
+a distortion and the Born effective charge (BEC) tensors.  Unlike the
+Resta approach in CONQUEST itself (see :ref:`es_pol`), which needs a
+large cell and :math:`\Gamma`-point sampling, this works with the
+primitive cell and a Monkhorst-Pack mesh.
+
+The polarisation is :math:`\mathbf{P} = \mathbf{P}_{ion} + \mathbf{P}_{el}`
+with :math:`\mathbf{P}_{ion} = \frac{e}{\Omega}\sum_\kappa Z_\kappa \mathbf{r}_\kappa`
+and, along each cell vector :math:`\mathbf{a}_\alpha`,
+
+.. math::
+   P_{el,\alpha} = -\frac{f e}{\Omega} \frac{\bar{\phi}_\alpha}{2\pi} a_\alpha, \qquad
+   \phi_\alpha(\mathbf{k}_\perp) = -\mathrm{Im}\ln \prod_{j=0}^{J-1}
+   \det \langle u_{m\mathbf{k}_j} \vert u_{n\mathbf{k}_{j+1}} \rangle
+
+where :math:`f` is 2 without spin polarisation (1 per spin channel
+otherwise), the product runs over the :math:`J` k-points of a string
+along :math:`\mathbf{b}_\alpha`, and :math:`\bar{\phi}_\alpha` is the
+average over the strings.  The overlaps are calculated on the real-space
+integration grid from the wavefunction coefficients written by CONQUEST.
+The polarisation is defined only modulo the quantum
+:math:`e\mathbf{a}_\alpha/\Omega`, and only *differences* between
+structures with the same cell are physical.
+
+**Limitations:** orthorhombic cells; insulators (the number of bands
+below the Fermi level must be the same at every k-point); PAO basis sets
+(not blips; tested with primitive PAOs only, not yet with MSSFs);
+collinear spin.
+
+**The CONQUEST run** must be a static diagonalisation on a
+Monkhorst-Pack mesh (``Diag.MPMesh T``) that writes the coefficients of
+all occupied bands.  Use the list form of the wavefunction output, with
+``N_occ`` the number of occupied bands (half the number of valence
+electrons without spin):
+
+::
+
+   AtomMove.TypeOfRun static
+   DM.SolutionMethod diagon
+   Diag.MPMesh T
+   Diag.GammaCentred T
+   Diag.MPMeshX 4
+   Diag.MPMeshY 4
+   Diag.MPMeshZ 4
+   IO.outputWF T
+   IO.maxnoWF N_occ
+   %block WaveFunctionsOut
+   1
+   2
+   ...
+   N_occ
+   %endblock
+
+Converge the SCF tightly (e.g. ``minE.SCTolerance 1e-8``); the
+polarisation converges with the number of k-points along each string,
+which should be checked.  The mesh may be reduced by time reversal (as
+CONQUEST does): the missing points are reconstructed.
+
+Polarisation of one structure
+-----------------------------
+
+Set ``Process.Job pol`` and run ``PostProcessCQ`` in the directory of
+the CONQUEST run (it needs ``Conquest_input``, the coordinates, the ion
+files, ``eigenvalues.dat``, ``hilbert_make_blk.dat`` or
+``raster_make_blk.dat`` and ``ProcessNNNNNNNWF.dat``).  For each
+direction it prints the phase of every string, the electronic, ionic and
+total polarisation (in e/bohr\ :sup:`2`, C/m\ :sup:`2` and
+:math:`\mu`\ C/cm\ :sup:`2`), the quantum, and the total reduced modulo
+the quantum.  The string phases are written to ``BerryPolarisation.dat``
+for the jobs below.
+
+::
+
+   Process.BerryDirection int (default: 0, all three; 1, 2 or 3 for x, y or z)
+   Process.BerryNumOccupied int (default: 0, count bands below Ef)
+   Process.BerryNumOccupiedDown int (default: Process.BerryNumOccupied)
+   Process.BerryFile string (default: BerryPolarisation.dat)
+   Process.BerryTableMB real (default: 4000; memory for storing PAOs on the grid)
+
+Polarisation change and mode effective charge
+---------------------------------------------
+
+With ``Process.Job dpo``, ``PostProcessCQ`` reads the data files of the
+structures listed (one directory per line, the reference first) in the
+block ``Process.PolarisationRuns`` and accumulates the change of
+polarisation from each structure to the next, taking the change of each
+string's phase on the branch nearest zero.  For a large distortion,
+list intermediate structures (e.g. :math:`\lambda = 0, 0.25, \ldots, 1`)
+so that each step stays well inside half a quantum; a warning is given
+when it does not.  All structures must have the same cell, atoms and
+k-point mesh.  The ionic part uses minimum-image displacements.  From
+the total change :math:`\Delta\mathbf{P}` and displacement
+:math:`\Delta\mathbf{u}` the mode effective charge is
+
+.. math::
+   Z^*_{mode,\alpha} = \frac{\Omega}{e}\frac{\Delta P_\alpha}{\vert\Delta\mathbf{u}\vert}, \qquad
+   \vert\Delta\mathbf{u}\vert = \Big(\sum_\kappa \vert \Delta\mathbf{u}_\kappa\vert^2\Big)^{1/2}
+
+in units of e.  One collective distortion gives three numbers and cannot
+determine the Born effective charges of the individual atoms.
+
+::
+
+   %block Process.PolarisationRuns
+   ref
+   lambda_0.5
+   lambda_1.0
+   %endblock
+
+Born effective charges
+----------------------
+
+With ``Process.Job bec``, the runs listed in
+``Process.PolarisationRuns`` (the undisplaced reference first) must each
+displace one Cartesian coordinate of one atom; the atom and direction
+are found from the coordinates.  For each atom and direction the slope
+:math:`\partial P_\alpha/\partial u_{\kappa\beta}` is the least-squares
+fit through the origin, which is the central difference for a
+:math:`\pm\delta` pair, and
+
+.. math::
+   Z^*_{\kappa,\alpha\beta} = \frac{\Omega}{e}\frac{\partial P_\alpha}{\partial u_{\kappa\beta}}
+
+includes the ionic charge.  Runs that move more than one coordinate are
+rejected with an explanation.  When every atom has been displaced along
+x, y and z, the acoustic sum rule :math:`\sum_\kappa Z^*_\kappa` is
+reported, and the tensors are written to ``BEC_tensors.json`` (raw and
+ASR-corrected, :math:`Z^* - \frac{1}{N}\sum_\kappa Z^*_\kappa`) and
+``BEC_extended.xyz`` (extended XYZ with ``born_effective_charges:R:9`` in
+row-major order, rows = polarisation, columns = displacement, as used
+for SevenNet-Polar training data).
+
+::
+
+   Process.BECDispTolerance real (default: 1e-5 bohr; smaller changes are ignored)
+   Process.BECApplyASR boolean (default: F; ASR-corrected tensors in BEC_extended.xyz)
+
+The script ``tools/PostProcessing/make_bec_displacements.py`` creates
+the displaced run directories from a reference directory, sets
+``Process.Job pol`` in each, and writes a ``Conquest_input`` with the
+``Process.PolarisationRuns`` block for the final step:
+
+::
+
+   python3 make_bec_displacements.py ref_dir bec_dir --delta 0.02
+   # run Conquest, then PostProcessCQ, in bec_dir/ref and every bec_dir/a*
+   cd bec_dir; PostProcessCQ
+
+A displacement of 0.01-0.02 bohr is usually suitable; check the
+convergence of the k-point mesh and of the SCF.
+
+Go to :ref:`top <post-proc>`.
+
+.. bibliography:: references.bib
+    :cited:
+    :labelprefix: PP
+    :keyprefix: pp-
+    :style: unsrt

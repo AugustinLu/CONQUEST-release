@@ -114,6 +114,11 @@ as :math:`Z^{*}_{k,\alpha\beta} = V\partial P_{\alpha}/\partial u_{k,\beta}` for
 calculated by finding the change in polarisation as one atom (or one set of atoms in
 a sublattice) is moved a small amount.
 
+For a primitive cell with k-point sampling, the Berry-phase (King-Smith and
+Vanderbilt) polarisation, mode effective charges and Born effective charge tensors
+can be found with the :ref:`post-processing utility <pp_berry>` from the
+wavefunction coefficients written by CONQUEST.
+
 Go to :ref:`top <elec_struc>`.
 
 .. bibliography:: references.bib

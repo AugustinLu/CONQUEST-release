@@ -147,6 +147,12 @@ contains
        else                                 ! All k-points
           flag_proc_band_str = 4
        end if
+    else if(leqi(job,'pol').or.leqi(job,'ber')) then
+       i_job = 9  ! Berry-phase polarisation of one structure
+    else if(leqi(job,'dpo')) then
+       i_job = 10 ! Polarisation change and mode effective charge
+    else if(leqi(job,'bec')) then
+       i_job = 11 ! Born effective charges by finite differences
     end if
     ! 
     charge_stub = fdf_string(80,'Process.ChargeStub','chden')
@@ -196,36 +202,11 @@ contains
     ! Energy limits (relative to Ef or absolute)
     E_wf_min = fdf_double('IO.min_wf_E',zero)
     E_wf_max = fdf_double('IO.max_wf_E',zero)
+    if(i_job==9) call read_wf_output_spec ! Bands written out by Conquest
+    if(i_job==9 .or. i_job==10 .or. i_job==11) call read_berry_input
     if(i_job==3 .or. i_job==4 .or. i_job==5 .or. i_job==8) then ! Band-resolved charge or STM
        ! Read in details of bands output from Conquest
-       n_bands_active=fdf_integer('IO.maxnoWF',0)
-       if(n_bands_active>0) then
-          allocate(band_no(n_bands_active))
-          if (fdf_block('WaveFunctionsOut')) then
-             if(1+block_end-block_start<n_bands_active) then
-                write(*,*) "Too few wf no in WaveFunctionsOut: ",1+block_end-block_start,n_bands_active
-                stop
-             end if
-             do i=1,n_bands_active
-                read(unit=input_array(block_start+i-1),fmt=*) band_no(i)
-             end do
-             call fdf_endblock
-          else
-             call cq_abort("You specified bands with IO.maxnoWF but didn't give the WaveFunctionsOut block")
-          end if
-          flag_wf_range = .false.
-       else
-          if(abs(E_wf_max-E_wf_min)>1e-8_double) then
-             flag_wf_range = .true.
-             flag_wf_range_Ef = fdf_boolean('IO.WFRangeRelative',.true.)
-          else
-             E_wf_min = -BIG
-             E_wf_max =  BIG
-             flag_wf_range = .true.
-             flag_wf_range_Ef = fdf_boolean('IO.WFRangeRelative',.true.)
-             write(*,fmt='(2x,"No range specified for bands output; assuming all bands")')
-          end if
-       end if
+       call read_wf_output_spec
        ! Now read details of bands to output from processing
        ! Energy limits
        E_procwf_min = fdf_double('Process.min_wf_E',E_wf_min)
@@ -358,6 +339,137 @@ contains
     call io_close(fdf_out)
     return
   end subroutine read_input
+
+  ! Which bands Conquest wrote to Process*WF.dat: a list (IO.maxnoWF and
+  ! WaveFunctionsOut) or an energy window (IO.min_wf_E, IO.max_wf_E)
+  subroutine read_wf_output_spec
+
+    use datatypes
+    use numbers, only: BIG
+    use global_module, only: flag_wf_range_Ef
+    use local, only: n_bands_active, band_no, flag_wf_range, E_wf_min, E_wf_max
+    use input_module
+    use GenComms, only: cq_abort
+
+    implicit none
+
+    integer :: i
+
+    n_bands_active=fdf_integer('IO.maxnoWF',0)
+    if(n_bands_active>0) then
+       allocate(band_no(n_bands_active))
+       if (fdf_block('WaveFunctionsOut')) then
+          if(1+block_end-block_start<n_bands_active) then
+             write(*,*) "Too few wf no in WaveFunctionsOut: ",1+block_end-block_start,n_bands_active
+             stop
+          end if
+          do i=1,n_bands_active
+             read(unit=input_array(block_start+i-1),fmt=*) band_no(i)
+          end do
+          call fdf_endblock
+       else
+          call cq_abort("You specified bands with IO.maxnoWF but didn't give the WaveFunctionsOut block")
+       end if
+       flag_wf_range = .false.
+    else
+       if(abs(E_wf_max-E_wf_min)>1e-8_double) then
+          flag_wf_range = .true.
+          flag_wf_range_Ef = fdf_boolean('IO.WFRangeRelative',.true.)
+       else
+          E_wf_min = -BIG
+          E_wf_max =  BIG
+          flag_wf_range = .true.
+          flag_wf_range_Ef = fdf_boolean('IO.WFRangeRelative',.true.)
+          write(*,fmt='(2x,"No range specified for bands output; assuming all bands")')
+       end if
+    end if
+    return
+  end subroutine read_wf_output_spec
+
+  ! Input for the Berry-phase jobs (pol, dpo, bec)
+  subroutine read_berry_input
+
+    use datatypes
+    use numbers
+    use local, only: berry_mp, berry_mp_shift, berry_direction, berry_nocc_in, berry_net_charge, &
+         berry_file, berry_n_runs, berry_runs, bec_disp_tol, flag_bec_asr, i_job, berry_table_mb
+    use input_module
+    use dimens, only: r_super_x, r_super_y, r_super_z
+    use GenComms, only: cq_abort
+
+    implicit none
+
+    logical :: mp_mesh, flag_gamma
+    real(double) :: dk
+    integer :: i, j, n
+    character(len=256) :: run_line
+
+    berry_file = fdf_string(80,'Process.BerryFile','BerryPolarisation.dat')
+    if(i_job==9) then
+       ! The k-point mesh, rebuilt exactly as in Conquest (initial_read_module)
+       mp_mesh = fdf_boolean('Diag.MPMesh',.false.)
+       if(.not.mp_mesh) call cq_abort("Berry phase needs a Monkhorst-Pack mesh (Diag.MPMesh T)")
+       flag_gamma = fdf_boolean('Diag.GammaCentred',.false.)
+       dk = fdf_double('Diag.dk',zero)
+       if(dk>zero) then
+          berry_mp(1) = ceiling(two*pi/(dk*r_super_x))
+          berry_mp(2) = ceiling(two*pi/(dk*r_super_y))
+          berry_mp(3) = ceiling(two*pi/(dk*r_super_z))
+       else
+          berry_mp(1) = fdf_integer('Diag.MPMeshX',1)
+          berry_mp(2) = fdf_integer('Diag.MPMeshY',1)
+          berry_mp(3) = fdf_integer('Diag.MPMeshZ',1)
+       end if
+       if(any(berry_mp<1)) call cq_abort("Berry phase: k-point mesh must be positive")
+       if(flag_gamma) then
+          berry_mp_shift = zero
+          do i = 1, 3
+             if(modulo(berry_mp(i),2)==0) berry_mp_shift(i) = half/real(berry_mp(i),double)
+          end do
+       else
+          berry_mp_shift(1) = fdf_double('Diag.MPShiftX',zero)
+          berry_mp_shift(2) = fdf_double('Diag.MPShiftY',zero)
+          berry_mp_shift(3) = fdf_double('Diag.MPShiftZ',zero)
+          do i = 1, 3
+             if(berry_mp_shift(i)>=one) berry_mp_shift(i) = berry_mp_shift(i) - one
+          end do
+       end if
+       berry_direction = fdf_integer('Process.BerryDirection',0)
+       if(berry_direction<0 .or. berry_direction>3) &
+            call cq_abort("Process.BerryDirection must be 0 (all), 1, 2 or 3: ",berry_direction)
+       berry_nocc_in(1) = fdf_integer('Process.BerryNumOccupied',0)
+       berry_nocc_in(2) = fdf_integer('Process.BerryNumOccupiedDown',berry_nocc_in(1))
+       berry_net_charge = fdf_double('General.NetCharge',zero)
+       berry_table_mb = fdf_double('Process.BerryTableMB',4000.0_double)
+    else
+       ! Directories holding the data files, one per line (first = reference)
+       if(fdf_block('Process.PolarisationRuns')) then
+          n = 0
+          do i = block_start, block_end
+             run_line = adjustl(input_array(i))
+             if(len_trim(run_line)==0 .or. run_line(1:1)=='#') cycle
+             n = n + 1
+          end do
+          berry_n_runs = n
+          allocate(berry_runs(n))
+          n = 0
+          do i = block_start, block_end
+             run_line = adjustl(input_array(i))
+             if(len_trim(run_line)==0 .or. run_line(1:1)=='#') cycle
+             n = n + 1
+             j = scan(trim(run_line),' '//achar(9))
+             if(j>0) run_line = run_line(1:j-1)
+             berry_runs(n) = trim(run_line)
+          end do
+          call fdf_endblock
+       else
+          call cq_abort("Process.Job dpo/bec needs the block Process.PolarisationRuns (one directory per run_line)")
+       end if
+       bec_disp_tol = fdf_double('Process.BECDispTolerance',1.0e-5_double)
+       flag_bec_asr = fdf_boolean('Process.BECApplyASR',.false.)
+    end if
+    return
+  end subroutine read_berry_input
 
   ! We read in the block positions
   subroutine read_block_input
