@@ -69,4 +69,17 @@ module local
   integer :: n_atoms_pDOS
   integer, dimension(:), allocatable :: pDOS_atom_index
   logical :: flag_expand_range
+
+  ! Berry-phase polarisation and Born effective charges (berry_module)
+  integer, dimension(3) :: berry_mp              ! Monkhorst-Pack mesh of the run
+  real(double), dimension(3) :: berry_mp_shift   ! and its shift (fractional)
+  integer :: berry_direction                     ! 0 = all, 1-3 = x, y, z
+  integer, dimension(2) :: berry_nocc_in         ! occupied bands per spin (0 = from Ef)
+  real(double) :: berry_net_charge               ! General.NetCharge
+  character(len=80) :: berry_file                ! data file for one structure
+  real(double) :: berry_table_mb                 ! memory limit for PAO tables (MB)
+  integer :: berry_n_runs                        ! directories in Process.PolarisationRuns
+  character(len=256), dimension(:), allocatable :: berry_runs
+  real(double) :: bec_disp_tol                   ! smallest displacement recognised (bohr)
+  logical :: flag_bec_asr                        ! apply ASR correction to output files
 end module local

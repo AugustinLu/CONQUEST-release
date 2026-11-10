@@ -9,7 +9,8 @@ program ConvertCharge
   use output
   use memory_module,     only: init_reg_mem
   use stm
-  
+  use berry, only: process_berry, process_pol_difference, process_bec
+
   implicit none
 
   call init_comms(myid,numprocs)
@@ -66,6 +67,17 @@ program ConvertCharge
   else if(i_job==8) then ! DOS output
      write(*,fmt='(2x,"Creating band structure"/)')
      call process_band_structure
+  else if(i_job==9) then ! Berry-phase polarisation
+     write(*,fmt='(2x,"Calculating the Berry-phase polarisation"/)')
+     ! Read blocks to get grid
+     call read_block_input
+     call process_berry
+  else if(i_job==10) then ! Polarisation change, mode effective charge
+     write(*,fmt='(2x,"Calculating the polarisation change between structures"/)')
+     call process_pol_difference
+  else if(i_job==11) then ! Born effective charges
+     write(*,fmt='(2x,"Calculating Born effective charges by finite differences"/)')
+     call process_bec
   end if
   ! Read eigenvalues and calculate weight for bands by kpt
   !if(flag_only_charge) then
