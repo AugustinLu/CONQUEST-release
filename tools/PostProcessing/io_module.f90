@@ -382,6 +382,10 @@ second:   do
                 r_super_x = AngToBohr * r_super_x
                 r_super_y = AngToBohr * r_super_y
                 r_super_z = AngToBohr * r_super_z
+                ! PostProcessCQ builds an orthorhombic cell from PDB input
+                if(any(abs(angle-90.0_double)>1.0e-4_double)) call cq_abort( &
+                     "PostProcessCQ reads PDB coordinates only for orthorhombic cells (CRYST1 angles 90); "// &
+                     "use a CONQUEST coordinate file for other cells")
                 ! The following write statement is also in
                 ! initial_read_module, but I think it's better to have
                 ! it (also) here, because then the cell size will be

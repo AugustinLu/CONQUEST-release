@@ -421,7 +421,8 @@ bands lies below the Fermi level at every k-point and that the electron
 count matches, and warns for a small gap.  It does not check that the
 SCF occupations were integer, so use a gap that is large compared with
 the smearing.  ``PostProcessCQ`` runs these jobs serially: start one
-process per structure.  (Of the other ``PostProcessCQ`` jobs, coordinate conversion,
+process per structure.  PDB coordinates are read for orthorhombic cells
+only.  (Of the other ``PostProcessCQ`` jobs, coordinate conversion,
 charge density, band densities and STM still assume an orthorhombic cell
 along x, y and z, and stop for any other cell.)
 
@@ -471,7 +472,8 @@ directions are computed it also prints the reduced polarisation
 (electronic, ionic, total, and with each :math:`\pi_\alpha` reduced to
 :math:`[-1/2,1/2)`).  For a non-orthorhombic cell the Cartesian vector
 needs all three directions.  The string phases and the lattice are written
-to ``BerryPolarisation.dat`` for the jobs below.
+to ``BerryPolarisation.dat`` for the jobs below, with the species labels,
+which the jobs below check against their own ``Conquest_input``.
 
 ::
 
@@ -496,7 +498,8 @@ close to a whole turn wraps to a small one, so small steps along an
 insulating path are a precondition, not something the code can prove.
 All structures must have the same cell, atoms, species and ionic
 charges, spin treatment, k-point mesh and mesh shift; otherwise the job
-stops.  The ionic part uses minimum-image displacements.  The
+stops.  The ionic part uses minimum-image displacements (the shortest
+lattice-equivalent vector, found exactly for any lattice basis).  The
 change is reported in Cartesian components (for a non-orthorhombic cell
 also as reduced changes along each lattice vector).  From
 the total change :math:`\Delta\mathbf{P}` and displacement

@@ -82,6 +82,8 @@ module berry
      integer, dimension(2) :: nocc = 0                ! 0 = not recorded
      real(double), dimension(3) :: shift = 0.0_double
      integer, allocatable, dimension(:) :: species
+     integer :: nsp = 0                               ! species labels recorded (0 = none)
+     character(len=30), allocatable, dimension(:) :: splabel
      real(double), allocatable, dimension(:) :: zion
      real(double), allocatable, dimension(:,:) :: pos ! (3,natoms) bohr
      type(berry_dir), dimension(3) :: dir
@@ -129,7 +131,7 @@ contains
     use local, only: nptsx, nptsy, nptsz, grid_x, grid_y, grid_z, &
          berry_mp, berry_mp_shift, berry_direction, berry_file, berry_table_mb
     use global_module, only: nspin, ni_in_cell, atom_coord, species_glob, lat_vec, cell_vol
-    use species_module, only: charge
+    use species_module, only: charge, n_species, species_label
     use dimens, only: r_super_x, r_super_y, r_super_z
     use read, only: read_eigenvalues, read_psi_coeffs
     use angular_coeff_routines, only: set_prefac_real, set_fact, set_prefac
@@ -258,6 +260,9 @@ contains
        run%zion(i) = charge(species_glob(i))
        run%pos(:,i) = atom_coord(:,i)
     end do
+    run%nsp = n_species
+    allocate(run%splabel(n_species))
+    run%splabel = species_label(1:n_species)
     call report_polarisation(run)
     call write_berry_file(run, trim(berry_file))
     write(*,fmt='(/4x,"Berry-phase data written to ",a)') trim(berry_file)
@@ -935,32 +940,50 @@ contains
   ! Subroutine min_image
   ! -----------------------------------------------------------
   !
-  ! Shortest lattice-equivalent of the displacement du: nearest integer in
-  ! fractional coordinates, then the 26 neighbouring translations (exact for
-  ! the small displacements used here, also in skewed cells).  du is changed
-  ! only by subtracting whole lattice vectors.
+  ! Shortest lattice-equivalent of the displacement du, exact for any
+  ! lattice basis (the bounded search of mic_vector in the main code).
+  ! Fractional rounding gives a first candidate v0; a translation n can only
+  ! do better if |f_i - n_i| <= |row_i(A^-1)| |v0| (f = A^-1 du), so the
+  ! search over that integer box is exhaustive.  du is changed only by
+  ! subtracting whole lattice vectors.
   !
   subroutine min_image(run, du)
 
     use numbers
+    use GenComms, only: cq_abort
 
     implicit none
 
     type(berry_run), intent(in) :: run
     real(double), dimension(3), intent(inout) :: du
 
-    integer :: n1, n2, n3
-    real(double), dimension(3) :: n, best, trial
+    integer :: i, n1, n2, n3
+    integer, dimension(3) :: lo, hi
+    real(double) :: best_sq, trial_sq, bound
+    real(double), dimension(3) :: f, n, best, trial
 
-    n = anint(matmul(run%lat_inv, du))
-    if(any(n/=zero)) du = du - matmul(run%lat, n)
+    f = matmul(run%lat_inv, du)
+    n = anint(f)
     best = du
-    do n3 = -1, 1
-       do n2 = -1, 1
-          do n1 = -1, 1
-             if(n1==0 .and. n2==0 .and. n3==0) cycle
+    if(any(n/=zero)) best = du - matmul(run%lat, n)
+    best_sq = dot_product(best, best)
+    do i = 1, 3
+       bound = sqrt(best_sq*dot_product(run%lat_inv(i,:), run%lat_inv(i,:)))
+       lo(i) = ceiling(f(i) - bound - 1.0e-9_double)
+       hi(i) = floor(f(i) + bound + 1.0e-9_double)
+    end do
+    if(product(real(hi-lo+1,double))>1.0e7_double) call cq_abort( &
+         "Berry phase: lattice basis too skewed for the minimum-image search; use a reduced cell")
+    do n3 = lo(3), hi(3)
+       do n2 = lo(2), hi(2)
+          do n1 = lo(1), hi(1)
+             if(all((/n1,n2,n3/)==nint(n))) cycle
              trial = du - matmul(run%lat, real((/n1,n2,n3/),double))
-             if(dot_product(trial,trial) < dot_product(best,best) - 1.0e-12_double) best = trial
+             trial_sq = dot_product(trial, trial)
+             if(trial_sq < best_sq - 1.0e-12_double*max(one,best_sq)) then
+                best = trial
+                best_sq = trial_sq
+             end if
           end do
        end do
     end do
@@ -1160,7 +1183,8 @@ contains
     call io_assign(lun)
     open(unit=lun, file=filename, status='replace')
     write(lun,'(a)') '# CONQUEST PostProcessCQ Berry-phase polarisation data (atomic units, bohr)'
-    write(lun,'(a)') '# Lattice: a_1, a_2, a_3 (Cartesian); Atoms: index species Z_ion x y z (Cartesian);'
+    write(lun,'(a)') '# Lattice: a_1, a_2, a_3 (Cartesian); SpeciesLabels: n label_1 .. label_n;'
+    write(lun,'(a)') '# Atoms: index species Z_ion x y z (Cartesian);'
     write(lun,'(a)') '# Direction: alpha nstrings (strings along b_alpha); string lines:'
     write(lun,'(a)') '# k_perp(2, fractional) phase/2pi per spin channel in [-1/2,1/2)'
     write(lun,'("BerryFormat ",i4)') berry_format
@@ -1170,6 +1194,7 @@ contains
     write(lun,'("Mesh ",3i6)') run%mesh
     write(lun,'("Shift ",3es25.16)') run%shift
     write(lun,'("NOcc ",2i8)') run%nocc(1:run%nspin)
+    if(run%nsp>0) write(lun,'("SpeciesLabels ",i6,100(1x,a))') run%nsp, (trim(run%splabel(i)), i=1,run%nsp)
     write(lun,'("NAtoms ",i8)') run%natoms
     write(lun,'(a)') 'Atoms'
     do i = 1, run%natoms
@@ -1226,6 +1251,7 @@ contains
     run%shift = zero
     fmt_in = 0
     nlines = 0
+    run%nsp = 0
     have_cell = .false.
     have_nspin = .false.
     have_sf = .false.
@@ -1269,6 +1295,14 @@ contains
           if(ios/=0 .or. .not.all(finite(reshape(lat,(/9/))))) call bad("unreadable Lattice")
           call set_run_lattice(run, lat)
           have_cell = .true.
+       case('SpeciesLabels')
+          ! Optional: labels of species 1..n (checked against Conquest_input)
+          if(run%nsp/=0) call bad("duplicate SpeciesLabels")
+          read(line,*,iostat=ios) key, run%nsp
+          if(ios/=0 .or. run%nsp<1) call bad("unreadable SpeciesLabels")
+          allocate(run%splabel(run%nsp))
+          read(line,*,iostat=ios) key, idum, run%splabel
+          if(ios/=0) call bad("unreadable SpeciesLabels")
        case('NSpin')
           if(have_nspin) call bad("duplicate NSpin")
           read(line,*,iostat=ios) key, run%nspin
@@ -1339,6 +1373,7 @@ contains
     if(.not.(have_cell .and. have_nspin .and. have_sf .and. have_mesh .and. have_atoms)) &
          call bad("missing Cell/Lattice, NSpin, SpinFactor, Mesh or Atoms")
     if(.not.any(have_dir)) call bad("no Direction data")
+    if(run%nsp>0 .and. any(run%species>run%nsp)) call bad("species index above SpeciesLabels")
     return
 
   contains
@@ -1361,14 +1396,15 @@ contains
   subroutine load_runs(runs)
 
     use local, only: berry_runs, berry_n_runs, berry_file
-    use species_module, only: n_species
+    use species_module, only: n_species, species_label
+    use input_module, only: leqi
     use GenComms, only: cq_abort
 
     implicit none
 
     type(berry_run), allocatable, dimension(:), intent(out) :: runs
 
-    integer :: i
+    integer :: i, j
 
     if(berry_n_runs<2) call cq_abort("Berry phase: need at least two runs in Process.PolarisationRuns")
     allocate(runs(berry_n_runs))
@@ -1378,6 +1414,18 @@ contains
        ! Species labels for the output come from this directory's Conquest_input
        if(n_species>0 .and. any(runs(i)%species>n_species)) call cq_abort("Berry phase: species index "// &
             "in "//trim(runs(i)%label)//" exceeds the number of species in Conquest_input ", n_species)
+       ! Data files from format 2 on record the species labels; they must match
+       do j = 1, min(runs(i)%nsp, n_species)
+          if(.not.leqi(runs(i)%splabel(j), species_label(j))) call cq_abort("Berry phase: species "// &
+               trim(runs(i)%splabel(j))//" in "//trim(runs(i)%label)//" is "//trim(species_label(j))// &
+               " in ChemicalSpeciesLabel here")
+       end do
+       if(i>1 .and. runs(i)%nsp>0 .and. runs(1)%nsp>0) then
+          if(runs(i)%nsp/=runs(1)%nsp) call cq_abort("Berry phase: different species lists in "// &
+               trim(runs(1)%label)//" and "//trim(runs(i)%label))
+          if(any(runs(i)%splabel/=runs(1)%splabel)) call cq_abort("Berry phase: different species "// &
+               "labels in "//trim(runs(1)%label)//" and "//trim(runs(i)%label))
+       end if
        if(i>1) call check_compatible(runs(1), runs(i))
     end do
     return
