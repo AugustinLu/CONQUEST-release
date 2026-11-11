@@ -395,9 +395,16 @@ where :math:`\pi_\alpha` is the reduced polarisation along
 fractional coordinates of the ions, :math:`f` is 2 without spin
 polarisation (1 per spin channel otherwise), the product runs over the
 :math:`J` k-points of a string along :math:`\mathbf{b}_\alpha`, and
-:math:`\bar{\phi}_\alpha` is the average over the strings.  The ionic part
-equals :math:`\frac{e}{\Omega}\sum_\kappa Z_\kappa \mathbf{r}_\kappa`.  For
-an orthorhombic cell with the lattice vectors along x, y and z,
+:math:`\bar{\phi}_\alpha` is the average over the strings.  Before
+averaging, the string phases (each known modulo :math:`2\pi`) are put on
+one branch by following neighbouring strings across the
+:math:`\mathbf{k}_\perp` mesh; if neighbouring strings, including the
+periodic neighbours, still differ by half a turn no common branch exists
+and the polarisation along that direction is reported as undetermined.
+A large change between neighbouring strings (more than a quarter turn)
+gives a warning: increase the mesh normal to the direction.  The ionic
+part equals :math:`\frac{e}{\Omega}\sum_\kappa Z_\kappa \mathbf{r}_\kappa`.
+For an orthorhombic cell with the lattice vectors along x, y and z,
 :math:`P_\alpha = e\pi_\alpha a_\alpha/\Omega` is the Cartesian component
 :math:`\alpha`.  The overlaps are calculated on the real-space
 integration grid (points :math:`\sum_i (n_i/N_i)\mathbf{a}_i`) from the
@@ -405,12 +412,18 @@ wavefunction coefficients written by CONQUEST.  The polarisation is
 defined only modulo the quanta :math:`e\mathbf{a}_\alpha/\Omega`, and
 only *differences* between structures with the same cell are physical.
 
-**Limitations:** insulators (the number of bands
-below the Fermi level must be the same at every k-point); PAO basis sets
-(not blips; tested with primitive PAOs only, not yet with MSSFs);
-collinear spin.  (Of the other ``PostProcessCQ`` jobs, coordinate
-conversion, charge density, band densities and STM still assume an
-orthorhombic cell along x, y and z, and stop for any other cell.)
+**Limitations:** insulators; PAO basis sets (not blips; tested with
+primitive PAOs only, not yet with MSSFs); collinear spin with at least
+one occupied band in each spin channel (a fully polarised insulator with
+an empty channel is not supported).  The method needs a gapped, fully
+occupied manifold: ``PostProcessCQ`` checks only that the same number of
+bands lies below the Fermi level at every k-point and that the electron
+count matches, and warns for a small gap.  It does not check that the
+SCF occupations were integer, so use a gap that is large compared with
+the smearing.  ``PostProcessCQ`` runs these jobs serially: start one
+process per structure.  (Of the other ``PostProcessCQ`` jobs, coordinate conversion,
+charge density, band densities and STM still assume an orthorhombic cell
+along x, y and z, and stop for any other cell.)
 
 **The CONQUEST run** must be a static diagonalisation on a
 Monkhorst-Pack mesh (``Diag.MPMesh T``) that writes the coefficients of
@@ -478,8 +491,12 @@ polarisation from each structure to the next, taking the change of each
 string's phase on the branch nearest zero.  For a large distortion,
 list intermediate structures (e.g. :math:`\lambda = 0, 0.25, \ldots, 1`)
 so that each step stays well inside half a quantum; a warning is given
-when it does not.  All structures must have the same cell, atoms and
-k-point mesh.  The ionic part uses minimum-image displacements.  The
+when it does not.  The warning cannot catch every wrong branch: a change
+close to a whole turn wraps to a small one, so small steps along an
+insulating path are a precondition, not something the code can prove.
+All structures must have the same cell, atoms, species and ionic
+charges, spin treatment, k-point mesh and mesh shift; otherwise the job
+stops.  The ionic part uses minimum-image displacements.  The
 change is reported in Cartesian components (for a non-orthorhombic cell
 also as reduced changes along each lattice vector).  From
 the total change :math:`\Delta\mathbf{P}` and displacement
@@ -489,8 +506,14 @@ the total change :math:`\Delta\mathbf{P}` and displacement
    Z^*_{mode,\alpha} = \frac{\Omega}{e}\frac{\Delta P_\alpha}{\vert\Delta\mathbf{u}\vert}, \qquad
    \vert\Delta\mathbf{u}\vert = \Big(\sum_\kappa \vert \Delta\mathbf{u}_\kappa\vert^2\Big)^{1/2}
 
-in units of e.  One collective distortion gives three numbers and cannot
-determine the Born effective charges of the individual atoms.
+in units of e.  Components along directions without Berry-phase data are
+printed as ``n/a``, and the norm is then that of the known components
+only.  This is the finite-difference response of the chosen distortion,
+normalised by its length; it equals the projection of the Born effective
+charges onto the distortion only in the linear limit, and it is not a
+mass-weighted phonon mode charge.  One collective distortion gives three
+numbers and cannot determine the Born effective charges of the
+individual atoms.
 
 ::
 
@@ -510,13 +533,17 @@ cell) of one atom; the atom and direction
 are found from the coordinates.  For each atom and direction the slope
 :math:`\partial P_\alpha/\partial u_{\kappa\beta}` is the least-squares
 fit through the origin, which is the central difference for a
-:math:`\pm\delta` pair, and
+:math:`\pm\delta` pair of equal size, and
 
 .. math::
    Z^*_{\kappa,\alpha\beta} = \frac{\Omega}{e}\frac{\partial P_\alpha}{\partial u_{\kappa\beta}}
 
 includes the ionic charge.  Runs that move more than one coordinate are
-rejected with an explanation.  When every atom has been displaced along
+rejected with an explanation.  The method of each column is reported as
+``C`` (central: displacements with :math:`\sum\delta^3 = 0`, e.g. equal
+:math:`\pm\delta`, so that the quadratic response cancels), ``A``
+(both signs but asymmetric: first-order accurate), ``F`` (one-sided) or
+``-`` (not displaced).  When every atom has been displaced along
 x, y and z, the acoustic sum rule :math:`\sum_\kappa Z^*_\kappa` is
 reported, and the tensors are written to ``BEC_tensors.json`` (raw and
 ASR-corrected, :math:`Z^* - \frac{1}{N}\sum_\kappa Z^*_\kappa`) and
@@ -524,7 +551,14 @@ ASR-corrected, :math:`Z^* - \frac{1}{N}\sum_\kappa Z^*_\kappa`) and
 row-major order, rows = polarisation, columns = displacement, as used
 for SevenNet-Polar training data); the tensors are Cartesian and the
 lattice is written as the full vectors :math:`\mathbf{a}_1,
-\mathbf{a}_2, \mathbf{a}_3`.
+\mathbf{a}_2, \mathbf{a}_3`.  A one-sided set (``F``) also counts
+as complete.  If some columns are missing, ``BEC_tensors.json`` has
+``"complete": false``, the missing columns are zeros with method ``-``
+(not calculated, not zero charges), and no XYZ file is written; output
+files from an earlier ``bec`` run in the directory are deleted at the
+start, so a failed or incomplete run never leaves an old XYZ file.  For
+a charged cell (ionic charge different from the number of electrons) the
+ASR does not apply and no ASR-corrected tensors are written.
 
 ::
 
@@ -535,8 +569,15 @@ The script ``tools/PostProcessing/make_bec_displacements.py`` creates
 the displaced run directories from a reference directory (displacements
 along the Cartesian axes, converted to fractional coordinates with the
 inverse lattice when the coordinates are fractional), sets
-``Process.Job pol`` in each, and writes a ``Conquest_input`` with the
-``Process.PolarisationRuns`` block for the final step:
+``Process.Job pol`` and ``Process.BerryDirection 0`` in each, and writes
+a ``Conquest_input`` with the ``Process.PolarisationRuns`` block for the
+final step.  The displaced coordinates are written to the base name of
+``IO.Coordinates`` in each directory, ``IO.Coordinates`` is set to it and
+any ``Process.Coordinates`` is removed, so that CONQUEST and
+``PostProcessCQ`` read the same structure.  Keywords are replaced under
+any spelling CONQUEST accepts (case, ``.``, ``_`` and ``-`` ignored).
+By default the ``*.ion`` files of the reference are copied; ``--copy``
+lists other files and may not name a generated file:
 
 ::
 
@@ -545,7 +586,8 @@ inverse lattice when the coordinates are fractional), sets
    cd bec_dir; PostProcessCQ
 
 A displacement of 0.01-0.02 bohr is usually suitable; check the
-convergence of the k-point mesh and of the SCF.
+convergence with the displacement (e.g. compare :math:`\pm 0.02` and
+:math:`\pm 0.01` bohr), the k-point mesh and the SCF.
 
 Go to :ref:`top <post-proc>`.
 

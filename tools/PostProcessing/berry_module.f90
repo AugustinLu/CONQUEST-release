@@ -972,30 +972,58 @@ contains
   ! Subroutine average_strings
   ! -----------------------------------------------------------
   !
-  ! Average of string phases (units of 2pi) defined modulo 1: each phase is
-  ! brought to the branch nearest the running mean.  Returns the spread.
+  ! Average of string phases (units of 2pi) defined modulo 1.  The strings
+  ! form an n1 x n2 grid in k_perp (string index (i1-1)*n2 + i2, as written
+  ! by process_berry).  The phases are unwrapped along the grid: each string
+  ! is put on the branch nearest its already-placed neighbour (along i2 in the
+  ! first row, then along i1).  Every pair of neighbouring strings, including
+  ! the periodic ones, is then checked: max_jump is the largest phase change
+  ! between neighbours after unwrapping.  If it reaches 1/2 the unwrapping
+  ! depends on the path (or the phases wind), no single branch exists and
+  ! ok = .false.  Returns the mean and the spread about it.
   !
-  subroutine average_strings(x, xbar, spread)
+  subroutine average_strings(x, n1, n2, xbar, spread, max_jump, ok)
 
     use numbers
 
     implicit none
 
     real(double), dimension(:), intent(in) :: x
-    real(double), intent(out) :: xbar, spread
+    integer, intent(in) :: n1, n2
+    real(double), intent(out) :: xbar, spread, max_jump
+    logical, intent(out) :: ok
 
-    integer :: i, iter, n
-    real(double), allocatable, dimension(:) :: y
+    integer :: i1, i2, m1, m2, n
+    real(double), allocatable, dimension(:,:) :: y
 
     n = size(x)
-    allocate(y(n))
-    xbar = x(1)
-    do iter = 1, 3
-       do i = 1, n
-          y(i) = x(i) - anint(x(i) - xbar)
-       end do
-       xbar = sum(y)/real(n,double)
+    if(n1*n2/=n .or. n<1) then
+       ! Not a grid: unwrap along the list
+       m1 = 1
+       m2 = n
+    else
+       m1 = n1
+       m2 = n2
+    end if
+    allocate(y(m2,m1))
+    y = reshape(x, (/m2,m1/))
+    do i2 = 2, m2
+       y(i2,1) = y(i2,1) - anint(y(i2,1) - y(i2-1,1))
     end do
+    do i1 = 2, m1
+       do i2 = 1, m2
+          y(i2,i1) = y(i2,i1) - anint(y(i2,i1) - y(i2,i1-1))
+       end do
+    end do
+    max_jump = zero
+    do i1 = 1, m1
+       do i2 = 1, m2
+          if(m2>1) max_jump = max(max_jump, abs(y(1+mod(i2,m2),i1) - y(i2,i1)))
+          if(m1>1) max_jump = max(max_jump, abs(y(i2,1+mod(i1,m1)) - y(i2,i1)))
+       end do
+    end do
+    ok = max_jump < half - 1.0e-8_double
+    xbar = sum(y)/real(n,double)
     spread = maxval(abs(y - xbar))
     deallocate(y)
     return
@@ -1014,9 +1042,10 @@ contains
 
     type(berry_run), intent(in) :: run
 
-    integer :: alpha, i_spin, i
+    integer :: alpha, i_spin, i, p1, p2
     logical, dimension(3) :: have, ok
-    real(double) :: xbar, spread, fac_C, pel, pion, ptot, pq, pred, alen
+    logical :: ok_br, ok_all, undetermined
+    real(double) :: xbar, spread, max_jump, fac_C, pel, pion, ptot, pq, pred, alen
     real(double), dimension(3) :: red_el, red_ion, red_tot, cart_el, cart_ion, cart_tot, cart_mod
     character(len=*), parameter :: sub_name = "report_polarisation"
 
@@ -1035,23 +1064,42 @@ contains
           red_ion(alpha) = red_ion(alpha) + run%zion(i)*dot_product(run%lat_inv(alpha,:), run%pos(:,i))
        end do
     end do
+    undetermined = .false.
     do alpha = 1, 3
        if(.not.have(alpha)) cycle
        alen = sqrt(dot_product(run%lat(:,alpha), run%lat(:,alpha)))
+       p1 = 1 + mod(alpha,3)
+       p2 = 1 + mod(alpha+1,3)
+       ok_all = .true.
        do i_spin = 1, run%nspin
-          call average_strings(run%dir(alpha)%x(:,i_spin), xbar, spread)
+          call average_strings(run%dir(alpha)%x(:,i_spin), run%mesh(p1), run%mesh(p2), xbar, spread, &
+               max_jump, ok_br)
           write(*,fmt='(/4x,"Direction ",i1," spin ",i1,": mean phase/2pi ",f15.11, &
-               &"  spread over strings ",f12.8)') alpha, i_spin, xbar, spread
-          if(spread>string_spread_warn) call cq_warn(sub_name, &
-               "Berry phases of strings disagree; increase the k-point mesh. Spread ", spread)
+               &"  spread over strings ",f12.8,"  max change between neighbours ",f12.8)') &
+               alpha, i_spin, xbar, spread, max_jump
+          if(.not.ok_br) then
+             call cq_warn(sub_name, "String phases cannot be put on one branch (neighbouring strings "// &
+                  "differ by 1/2 turn or the unwrapping is path dependent): the electronic polarisation "// &
+                  "along this direction is undetermined. Direction ", alpha)
+             ok_all = .false.
+          else if(max_jump>string_spread_warn) then
+             call cq_warn(sub_name, "Large Berry-phase change between neighbouring strings; the branch "// &
+                  "may be wrong: increase the k-point mesh normal to the direction. Max change ", max_jump)
+          end if
           red_el(alpha) = red_el(alpha) - run%spin_factor*xbar
        end do
+       write(*,fmt='(4x,"Direction ",i1)') alpha
+       if(.not.ok_all) then
+          write(*,fmt='(6x,"P electronic and total undetermined (no common branch of the string phases)")')
+          have(alpha) = .false.
+          undetermined = .true.
+          cycle
+       end if
        pel = red_el(alpha)*alen/run%volume
        pion = red_ion(alpha)*alen/run%volume
        ptot = pel + pion
        pq = alen/run%volume
        pred = ptot - pq*anint(ptot/pq)
-       write(*,fmt='(4x,"Direction ",i1)') alpha
        write(*,fmt='(6x,"P electronic         ",es20.11," e/bohr^2")') pel
        write(*,fmt='(6x,"P ionic              ",es20.11," e/bohr^2")') pion
        write(*,fmt='(6x,"P total              ",es20.11," e/bohr^2",f14.6," C/m^2",f14.6," uC/cm^2")') &
@@ -1084,6 +1132,8 @@ contains
           write(*,fmt='(6x,"Quantum e.a_",i1,"/Omega  ",3es20.11," e/bohr^2")') alpha, &
                run%lat(:,alpha)/run%volume
        end do
+    else if(undetermined) then
+       write(*,fmt='(/4x,"No Cartesian polarisation: the string phases have no common branch along a direction.")')
     else if(.not.axis_aligned(run%lat)) then
        write(*,fmt='(/4x,"The Cartesian polarisation of a non-orthorhombic cell needs all three")')
        write(*,fmt='(4x,"directions (Process.BerryDirection 0).")')
@@ -1140,6 +1190,12 @@ contains
   ! -----------------------------------------------------------
   ! Subroutine read_berry_file
   ! -----------------------------------------------------------
+  !
+  ! Reads and validates a data file written by write_berry_file: every
+  ! keyword is required once (NOcc and Shift are optional, for files from
+  ! early versions; a missing Shift is zero), BerryFormat comes first, and
+  ! every number must be readable and finite.
+  !
   subroutine read_berry_file(run, filename)
 
     use numbers
@@ -1151,10 +1207,11 @@ contains
     type(berry_run), intent(inout) :: run
     character(len=*), intent(in) :: filename
 
-    integer :: lun, i, idum, alpha, nstr, ios, fmt_in
+    integer :: lun, i, idum, alpha, nstr, ios, fmt_in, nlines
     character(len=512) :: line
     character(len=32) :: key
-    logical :: exists, have_lattice
+    logical :: exists, have_cell, have_nspin, have_sf, have_mesh, have_shift, have_atoms
+    logical, dimension(3) :: have_dir
     real(double), dimension(3) :: cell
     real(double), dimension(3,3) :: lat
 
@@ -1164,70 +1221,138 @@ contains
     open(unit=lun, file=filename, status='old')
     run%natoms = 0
     run%nspin = 0
+    run%nocc = 0
     run%dir(:)%nstr = 0
+    run%shift = zero
     fmt_in = 0
-    have_lattice = .false.
+    nlines = 0
+    have_cell = .false.
+    have_nspin = .false.
+    have_sf = .false.
+    have_mesh = .false.
+    have_shift = .false.
+    have_atoms = .false.
+    have_dir = .false.
     do
        read(lun,'(a)',iostat=ios) line
-       if(ios/=0) call cq_abort("Berry phase: unexpected end of data file "//trim(filename))
+       nlines = nlines + 1
+       if(ios/=0) call cq_abort("Berry phase: unexpected end of data file (no End) "//trim(filename))
        line = adjustl(line)
        if(len_trim(line)==0) cycle
        if(line(1:1)=='#') cycle
        read(line,*) key
+       if(fmt_in==0 .and. trim(key)/='BerryFormat') &
+            call bad("BerryFormat must come first, found "//trim(key))
        select case(trim(key))
        case('BerryFormat')
-          read(line,*) key, fmt_in
-          if(fmt_in<1 .or. fmt_in>berry_format) call cq_abort("Berry phase: unknown data file format ",fmt_in)
+          if(fmt_in/=0) call bad("duplicate BerryFormat")
+          read(line,*,iostat=ios) key, fmt_in
+          if(ios/=0) call bad("unreadable BerryFormat")
+          if(fmt_in<1 .or. fmt_in>berry_format) call cq_abort("Berry phase: unknown data file format in "// &
+               trim(filename), fmt_in)
        case('Cell')
           ! Format 1: orthorhombic cell lengths along x, y, z
-          read(line,*) key, cell
+          if(have_cell) call bad("duplicate Cell or Lattice")
+          read(line,*,iostat=ios) key, cell
+          if(ios/=0 .or. .not.all(finite(cell))) call bad("unreadable Cell")
+          if(any(cell<=zero)) call bad("cell lengths must be positive")
           lat = zero
           do i = 1, 3
              lat(i,i) = cell(i)
           end do
           call set_run_lattice(run, lat)
-          have_lattice = .true.
+          have_cell = .true.
        case('Lattice')
-          read(line,*) key, lat
+          ! Format 2: lattice vectors a_1, a_2, a_3 (Cartesian)
+          if(have_cell) call bad("duplicate Cell or Lattice")
+          read(line,*,iostat=ios) key, lat
+          if(ios/=0 .or. .not.all(finite(reshape(lat,(/9/))))) call bad("unreadable Lattice")
           call set_run_lattice(run, lat)
-          have_lattice = .true.
+          have_cell = .true.
        case('NSpin')
-          read(line,*) key, run%nspin
+          if(have_nspin) call bad("duplicate NSpin")
+          read(line,*,iostat=ios) key, run%nspin
+          if(ios/=0 .or. run%nspin<1 .or. run%nspin>2) call bad("NSpin must be 1 or 2")
+          have_nspin = .true.
        case('SpinFactor')
-          read(line,*) key, run%spin_factor
+          if(have_sf) call bad("duplicate SpinFactor")
+          if(.not.have_nspin) call bad("SpinFactor before NSpin")
+          read(line,*,iostat=ios) key, run%spin_factor
+          if(ios/=0) call bad("unreadable SpinFactor")
+          if(abs(run%spin_factor-real(3-run%nspin,double))>1.0e-8_double) &
+               call bad("SpinFactor must be 2 for NSpin 1 and 1 for NSpin 2")
+          have_sf = .true.
        case('Mesh')
-          read(line,*) key, run%mesh
+          if(have_mesh) call bad("duplicate Mesh")
+          read(line,*,iostat=ios) key, run%mesh
+          if(ios/=0 .or. any(run%mesh<1)) call bad("Mesh must hold three positive integers")
+          have_mesh = .true.
        case('Shift')
-          read(line,*) key, run%shift
+          if(have_shift) call bad("duplicate Shift")
+          read(line,*,iostat=ios) key, run%shift
+          if(ios/=0 .or. .not.all(finite(run%shift))) call bad("unreadable Shift")
+          have_shift = .true.
        case('NOcc')
-          if(run%nspin==0) call cq_abort("Berry phase: NOcc before NSpin in "//trim(filename))
-          read(line,*) key, run%nocc(1:run%nspin)
+          if(.not.have_nspin) call bad("NOcc before NSpin")
+          read(line,*,iostat=ios) key, run%nocc(1:run%nspin)
+          if(ios/=0 .or. any(run%nocc(1:run%nspin)<0)) call bad("unreadable NOcc")
        case('NAtoms')
-          read(line,*) key, run%natoms
+          if(run%natoms/=0) call bad("duplicate NAtoms")
+          read(line,*,iostat=ios) key, run%natoms
+          if(ios/=0 .or. run%natoms<1) call bad("NAtoms must be a positive integer")
           allocate(run%species(run%natoms), run%zion(run%natoms), run%pos(3,run%natoms))
        case('Atoms')
-          if(run%natoms==0) call cq_abort("Berry phase: Atoms before NAtoms in "//trim(filename))
+          if(run%natoms==0) call bad("Atoms before NAtoms")
+          if(have_atoms) call bad("duplicate Atoms block")
           do i = 1, run%natoms
-             read(lun,*) idum, run%species(i), run%zion(i), run%pos(:,i)
+             read(lun,*,iostat=ios) idum, run%species(i), run%zion(i), run%pos(:,i)
+             if(ios/=0) call bad("unreadable or truncated Atoms block")
+             if(idum/=i .or. run%species(i)<1) call bad("bad atom index or species in Atoms block")
+             if(.not.finite(run%zion(i)) .or. .not.all(finite(run%pos(:,i)))) &
+                  call bad("non-finite value in Atoms block")
           end do
+          have_atoms = .true.
        case('Direction')
-          if(run%nspin==0) call cq_abort("Berry phase: Direction before NSpin in "//trim(filename))
-          read(line,*) key, alpha, nstr
+          if(.not.(have_nspin .and. have_mesh)) call bad("Direction before NSpin or Mesh")
+          read(line,*,iostat=ios) key, alpha, nstr
+          if(ios/=0) call bad("unreadable Direction line")
+          if(alpha<1 .or. alpha>3) call bad("Direction index must be 1, 2 or 3")
+          if(have_dir(alpha)) call bad("duplicate Direction")
+          if(nstr/=run%mesh(1+mod(alpha,3))*run%mesh(1+mod(alpha+1,3))) &
+               call bad("number of strings does not match Mesh")
           run%dir(alpha)%nstr = nstr
           allocate(run%dir(alpha)%kperp(2,nstr), run%dir(alpha)%x(nstr,run%nspin))
           do i = 1, nstr
-             read(lun,*) run%dir(alpha)%kperp(:,i), run%dir(alpha)%x(i,1:run%nspin)
+             read(lun,*,iostat=ios) run%dir(alpha)%kperp(:,i), run%dir(alpha)%x(i,1:run%nspin)
+             if(ios/=0) call bad("unreadable or truncated string list")
+             if(.not.all(finite(run%dir(alpha)%kperp(:,i))) .or. &
+                  .not.all(finite(run%dir(alpha)%x(i,1:run%nspin)))) call bad("non-finite string phase")
           end do
+          have_dir(alpha) = .true.
        case('End')
           exit
        case default
-          call cq_abort("Berry phase: unknown keyword in data file "//trim(filename)//": "//trim(key))
+          call bad("unknown keyword "//trim(key))
        end select
     end do
     call io_close(lun)
-    if(fmt_in==0 .or. run%natoms==0 .or. .not.have_lattice) &
-         call cq_abort("Berry phase: incomplete data file "//trim(filename))
+    if(.not.(have_cell .and. have_nspin .and. have_sf .and. have_mesh .and. have_atoms)) &
+         call bad("missing Cell/Lattice, NSpin, SpinFactor, Mesh or Atoms")
+    if(.not.any(have_dir)) call bad("no Direction data")
     return
+
+  contains
+
+    subroutine bad(msg)
+      character(len=*), intent(in) :: msg
+      call cq_abort("Berry phase: invalid data file "//trim(filename)//": "//msg)
+    end subroutine bad
+
+    elemental logical function finite(v)
+      real(double), intent(in) :: v
+      finite = (v==v) .and. abs(v)<=huge(v)
+    end function finite
+
   end subroutine read_berry_file
 
   ! -----------------------------------------------------------
@@ -1236,6 +1361,7 @@ contains
   subroutine load_runs(runs)
 
     use local, only: berry_runs, berry_n_runs, berry_file
+    use species_module, only: n_species
     use GenComms, only: cq_abort
 
     implicit none
@@ -1249,6 +1375,9 @@ contains
     do i = 1, berry_n_runs
        runs(i)%label = berry_runs(i)
        call read_berry_file(runs(i), trim(berry_runs(i))//'/'//trim(berry_file))
+       ! Species labels for the output come from this directory's Conquest_input
+       if(n_species>0 .and. any(runs(i)%species>n_species)) call cq_abort("Berry phase: species index "// &
+            "in "//trim(runs(i)%label)//" exceeds the number of species in Conquest_input ", n_species)
        if(i>1) call check_compatible(runs(1), runs(i))
     end do
     return
@@ -1273,10 +1402,14 @@ contains
          trim(a%label)//" and "//trim(b%label))
     if(any(a%species/=b%species)) call cq_abort("Berry phase: different species order in "// &
          trim(a%label)//" and "//trim(b%label))
-    if(a%nspin/=b%nspin) call cq_abort("Berry phase: different spin treatment in "// &
+    if(any(abs(a%zion-b%zion)>1.0e-6_double)) call cq_abort("Berry phase: different ionic charges in "// &
          trim(a%label)//" and "//trim(b%label))
+    if(a%nspin/=b%nspin .or. abs(a%spin_factor-b%spin_factor)>1.0e-8_double) call cq_abort( &
+         "Berry phase: different spin treatment in "//trim(a%label)//" and "//trim(b%label))
     if(any(a%mesh/=b%mesh)) call cq_abort("Berry phase: different k-point meshes in "// &
          trim(a%label)//" and "//trim(b%label))
+    if(any(abs(a%shift-b%shift)>1.0e-8_double)) call cq_abort("Berry phase: different k-point mesh "// &
+         "shifts in "//trim(a%label)//" and "//trim(b%label))
     if(all(a%nocc(1:a%nspin)>0) .and. all(b%nocc(1:a%nspin)>0) .and. &
          any(a%nocc(1:a%nspin)/=b%nocc(1:a%nspin))) call cq_abort( &
          "Berry phase: different numbers of occupied bands in "//trim(a%label)//" and "//trim(b%label))
@@ -1387,6 +1520,7 @@ contains
     real(double), dimension(3) :: dP_el, dP_ion, P_el, P_ion, P_tot, zmode, dred_el, red_el, red_ion
     real(double), allocatable, dimension(:,:) :: du, du_tot
     real(double) :: max_dx, max_spread, fac_C, norm_u, worst
+    character(len=16), dimension(3) :: cval
     character(len=*), parameter :: sub_name = "process_pol_difference"
 
     fac_C = eVToJ/(BohrToAng*1.0e-10_double)**2
@@ -1413,7 +1547,15 @@ contains
        P_ion = P_ion + dP_ion
        du_tot = du_tot + du
        worst = max(worst, max_dx)
-       write(*,fmt='(4x,i4,f12.6,3es16.7,f12.6,2x,a)') i-1, sqrt(sum(du*du)), dP_el+dP_ion, max_dx, &
+       ! Cartesian components that the Berry directions computed do not give are n/a
+       do alpha = 1, 3
+          if(ok(alpha)) then
+             write(cval(alpha),'(es16.7)') dP_el(alpha) + dP_ion(alpha)
+          else
+             cval(alpha) = '             n/a'
+          end if
+       end do
+       write(*,fmt='(4x,i4,f12.6,3a16,f12.6,2x,a)') i-1, sqrt(sum(du*du)), cval, max_dx, &
             trim(runs(i)%label)
        if(max_dx>step_warn) call cq_warn(sub_name, "Large Berry-phase change in one step; the "// &
             "branch may be wrong. Add intermediate structures. Step, max|dphase/2pi| ", &
@@ -1457,10 +1599,20 @@ contains
     if(norm_u<1.0e-8_double) call cq_abort("Berry phase: the structures are identical (du = 0)")
     zmode = zero
     do alpha = 1, 3
-       if(ok_all(alpha)) zmode(alpha) = runs(1)%volume*P_tot(alpha)/norm_u
+       if(ok_all(alpha)) then
+          zmode(alpha) = runs(1)%volume*P_tot(alpha)/norm_u
+          write(cval(alpha),'(f16.6)') zmode(alpha)
+       else
+          cval(alpha) = '             n/a'
+       end if
     end do
-    write(*,fmt='(/4x,"Mode effective charge Z*_mode = (Omega/e) dP/|du| (e): ",3f14.6)') zmode
-    write(*,fmt='(4x,"Norm of Z*_mode (e): ",f14.6)') sqrt(sum(zmode*zmode))
+    write(*,fmt='(/4x,"Mode effective charge Z*_mode = (Omega/e) dP/|du| (e): ",3a16)') cval
+    if(all(ok_all)) then
+       write(*,fmt='(4x,"Norm of Z*_mode (e): ",f14.6)') sqrt(sum(zmode*zmode))
+    else
+       write(*,fmt='(4x,"Z*_mode is incomplete (n/a = not given by the Berry directions computed); ",&
+            &"norm of the known components only (a lower bound): ",f14.6)') sqrt(sum(zmode*zmode))
+    end if
     write(*,fmt='(/4x,"Unit displacement pattern du_k/|du|:")')
     do i = 1, natoms
        write(*,fmt='(6x,i6,2x,a4,3f12.7)') i, species_label(runs(1)%species(i)), du_tot(:,i)/norm_u
@@ -1490,8 +1642,12 @@ contains
   !!   atom and direction are found from the coordinates.  For each (k,b) the
   !!   slope is the least-squares fit through the origin of dP against the
   !!   displacement, sum(d dP)/sum(d^2): (dP(+d)-dP(-d))/2d for a +/- pair of
-  !!   equal size (central difference), dP/d for a single run (one-sided).  The ionic charge is included
-  !!   through dP_ion.  Runs that move more than one coordinate are rejected.
+  !!   equal size (central difference), dP/d for a single run (one-sided).
+  !!   The quadratic response cancels only when sum(d^3) = 0 (symmetric
+  !!   displacements, method C); other two-sided sets are flagged A.  The
+  !!   ionic charge is included through dP_ion.  Runs that move more than one
+  !!   coordinate are rejected.  Output files of an earlier bec run in this
+  !!   directory are deleted first, so that none is left from a failed run.
   !!  AUTHOR
   !!   CONQUEST developers
   !!  CREATION DATE
@@ -1511,14 +1667,17 @@ contains
     integer :: i, n, natoms, k, a, b, nmoved, kk, bb, n_skip, n_used
     logical, dimension(3) :: have, ok
     logical :: complete
-    logical, allocatable, dimension(:,:) :: plus, minus
+    logical, allocatable, dimension(:,:) :: plus, minus, sym
+    logical :: neutral, apply_asr
     real(double), dimension(3) :: dP_el, dP_ion, dred_el
     real(double), dimension(3,3) :: asr
-    real(double), allocatable, dimension(:,:) :: du, sdd
+    real(double), allocatable, dimension(:,:) :: du, sdd, sd3, sa3
     real(double), allocatable, dimension(:,:,:) :: sdp, zstar, zstar_asr
-    real(double) :: max_dx, max_spread, delta
+    real(double) :: max_dx, max_spread, delta, net
     character(len=*), parameter :: sub_name = "process_bec"
 
+    call remove_file('BEC_extended.xyz')
+    call remove_file('BEC_tensors.json')
     call load_runs(runs)
     n = size(runs)
     natoms = runs(1)%natoms
@@ -1527,8 +1686,10 @@ contains
             "three directions (Process.BerryDirection 0) in the reference; missing ", a)
     end do
     allocate(du(3,natoms), sdd(3,natoms), sdp(3,3,natoms), zstar(3,3,natoms), zstar_asr(3,3,natoms), &
-         plus(3,natoms), minus(3,natoms))
+         plus(3,natoms), minus(3,natoms), sym(3,natoms), sd3(3,natoms), sa3(3,natoms))
     sdd = zero
+    sd3 = zero
+    sa3 = zero
     sdp = zero
     plus = .false.
     minus = .false.
@@ -1572,11 +1733,15 @@ contains
        if(max_dx>step_warn) call cq_warn(sub_name, "Large Berry-phase change for one displacement; "// &
             "use a smaller displacement. Run, max|dphase/2pi|: "//trim(runs(i)%label), max_dx)
        sdd(b,k) = sdd(b,k) + delta*delta
+       sd3(b,k) = sd3(b,k) + delta**3
+       sa3(b,k) = sa3(b,k) + abs(delta)**3
        sdp(:,b,k) = sdp(:,b,k) + delta*(dP_el + dP_ion)
        if(delta>zero) plus(b,k) = .true.
        if(delta<zero) minus(b,k) = .true.
        n_used = n_used + 1
     end do
+    ! Symmetric sampling (sum d^3 = 0): the quadratic term cancels in the slope
+    sym = abs(sd3) <= 1.0e-6_double*sa3
     zstar = zero
     complete = .true.
     do k = 1, natoms
@@ -1590,16 +1755,25 @@ contains
     end do
     write(*,fmt='(/4x,"Used ",i6," displaced runs; skipped ",i6)') n_used, n_skip
     write(*,fmt='(/4x,"Born effective charge tensors Z*_ab = (Omega/e) dP_a/du_b (e);")')
-    write(*,fmt='(4x,"rows a = polarisation, columns b = displacement; C = central, F = one-sided, - = missing")')
+    write(*,fmt='(4x,"rows a = polarisation, columns b = displacement; C = central (symmetric +/-),")')
+    write(*,fmt='(4x,"A = two-sided but asymmetric (first order), F = one-sided, - = missing (zero entries)")')
     do k = 1, natoms
        write(*,fmt='(/6x,"Atom ",i6,2x,a4,"  Z_ion ",f8.3,"   method (x,y,z): ",3(1x,a1))') k, &
-            species_label(runs(1)%species(k)), runs(1)%zion(k), (method_char(plus(b,k),minus(b,k)), b=1,3)
+            species_label(runs(1)%species(k)), runs(1)%zion(k), (method_char(plus(b,k),minus(b,k),sym(b,k)), b=1,3)
        do a = 1, 3
           write(*,fmt='(8x,3f14.6)') zstar(a,:,k)
        end do
        write(*,fmt='(8x,"Tr/3 ",f12.6)') (zstar(1,1,k)+zstar(2,2,k)+zstar(3,3,k))/three
     end do
+    ! Charge neutrality from the recorded ionic charges and occupied bands
+    neutral = .true.
+    net = zero
+    if(all(runs(1)%nocc(1:runs(1)%nspin)>0)) then
+       net = sum(runs(1)%zion) - runs(1)%spin_factor*real(sum(runs(1)%nocc(1:runs(1)%nspin)),double)
+       neutral = abs(net) < 1.0e-6_double
+    end if
     zstar_asr = zstar
+    asr = zero
     if(complete) then
        do a = 1, 3
           do b = 1, 3
@@ -1612,35 +1786,37 @@ contains
        end do
        write(*,fmt='(4x,"Max |sum_k Z*_k|: ",f12.6,"  (per atom: ",f12.6,")")') maxval(abs(asr)), &
             maxval(abs(asr))/real(natoms,double)
-       do k = 1, natoms
-          zstar_asr(:,:,k) = zstar(:,:,k) - asr/real(natoms,double)
-       end do
-       if(flag_bec_asr) write(*,fmt='(4x,"Process.BECApplyASR T: output files hold Z* - (1/N) sum_k Z*_k")')
+       if(neutral) then
+          do k = 1, natoms
+             zstar_asr(:,:,k) = zstar(:,:,k) - asr/real(natoms,double)
+          end do
+       else
+          call cq_warn(sub_name, "Charged cell (ionic charge minus electrons): the acoustic sum rule "// &
+               "does not apply; no ASR-corrected tensors are written. Net charge ", net)
+       end if
+       apply_asr = flag_bec_asr .and. neutral
+       if(apply_asr) write(*,fmt='(4x,"Process.BECApplyASR T: output files hold Z* - (1/N) sum_k Z*_k")')
     else
        call cq_warn(sub_name, "Not all atoms and directions displaced: no acoustic sum rule, "// &
-            "no extended XYZ file")
+            "no extended XYZ file; missing columns are written as zeros with method -")
     end if
-    call write_bec_json(runs(1), zstar, zstar_asr, plus, minus, complete, asr)
-    if(complete) then
-       if(flag_bec_asr) then
-          call write_bec_xyz(runs(1), zstar_asr, .true.)
-       else
-          call write_bec_xyz(runs(1), zstar, .false.)
-       end if
-    end if
-    deallocate(du, sdd, sdp, zstar, zstar_asr, plus, minus, runs)
+    call write_bec_json(runs(1), zstar, zstar_asr, plus, minus, sym, complete, complete .and. neutral, asr)
+    if(complete) call write_bec_xyz(runs(1), merge(zstar_asr, zstar, apply_asr), apply_asr)
+    deallocate(du, sdd, sd3, sa3, sdp, zstar, zstar_asr, plus, minus, sym, runs)
     return
   end subroutine process_bec
   !!***
 
-  character(len=1) function method_char(plus, minus)
+  character(len=1) function method_char(plus, minus, sym)
 
     implicit none
 
-    logical, intent(in) :: plus, minus
+    logical, intent(in) :: plus, minus, sym
 
-    if(plus .and. minus) then
+    if(plus .and. minus .and. sym) then
        method_char = 'C'
+    else if(plus .and. minus) then
+       method_char = 'A'
     else if(plus .or. minus) then
        method_char = 'F'
     else
@@ -1692,7 +1868,7 @@ contains
   ! -----------------------------------------------------------
   ! Subroutine write_bec_json
   ! -----------------------------------------------------------
-  subroutine write_bec_json(ref, zstar, zstar_asr, plus, minus, complete, asr)
+  subroutine write_bec_json(ref, zstar, zstar_asr, plus, minus, sym, complete, has_asr, asr)
 
     use numbers
     use units, only: BohrToAng
@@ -1703,8 +1879,8 @@ contains
 
     type(berry_run), intent(in) :: ref
     real(double), dimension(:,:,:), intent(in) :: zstar, zstar_asr
-    logical, dimension(:,:), intent(in) :: plus, minus
-    logical, intent(in) :: complete
+    logical, dimension(:,:), intent(in) :: plus, minus, sym
+    logical, intent(in) :: complete, has_asr
     real(double), dimension(3,3), intent(in) :: asr
 
     integer :: lun, k, a
@@ -1716,7 +1892,7 @@ contains
     write(lun,'(a)') '  "format": "CONQUEST PostProcessCQ BEC 1",'
     write(lun,'(a)') '  "units": {"lattice": "angstrom", "positions": "angstrom", "born_effective_charges": "e"},'
     write(lun,'(a)') '  "bec_tensor_convention": "Z[polarization_cartesian,displacement_cartesian]",'
-    write(lun,'(a,a,a)') '  "reference": "', trim(ref%label), '",'
+    write(lun,'(a,a,a)') '  "reference": "', json_string(trim(ref%label)), '",'
     if(complete) then
        write(lun,'(a)') '  "complete": true,'
     else
@@ -1730,14 +1906,14 @@ contains
     do k = 1, ref%natoms
        sep = ', '
        if(k==ref%natoms) sep = '  '
-       write(lun,'(a,a,a,f10.4,a,3(f16.8,a))') '    {"species": "', trim(species_label(ref%species(k))), &
+       write(lun,'(a,a,a,f10.4,a,3(f16.8,a))') '    {"species": "', json_string(trim(species_label(ref%species(k)))), &
             '", "z_ion": ', ref%zion(k), ', "position": [', ref%pos(1,k)*BohrToAng, ', ', &
             ref%pos(2,k)*BohrToAng, ', ', ref%pos(3,k)*BohrToAng, '],'
-       write(lun,'(a,3(a,a,a))') '     "method": [', ('"',method_char(plus(a,k),minus(a,k)),'", ', a=1,2), &
-            '"', method_char(plus(3,k),minus(3,k)), '"],'
+       write(lun,'(a,3(a,a,a))') '     "method": [', ('"',method_char(plus(a,k),minus(a,k),sym(a,k)),'", ', &
+            a=1,2), '"', method_char(plus(3,k),minus(3,k),sym(3,k)), '"],'
        write(lun,'(a)', advance='no') '     "born_effective_charges": '
        call write_json_matrix(lun, zstar(:,:,k))
-       if(complete) then
+       if(has_asr) then
           write(lun,'(a)') ','
           write(lun,'(a)', advance='no') '     "born_effective_charges_asr": '
           call write_json_matrix(lun, zstar_asr(:,:,k))
@@ -1745,7 +1921,7 @@ contains
        write(lun,'(a)') '}'//trim(sep)
     end do
     write(lun,'(a)', advance='no') '  ]'
-    if(complete) then
+    if(has_asr) then
        write(lun,'(a)') ','
        write(lun,'(a)', advance='no') '  "asr_sum": '
        call write_json_matrix(lun, asr)
@@ -1755,6 +1931,62 @@ contains
     write(*,fmt='(4x,"Written BEC_tensors.json")')
     return
   end subroutine write_bec_json
+
+  ! -----------------------------------------------------------
+  ! Function json_string
+  ! -----------------------------------------------------------
+  !
+  ! JSON string body: quotation marks, backslashes and control characters
+  ! escaped
+  !
+  function json_string(str) result(out)
+
+    implicit none
+
+    character(len=*), intent(in) :: str
+    character(len=:), allocatable :: out
+
+    integer :: i, c
+    character(len=5) :: u
+
+    out = ''
+    do i = 1, len(str)
+       c = iachar(str(i:i))
+       if(str(i:i)=='"' .or. c==92) then
+          out = out//achar(92)//str(i:i)
+       else if(c<32 .or. c==127) then
+          write(u,'("u",z4.4)') c
+          out = out//achar(92)//u(1:5)
+       else
+          out = out//str(i:i)
+       end if
+    end do
+    return
+  end function json_string
+
+  ! -----------------------------------------------------------
+  ! Subroutine remove_file
+  ! -----------------------------------------------------------
+  subroutine remove_file(filename)
+
+    use input_module, only: io_assign, io_close
+
+    implicit none
+
+    character(len=*), intent(in) :: filename
+
+    integer :: lun, ios
+    logical :: exists
+
+    inquire(file=filename, exist=exists)
+    if(.not.exists) return
+    call io_assign(lun)
+    open(unit=lun, file=filename, status='old', iostat=ios)
+    if(ios==0) close(unit=lun, status='delete')
+    call io_close(lun)
+    write(*,fmt='(4x,"Removed ",a," from an earlier run")') filename
+    return
+  end subroutine remove_file
 
   subroutine write_json_matrix(lun, z)
 

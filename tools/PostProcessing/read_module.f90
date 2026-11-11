@@ -467,6 +467,7 @@ contains
           call cq_abort("Process.Job dpo/bec needs the block Process.PolarisationRuns (one directory per run_line)")
        end if
        bec_disp_tol = fdf_double('Process.BECDispTolerance',1.0e-5_double)
+       if(.not.(bec_disp_tol>zero)) call cq_abort("Process.BECDispTolerance must be positive")
        flag_bec_asr = fdf_boolean('Process.BECApplyASR',.false.)
     end if
     return
