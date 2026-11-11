@@ -151,6 +151,9 @@
 !!    Removed flag_MDold
 !!   2019/11/18 14:37 dave
 !!    Added flag_variable_cell
+!!   2026/11/11 augustin
+!!    Added the full lattice (lat_vec, columns = lattice vectors), its inverse,
+!!    the cell volume and helpers for general (non-orthogonal) cells
 !!  SOURCE
 !!
 module global_module
@@ -167,7 +170,11 @@ module global_module
   integer, allocatable, dimension(:) :: id_glob_inv  ! gives global number for a CC atom
   integer, dimension(:), allocatable :: species_glob ! gives species 
   integer :: numprocs               ! number of processors
-  real(double), target :: rcellx,rcelly,rcellz  ! cell side lengths
+  real(double), target :: rcellx,rcelly,rcellz  ! cell side lengths (|a_i|)
+  ! Lattice vectors as columns, r_cart = matmul(lat_vec, r_fractional), as in
+  ! the general-cell CONQUEST (global_module there); inverse and |det|
+  real(double), dimension(3,3) :: lat_vec, lat_vec_inv
+  real(double) :: cell_vol
   real(double), allocatable, dimension(:), target :: x_atom_cell ! position of atom in sim cell (CC)
   real(double), allocatable, dimension(:), target :: y_atom_cell
   real(double), allocatable, dimension(:), target :: z_atom_cell
@@ -399,6 +406,85 @@ module global_module
 
   ! diagonalise or linear scaling
   logical :: flag_diagonalisation
+
+contains
+
+  ! Inverse and determinant of a 3x3 matrix (same algebra as invert_3x3 in
+  ! the general-cell CONQUEST, so that derived quantities agree bit for bit)
+  subroutine invert_3x3(mat, inv_mat, det)
+
+    real(double), intent(in) :: mat(3,3)
+    real(double), intent(out) :: inv_mat(3,3)
+    real(double), intent(out) :: det
+
+    inv_mat = zero
+    det = mat(1,1)*(mat(2,2)*mat(3,3) - mat(2,3)*mat(3,2)) &
+        - mat(1,2)*(mat(2,1)*mat(3,3) - mat(2,3)*mat(3,1)) &
+        + mat(1,3)*(mat(2,1)*mat(3,2) - mat(2,2)*mat(3,1))
+    if (abs(det) < 1e-12_double) return
+    inv_mat(1,1) =  (mat(2,2)*mat(3,3) - mat(2,3)*mat(3,2)) / det
+    inv_mat(1,2) = -(mat(1,2)*mat(3,3) - mat(1,3)*mat(3,2)) / det
+    inv_mat(1,3) =  (mat(1,2)*mat(2,3) - mat(1,3)*mat(2,2)) / det
+    inv_mat(2,1) = -(mat(2,1)*mat(3,3) - mat(2,3)*mat(3,1)) / det
+    inv_mat(2,2) =  (mat(1,1)*mat(3,3) - mat(1,3)*mat(3,1)) / det
+    inv_mat(2,3) = -(mat(1,1)*mat(2,3) - mat(1,3)*mat(2,1)) / det
+    inv_mat(3,1) =  (mat(2,1)*mat(3,2) - mat(2,2)*mat(3,1)) / det
+    inv_mat(3,2) = -(mat(1,1)*mat(3,2) - mat(1,2)*mat(3,1)) / det
+    inv_mat(3,3) =  (mat(1,1)*mat(2,2) - mat(1,2)*mat(2,1)) / det
+  end subroutine invert_3x3
+
+  ! Derived lattice state from lat_vec: inverse, volume, vector lengths
+  ! (rcellx/y/z keep the legacy meaning |a_i|)
+  subroutine set_lattice(singular)
+
+    logical, intent(out) :: singular
+
+    real(double) :: det
+
+    call invert_3x3(lat_vec, lat_vec_inv, det)
+    singular = abs(det) < 1e-12_double
+    cell_vol = abs(det)
+    rcellx = sqrt(sum(lat_vec(:,1)**2))
+    rcelly = sqrt(sum(lat_vec(:,2)**2))
+    rcellz = sqrt(sum(lat_vec(:,3)**2))
+  end subroutine set_lattice
+
+  ! True when a_i = |a_i| e_i (the orthorhombic, axis-aligned cell that the
+  ! grid-based jobs other than the Berry phase assume)
+  logical function cell_is_axis_aligned()
+
+    integer :: i, j
+    real(double) :: tol
+
+    tol = 128.0_double*epsilon(one)*max(one, maxval(abs(lat_vec)))
+    cell_is_axis_aligned = .true.
+    do j = 1, 3
+       do i = 1, 3
+          if(i/=j .and. abs(lat_vec(i,j))>tol) cell_is_axis_aligned = .false.
+       end do
+       if(lat_vec(j,j)<=zero) cell_is_axis_aligned = .false.
+    end do
+  end function cell_is_axis_aligned
+
+  ! Shift r by the lattice vector that brings its fractional coordinates into
+  ! [0,1), with the boundary tolerance shift_in_bohr expressed in fractional
+  ! units (as wrap_into_cell in the general-cell CONQUEST).  Subtracting an
+  ! integer lattice vector leaves an atom already in the cell bit for bit
+  ! unchanged.
+  subroutine wrap_into_cell(r)
+
+    real(double), dimension(3), intent(inout) :: r
+
+    real(double), dimension(3) :: f, eps_frac, n
+    integer :: i
+
+    f = matmul(lat_vec_inv, r)
+    do i = 1, 3
+       eps_frac(i) = shift_in_bohr*sqrt(sum(lat_vec_inv(i,:)**2))
+    end do
+    n = real(floor(f + eps_frac), double)
+    if(any(n/=zero)) r = r - matmul(lat_vec, n)
+  end subroutine wrap_into_cell
 
 end module global_module
 !!***

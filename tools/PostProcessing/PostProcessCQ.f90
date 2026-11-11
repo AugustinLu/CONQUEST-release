@@ -9,6 +9,8 @@ program ConvertCharge
   use output
   use memory_module,     only: init_reg_mem
   use stm
+  use global_module, only: cell_is_axis_aligned
+  use GenComms, only: cq_abort
   use berry, only: process_berry, process_pol_difference, process_bec
 
   implicit none
@@ -19,6 +21,12 @@ program ConvertCharge
   call write_banner
   ! Load input and read
   call read_input
+  ! Jobs 1-5 (coordinate conversion, charge, band densities, STM) assume an
+  ! orthorhombic cell along x, y, z; only the Berry-phase jobs and the DOS,
+  ! pDOS and band-structure jobs handle general lattice vectors
+  if(i_job>=1 .and. i_job<=5 .and. .not.cell_is_axis_aligned()) &
+       call cq_abort("This Process.Job needs an orthorhombic cell with lattice vectors along x, y, z; "// &
+       "it is not implemented for general (non-orthogonal or rotated) cells")
   ! Now select job
   if(i_job==1) then ! Convert coordinates
      if(coord_format==1) then

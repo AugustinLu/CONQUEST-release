@@ -172,6 +172,7 @@ contains
                               ni_in_cell,                            &
                               flag_fractional_atomic_coords, rcellx, &
                               rcelly, rcellz, id_glob, iprint_init,  &
+                              lat_vec, set_lattice, wrap_into_cell,  &
                               id_glob_inv, atom_coord, species_glob, &
                               flag_move_atom, area_init, shift_in_bohr, &
                               runtype,atom_coord_diff,id_glob_old,id_glob_inv_old
@@ -191,6 +192,8 @@ contains
     logical        :: movex, movey, movez
     real(double)   :: x, y, z
     real(double), dimension(3) :: cell
+    real(double), dimension(3,3) :: lat_rows
+    logical :: singular
 
     ! Local variables for reading pdb files
     integer      :: ios, j
@@ -414,19 +417,24 @@ second:   do
           if(iprint_init>2) write(io_lun,'(10x,a40,a20)') 'Entering read_atomic_positions; reading ', filename
           call io_assign(lun)
           open(unit=lun,file=filename,status='old')
-          ! Read supercell vector - for now it must be orthorhombic so
-          ! we use x and y as dummy variables
-          read(lun,*) r_super_x, x, y
-          read(lun,*) x,r_super_y, y
-          read(lun,*) x,y,r_super_z
+          ! Read the three lattice vectors, one per row (as the general-cell
+          ! CONQUEST); internally they are the columns of lat_vec
+          read(lun,*) lat_rows(1,1), lat_rows(1,2), lat_rows(1,3)
+          read(lun,*) lat_rows(2,1), lat_rows(2,2), lat_rows(2,3)
+          read(lun,*) lat_rows(3,1), lat_rows(3,2), lat_rows(3,3)
           read(lun,*) ni_in_cell
          !2010.06.25 TM (Angstrom Units in coords file, but not pdb)
           if(dist_units == ang) then
-            r_super_x = r_super_x*AngToBohr
-            r_super_y = r_super_y*AngToBohr
-            r_super_z = r_super_z*AngToBohr
+            lat_rows = lat_rows*AngToBohr
           endif
          !2010.06.25 TM (Angstrom Units in coords file, but not pdb)
+          lat_vec = transpose(lat_rows)
+          call set_lattice(singular)
+          if(singular) call cq_abort("read_atomic_positions: singular lattice in coordinate file")
+          ! Legacy lengths |a_i| (equal to the cell sides of an orthorhombic cell)
+          r_super_x = rcellx
+          r_super_y = rcelly
+          r_super_z = rcellz
 
           allocate(flag_move_atom(3,ni_in_cell),atom_coord(3,&
                    ni_in_cell),species_glob(ni_in_cell),STAT=stat)
@@ -444,9 +452,9 @@ second:   do
                                &in input file: ", species_glob(i), n_species)
              end if
              if(flag_fractional_atomic_coords) then
-                atom_coord(1,i) = x*r_super_x
-                atom_coord(2,i) = y*r_super_y
-                atom_coord(3,i) = z*r_super_z
+                atom_coord(1,i) = x*lat_vec(1,1) + y*lat_vec(1,2) + z*lat_vec(1,3)
+                atom_coord(2,i) = x*lat_vec(2,1) + y*lat_vec(2,2) + z*lat_vec(2,3)
+                atom_coord(3,i) = x*lat_vec(3,1) + y*lat_vec(3,2) + z*lat_vec(3,3)
              else
                 atom_coord(1,i) = x
                 atom_coord(2,i) = y
@@ -456,25 +464,10 @@ second:   do
                 ! Moved here so that distances are corrected *before* wrapping below
                 if(dist_units == ang) atom_coord(:,i)=atom_coord(:,i)*AngToBohr
              end if
-             ! Wrap coordinates
-             cell(1) = r_super_x
-             cell(2) = r_super_y
-             cell(3) = r_super_z
-             do j = 1, 3
-                ! Introduce shift_in_bohr: (small shift for fractional coordinates may
-                ! cause a problem for very large systems.)
-                !
-                ! Originally, 'if'-statement in the next line was active, but since we need
-                ! a common and strict rule to treat the atoms on the boundary of the unit cell, 
-                ! we need to do this wrapping with shift_in_bohr for all cases. 
-                !
-                ! Thus, I have commented out the next line.   23/Jul/2014 TM   
-                !  (coordinate of the atoms on the boundary of the unit cell must be 0.000*** not 0.999***.)
-                !
-                !if ((atom_coord(j,i) < zero) .or. (atom_coord(j,i) > cell(j))) &
-                   atom_coord(j,i) = &
-                      atom_coord(j,i) - floor((atom_coord(j,i)+shift_in_bohr)/cell(j)) * cell(j)
-             end do
+             ! Wrap coordinates into the cell in fractional coordinates, with the
+             ! boundary tolerance shift_in_bohr: atoms on a face of the cell must
+             ! be at 0.000..., not 0.999... (23/Jul/2014 TM)
+             call wrap_into_cell(atom_coord(:,i))
              flag_move_atom(1,i) = movex
              flag_move_atom(2,i) = movey
              flag_move_atom(3,i) = movez
@@ -497,9 +490,19 @@ second:   do
              x_atom_cell(ni_in_cell), y_atom_cell(ni_in_cell),&
              z_atom_cell(ni_in_cell),species(ni_in_cell),STAT=stat)
     if(stat/=0) call cq_abort("Failure to allocate coordinates(2): ",ni_in_cell)
+    if(pdb_format) then
+       ! PDB input in PostProcessCQ: orthorhombic cell from the side lengths
+       lat_vec = zero
+       lat_vec(1,1) = r_super_x
+       lat_vec(2,2) = r_super_y
+       lat_vec(3,3) = r_super_z
+    end if
     call gcopy(r_super_x)
     call gcopy(r_super_y)
     call gcopy(r_super_z)
+    call gcopy(lat_vec,3,3)
+    call set_lattice(singular)
+    if(singular) call cq_abort("read_atomic_positions: singular lattice")
     call gcopy(species_glob,ni_in_cell)
     call gcopy(atom_coord, 3, ni_in_cell)
     call gcopy(flag_move_atom, 3, ni_in_cell)

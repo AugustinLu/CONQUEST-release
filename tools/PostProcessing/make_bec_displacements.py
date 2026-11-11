@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Create CONQUEST run directories for finite-difference Born effective charges.
 
-Each atom (or a chosen subset) is displaced by +delta and -delta along x, y
-and z, one coordinate at a time, from a reference calculation directory.
+Each atom (or a chosen subset) is displaced by +delta and -delta along the
+Cartesian x, y and z axes, one coordinate at a time, from a reference
+calculation directory.  The cell may be general (non-orthogonal): with
+fractional coordinates, the Cartesian step is converted with the inverse
+lattice, so it may change several fractional coordinates.
 Every run directory receives a copy of the reference Conquest_input (with
 ``Process.Job pol`` set so that PostProcessCQ writes the Berry-phase data
 file), the displaced coordinates and the files listed with --copy (ion
@@ -58,19 +61,32 @@ def is_true(value):
 
 
 def read_coords(path):
+    """Lattice vectors (rows a_1, a_2, a_3) and atom lines of a CONQUEST coordinate file."""
     with open(path) as fh:
         lines = [l for l in fh if l.strip()]
     cell = [[float(v) for v in lines[i].split()[:3]] for i in range(3)]
-    for i in range(3):
-        for j in range(3):
-            if i != j and abs(cell[i][j]) > 1e-10:
-                sys.exit("Only orthorhombic cells are supported (off-diagonal lattice vector component)")
     nat = int(lines[3].split()[0])
     atoms = []
     for l in lines[4:4 + nat]:
         p = l.split()
         atoms.append([float(p[0]), float(p[1]), float(p[2])] + p[3:])
     return cell, atoms
+
+
+def is_diagonal(cell):
+    return all(cell[i][j] == 0.0 for i in range(3) for j in range(3) if i != j)
+
+
+def inverse3(m):
+    """Inverse of a 3x3 matrix (list of rows)."""
+    det = (m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+           - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+           + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]))
+    if abs(det) < 1e-12:
+        sys.exit("Singular lattice in the coordinate file")
+    return [[(m[(j + 1) % 3][(i + 1) % 3] * m[(j + 2) % 3][(i + 2) % 3]
+              - m[(j + 1) % 3][(i + 2) % 3] * m[(j + 2) % 3][(i + 1) % 3]) / det
+             for j in range(3)] for i in range(3)]
 
 
 def write_coords(path, cell, atoms):
@@ -118,7 +134,12 @@ def main():
     if units.startswith("a") and not units.startswith("a0"):
         to_file = BOHR_TO_ANG  # file distances in Angstrom
     cell, atoms = read_coords(os.path.join(args.ref, coord_name))
-    lengths = [cell[i][i] for i in range(3)]  # in file units
+    # Fractional change for a Cartesian step along axis b: rows a_j of the
+    # cell give r = sum_j f_j a_j, so df_j = step * (cell^-1)[b][j]
+    if is_diagonal(cell):
+        frac_step = [[(1.0 / cell[b][b] if j == b else 0.0) for j in range(3)] for b in range(3)]
+    else:
+        frac_step = inverse3(cell)
 
     if args.atoms:
         sel = set()
@@ -161,7 +182,11 @@ def main():
                 new = [list(a) for a in atoms]
                 step = s * args.delta * to_file  # in file distance units
                 if frac:
-                    new[i - 1][b] += step / lengths[b]
+                    if is_diagonal(cell):
+                        new[i - 1][b] += step / cell[b][b]
+                    else:
+                        for j in range(3):
+                            new[i - 1][j] += step * frac_step[b][j]
                 else:
                     new[i - 1][b] += step
                 make_run(f"a{i:04d}_{axis}_{tag}", new)

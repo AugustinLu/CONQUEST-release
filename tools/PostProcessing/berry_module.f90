@@ -27,21 +27,32 @@
 !!     M_mn(k_j,k_j+1) = <u_mk_j|u_nk_j+1>
 !!                     = int_cell psi*_mk_j(r) psi_nk_j+1(r) exp(-i dk.r) dr
 !!
-!!   with dk = b_alpha/J.  The last point, k_J = k_0 + b_alpha, uses
-!!   psi(k_J) = psi(k_0) (periodic gauge), which is exact for the Bloch
-!!   functions on the grid.  The Berry phase of a string is
-!!   phi = -Im ln prod_j det M(k_j,k_j+1); x = phi/2pi is the sum of Wannier
-!!   centres (one spin channel) in units of the cell length along alpha and
+!!   with dk = b_alpha/J along the reciprocal lattice vector b_alpha
+!!   (b_alpha.a_beta = 2pi delta_alpha,beta).  The grid points are
+!!   r = sum_i (n_i/N_i) a_i, so dk.r = 2pi n_alpha/(J N_alpha) for any cell.
+!!   The last point, k_J = k_0 + b_alpha, uses psi(k_J) = psi(k_0) (periodic
+!!   gauge), which is exact for the Bloch functions on the grid.  The Berry
+!!   phase of a string is phi = -Im ln prod_j det M(k_j,k_j+1);
+!!   x_alpha = phi/2pi is the sum of Wannier centres (one spin channel) in
+!!   fractional coordinates along a_alpha, and with the reduced polarisation
 !!
-!!     P_el = -(f e / Omega) xbar a_alpha,  f = 2 (no spin) or 1 per channel.
+!!     pi_alpha = -f xbar_alpha + sum_I Z_I s_I,alpha  (units of e)
+!!     P = (e / Omega) sum_alpha pi_alpha a_alpha,  f = 2 (no spin) or 1 per channel
 !!
-!!   Only orthorhombic cells (as standard CONQUEST).  Meshes reduced by time
-!!   reversal are unfolded with psi_-k = conjg(psi_k) (collinear spin only).
+!!   (s_I fractional atomic coordinates), a Cartesian vector defined modulo
+!!   the quanta e a_alpha/Omega.  Cells are general: lattice vectors a_i as
+!!   the columns of lat_vec (non-orthogonal cells as in the general-cell
+!!   CONQUEST); for an orthorhombic cell this reduces to P_alpha along x, y, z.
+!!   Meshes reduced by time reversal are unfolded with psi_-k = conjg(psi_k)
+!!   (collinear spin only).
 !!  AUTHOR
 !!   CONQUEST developers
 !!  CREATION DATE
 !!   2026/11/11
 !!  MODIFICATION HISTORY
+!!   2026/11/11 augustin
+!!    General (non-orthogonal) cells: strings along b_alpha, lattice-vector
+!!    grid, Cartesian polarisation and BECs, data file format 2 (lattice)
 !!  SOURCE
 !!
 module berry
@@ -63,7 +74,8 @@ module berry
   ! Everything needed from one structure to form polarisation differences
   type berry_run
      character(len=256) :: label
-     real(double), dimension(3) :: cell
+     real(double), dimension(3,3) :: lat              ! lattice vectors as columns (bohr)
+     real(double), dimension(3,3) :: lat_inv          ! its inverse
      real(double) :: volume, spin_factor
      integer :: natoms, nspin
      integer, dimension(3) :: mesh
@@ -79,13 +91,13 @@ module berry
   type pao_table
      integer :: npts = 0, npao = 0
      integer, allocatable, dimension(:) :: idx        ! home grid point
-     integer, allocatable, dimension(:,:) :: shift    ! (3,npts) image index s: home = actual - s.L
+     integer, allocatable, dimension(:,:) :: shift    ! (3,npts) image index s: home = actual - A s
      real(double), allocatable, dimension(:,:) :: val ! (npao,npts)
   end type pao_table
   type(pao_table), allocatable, dimension(:), save :: tables
   logical, save :: tables_built = .false.
 
-  integer, parameter :: berry_format = 1
+  integer, parameter :: berry_format = 2  ! 1: orthorhombic (Cell), 2: Lattice
   real(double), parameter :: kmatch_tol = 1.0e-3_double     ! fractional k tolerance
   real(double), parameter :: string_spread_warn = 0.25_double ! in units of 2pi
   real(double), parameter :: step_warn = 0.25_double          ! in units of 2pi
@@ -116,7 +128,7 @@ contains
     use numbers
     use local, only: nptsx, nptsy, nptsz, grid_x, grid_y, grid_z, &
          berry_mp, berry_mp_shift, berry_direction, berry_file, berry_table_mb
-    use global_module, only: nspin, ni_in_cell, atom_coord, species_glob
+    use global_module, only: nspin, ni_in_cell, atom_coord, species_glob, lat_vec, cell_vol
     use species_module, only: charge
     use dimens, only: r_super_x, r_super_y, r_super_z
     use read, only: read_eigenvalues, read_psi_coeffs
@@ -141,11 +153,12 @@ contains
     cell = (/r_super_x, r_super_y, r_super_z/)
     npts = (/nptsx, nptsy, nptsz/)
     dg = (/grid_x, grid_y, grid_z/)
-    gpv = grid_x*grid_y*grid_z
+    gpv = cell_vol/real(nptsx*nptsy*nptsz,double)  ! grid-point volume (scales |det M| only)
     ngrid = nptsx*nptsy*nptsz
+    ! cell holds |a_i| and dg the grid step length along a_i
     do i=1,3
        if(abs(real(npts(i),double)*dg(i)-cell(i))>1.0e-6_double*cell(i)) &
-            call cq_abort("Berry phase: real-space grid does not span the cell along axis ",i)
+            call cq_abort("Berry phase: real-space grid does not span the cell along lattice vector ",i)
     end do
     ! PAO evaluation needs these tables
     call set_fact(8)
@@ -154,7 +167,7 @@ contains
     call read_eigenvalues
     call read_psi_coeffs("Process")
     write(*,fmt='(/2x,"Berry-phase polarisation (King-Smith & Vanderbilt)")')
-    write(*,fmt='(4x,"Cell (bohr):             ",3f14.8)') cell
+    write(*,fmt='(4x,"Lattice vector a",i1," (bohr): ",3f14.8)') (i, lat_vec(:,i), i=1,3)
     write(*,fmt='(4x,"Grid points:             ",3i8)') npts
     write(*,fmt='(4x,"Monkhorst-Pack mesh:     ",3i8)') berry_mp
     write(*,fmt='(4x,"Mesh shift (fractional): ",3f14.8)') berry_mp_shift
@@ -162,11 +175,11 @@ contains
     call find_occupied_bands(nocc)
     nmax = maxval(nocc(1:nspin))
     ! Map the full mesh onto the k-points in the files (time reversal)
-    call map_mesh(cell, nfull, fmesh, kfile, kconj)
+    call map_mesh(nfull, fmesh, kfile, kconj)
     ! PAO values on the grid, reused for every k-point if they fit in memory
     call build_pao_tables(berry_table_mb)
     ! Set up the run record
-    call init_run(run, cell, berry_mp, nspin)
+    call init_run(run, lat_vec, berry_mp, nspin)
     run%label = '.'
     run%nocc = nocc
     run%shift = berry_mp_shift
@@ -185,8 +198,8 @@ contains
        allocate(run%dir(alpha)%kperp(2,run%dir(alpha)%nstr), &
             run%dir(alpha)%x(run%dir(alpha)%nstr,nspin))
        allocate(string_pt(J_a))
-       write(*,fmt='(/4x,"Direction ",i1,": ",i5," strings of ",i4," k-points")') alpha, &
-            run%dir(alpha)%nstr, J_a
+       write(*,fmt='(/4x,"Direction ",i1,": ",i5," strings of ",i4," k-points along b_",i1)') alpha, &
+            run%dir(alpha)%nstr, J_a, alpha
        do i_spin = 1, nspin
           i_str = 0
           do i1 = 1, berry_mp(p1)
@@ -361,18 +374,20 @@ contains
   ! Rebuilds the full Monkhorst-Pack mesh exactly as CONQUEST does
   ! (initial_read_module), and finds for each mesh point the k-point in
   ! eigenvalues.dat equal to it or to minus it (meshes reduced by time
-  ! reversal), modulo a reciprocal lattice vector.  The k-points read from
-  ! eigenvalues.dat (5 decimals) are snapped to exact mesh values first.
+  ! reversal), modulo a reciprocal lattice vector.  The Cartesian k-points
+  ! read from eigenvalues.dat (5 decimals) are converted to fractional
+  ! reciprocal coordinates q = A^T k/2pi, snapped to exact mesh values, and
+  ! converted back, k = 2pi A^-T q.
   !
-  subroutine map_mesh(cell, nfull, fmesh, kfile, kconj)
+  subroutine map_mesh(nfull, fmesh, kfile, kconj)
 
     use numbers
     use local, only: nkp, kx, ky, kz, berry_mp, berry_mp_shift
+    use global_module, only: lat_vec, lat_vec_inv
     use GenComms, only: cq_abort
 
     implicit none
 
-    real(double), dimension(3), intent(in) :: cell
     integer, intent(out) :: nfull
     real(double), allocatable, dimension(:,:), intent(out) :: fmesh
     integer, allocatable, dimension(:), intent(out) :: kfile
@@ -398,9 +413,8 @@ contains
     ! Fractional k-points from the file, snapped to the mesh
     allocate(kfrac(3,nkp))
     do i_kp = 1, nkp
-       kfrac(1,i_kp) = kx(i_kp)*cell(1)/twopi
-       kfrac(2,i_kp) = ky(i_kp)*cell(2)/twopi
-       kfrac(3,i_kp) = kz(i_kp)*cell(3)/twopi
+       d = (/kx(i_kp), ky(i_kp), kz(i_kp)/)
+       kfrac(:,i_kp) = matmul(transpose(lat_vec), d)/twopi
        found = .false.
        do n = 1, nfull
           d = kfrac(:,i_kp) - fmesh(:,n)
@@ -412,9 +426,10 @@ contains
        end do
        if(.not.found) call cq_abort("Berry phase: k-point in eigenvalues.dat is not on the MP mesh "// &
             "given by the Diag.MP* keywords: ", i_kp)
-       kx(i_kp) = twopi*kfrac(1,i_kp)/cell(1)
-       ky(i_kp) = twopi*kfrac(2,i_kp)/cell(2)
-       kz(i_kp) = twopi*kfrac(3,i_kp)/cell(3)
+       d = twopi*matmul(transpose(lat_vec_inv), kfrac(:,i_kp))
+       kx(i_kp) = d(1)
+       ky(i_kp) = d(2)
+       kz(i_kp) = d(3)
     end do
     ! Each mesh point: a file k-point equal to it, or to minus it
     n_conj = 0
@@ -453,18 +468,19 @@ contains
   ! -----------------------------------------------------------
   !
   ! Occupied Bloch functions at file k-point i_kp on the real-space grid,
-  ! psi(band, grid point), with grid point (ix,iy,iz) at ((ix-1)dx, ...).
+  ! psi(band, grid point), with grid point (ix,iy,iz) at
+  ! ((ix-1)/N_1) a_1 + ((iy-1)/N_2) a_2 + ((iz-1)/N_3) a_3.
   ! Normalised so that sum_r |psi|^2 dV = 1 over the cell.  With conj the
   ! complex conjugate (the Bloch function at -k) is returned.
   !
   subroutine build_psi(i_kp, conj, i_spin, nocc, nmax, ngrid, psi)
 
     use numbers
-    use local, only: nptsx, nptsy, nptsz, grid_x, grid_y, grid_z, evec_coeff, kx, ky, kz, &
+    use local, only: nptsx, nptsy, nptsz, evec_coeff, kx, ky, kz, &
          band_full_to_active
-    use global_module, only: ni_in_cell, atom_coord, species_glob
+    use global_module, only: ni_in_cell, atom_coord, species_glob, lat_vec
     use pao_format, only: pao
-    use dimens, only: RadiusAtomf, r_super_x, r_super_y, r_super_z
+    use dimens, only: RadiusAtomf
     use species_module, only: nsf_species
     use angular_coeff_routines, only: evaluate_pao
     use GenComms, only: cq_abort
@@ -476,9 +492,11 @@ contains
     complex(double_cplx), dimension(nmax,ngrid), intent(out) :: psi
 
     integer :: i_atom, i_spec, i_l, i_zeta, i_m, npao, np, i_band, ib
-    integer :: ix, iy, iz, jx, jy, jz, sx, sy, sz, minx, maxx, miny, maxy, minz, maxz, idx
+    integer :: ix, iy, iz, jx, jy, jz, sx, sy, sz, idx
+    integer, dimension(3) :: lo, hi
     real(double) :: dx, dy, dz, rc2, phase_atom, ph
-    real(double), dimension(3) :: dg, cell, kvec
+    real(double), dimension(3) :: kvec, kA, rz, ryz, r
+    real(double), dimension(3,3) :: g
     real(double), allocatable, dimension(:) :: vals
     real(double), allocatable, dimension(:,:) :: cr, ci, wr, wi
     complex(double_cplx), allocatable, dimension(:,:) :: coefT
@@ -487,9 +505,12 @@ contains
     integer, parameter :: chunk = 2048
 
     psi = cmplx(zero,zero,double_cplx)
-    dg = (/grid_x, grid_y, grid_z/)
-    cell = (/r_super_x, r_super_y, r_super_z/)
+    call grid_steps(g)
     kvec = (/kx(i_kp), ky(i_kp), kz(i_kp)/)
+    ! k.a_j: the phase of the lattice translation A s is k.(A s) = sum_j kA(j) s_j
+    do ix = 1, 3
+       kA(ix) = dot_product(kvec, lat_vec(:,ix))
+    end do
     allocate(vals(size(evec_coeff,1)), coefT(nocc,size(evec_coeff,1)))
     if(tables_built) then
        ! Fast path: PAO values stored; only phases and coefficients change with k.
@@ -512,9 +533,9 @@ contains
              call dgemm('N','N', nocc, nc, npao, one, ci, nocc, tables(i_atom)%val(1,p0), &
                   npao, zero, wi, nocc)
              do np = p0, p0 + nc - 1
-                ph = phase_atom - kvec(1)*cell(1)*real(tables(i_atom)%shift(1,np),double) &
-                     - kvec(2)*cell(2)*real(tables(i_atom)%shift(2,np),double) &
-                     - kvec(3)*cell(3)*real(tables(i_atom)%shift(3,np),double)
+                ph = phase_atom - kA(1)*real(tables(i_atom)%shift(1,np),double) &
+                     - kA(2)*real(tables(i_atom)%shift(2,np),double) &
+                     - kA(3)*real(tables(i_atom)%shift(3,np),double)
                 phase = cmplx(cos(ph),sin(ph),double_cplx)
                 idx = tables(i_atom)%idx(np)
                 psi(1:nocc,idx) = psi(1:nocc,idx) + &
@@ -541,28 +562,26 @@ contains
        end do
        phase_atom = dot_product(kvec, atom_coord(:,i_atom))
        rc2 = RadiusAtomf(i_spec)**2
-       minx = floor((atom_coord(1,i_atom) - RadiusAtomf(i_spec))/dg(1))
-       maxx = floor((atom_coord(1,i_atom) + RadiusAtomf(i_spec))/dg(1)) + 1
-       miny = floor((atom_coord(2,i_atom) - RadiusAtomf(i_spec))/dg(2))
-       maxy = floor((atom_coord(2,i_atom) + RadiusAtomf(i_spec))/dg(2)) + 1
-       minz = floor((atom_coord(3,i_atom) - RadiusAtomf(i_spec))/dg(3))
-       maxz = floor((atom_coord(3,i_atom) + RadiusAtomf(i_spec))/dg(3)) + 1
-       do iz = minz, maxz
-          dz = dg(3)*real(iz,double) - atom_coord(3,i_atom)
+       call atom_grid_bounds(atom_coord(:,i_atom), RadiusAtomf(i_spec), lo, hi)
+       do iz = lo(3), hi(3)
+          rz = g(:,3)*real(iz,double)
           jz = modulo(iz,nptsz) + 1
-          sz = (iz - modulo(iz,nptsz))/nptsz   ! image index: home point = actual - sz*L
-          do iy = miny, maxy
-             dy = dg(2)*real(iy,double) - atom_coord(2,i_atom)
+          sz = (iz - modulo(iz,nptsz))/nptsz   ! image index: home point = actual - A s
+          do iy = lo(2), hi(2)
+             ryz = rz + g(:,2)*real(iy,double)
              jy = modulo(iy,nptsy) + 1
              sy = (iy - modulo(iy,nptsy))/nptsy
-             do ix = minx, maxx
-                dx = dg(1)*real(ix,double) - atom_coord(1,i_atom)
+             do ix = lo(1), hi(1)
+                r = ryz + g(:,1)*real(ix,double)
+                dx = r(1) - atom_coord(1,i_atom)
+                dy = r(2) - atom_coord(2,i_atom)
+                dz = r(3) - atom_coord(3,i_atom)
                 if(dx*dx+dy*dy+dz*dz > rc2) cycle
                 jx = modulo(ix,nptsx) + 1
                 sx = (ix - modulo(ix,nptsx))/nptsx
-                ! Contribution of the image atom at tau - s.L to the home grid point
-                ph = phase_atom - kvec(1)*cell(1)*real(sx,double) - kvec(2)*cell(2)*real(sy,double) &
-                     - kvec(3)*cell(3)*real(sz,double)
+                ! Contribution of the image atom at tau - A s to the home grid point
+                ph = phase_atom - kA(1)*real(sx,double) - kA(2)*real(sy,double) &
+                     - kA(3)*real(sz,double)
                 phase = cmplx(cos(ph),sin(ph),double_cplx)
                 np = 0
                 do i_l = 0, pao(i_spec)%greatest_angmom
@@ -596,7 +615,7 @@ contains
   subroutine build_pao_tables(max_mb)
 
     use numbers
-    use local, only: nptsx, nptsy, nptsz, grid_x, grid_y, grid_z, evec_coeff
+    use local, only: nptsx, nptsy, nptsz, evec_coeff
     use global_module, only: ni_in_cell, atom_coord, species_glob
     use pao_format, only: pao
     use dimens, only: RadiusAtomf
@@ -609,11 +628,13 @@ contains
     real(double), intent(in) :: max_mb
 
     integer :: i_atom, i_spec, i_l, i_zeta, i_m, npao, np, n, pass, stat
-    integer :: ix, iy, iz, minx, maxx, miny, maxy, minz, maxz
+    integer :: ix, iy, iz
+    integer, dimension(3) :: lo, hi
     real(double) :: dx, dy, dz, rc2, mbytes
-    real(double), dimension(3) :: dg
+    real(double), dimension(3) :: rz, ryz, r
+    real(double), dimension(3,3) :: g
 
-    dg = (/grid_x, grid_y, grid_z/)
+    call grid_steps(g)
     allocate(tables(ni_in_cell))
     mbytes = zero
     do pass = 1, 2 ! 1: count points, 2: fill
@@ -633,19 +654,17 @@ contains
           end if
           tables(i_atom)%npao = npao
           rc2 = RadiusAtomf(i_spec)**2
-          minx = floor((atom_coord(1,i_atom) - RadiusAtomf(i_spec))/dg(1))
-          maxx = floor((atom_coord(1,i_atom) + RadiusAtomf(i_spec))/dg(1)) + 1
-          miny = floor((atom_coord(2,i_atom) - RadiusAtomf(i_spec))/dg(2))
-          maxy = floor((atom_coord(2,i_atom) + RadiusAtomf(i_spec))/dg(2)) + 1
-          minz = floor((atom_coord(3,i_atom) - RadiusAtomf(i_spec))/dg(3))
-          maxz = floor((atom_coord(3,i_atom) + RadiusAtomf(i_spec))/dg(3)) + 1
+          call atom_grid_bounds(atom_coord(:,i_atom), RadiusAtomf(i_spec), lo, hi)
           n = 0
-          do iz = minz, maxz
-             dz = dg(3)*real(iz,double) - atom_coord(3,i_atom)
-             do iy = miny, maxy
-                dy = dg(2)*real(iy,double) - atom_coord(2,i_atom)
-                do ix = minx, maxx
-                   dx = dg(1)*real(ix,double) - atom_coord(1,i_atom)
+          do iz = lo(3), hi(3)
+             rz = g(:,3)*real(iz,double)
+             do iy = lo(2), hi(2)
+                ryz = rz + g(:,2)*real(iy,double)
+                do ix = lo(1), hi(1)
+                   r = ryz + g(:,1)*real(ix,double)
+                   dx = r(1) - atom_coord(1,i_atom)
+                   dy = r(2) - atom_coord(2,i_atom)
+                   dz = r(3) - atom_coord(3,i_atom)
                    if(dx*dx+dy*dy+dz*dz > rc2) cycle
                    n = n + 1
                    if(pass==2) then
@@ -687,11 +706,68 @@ contains
   end subroutine build_pao_tables
 
   ! -----------------------------------------------------------
+  ! Subroutine grid_steps
+  ! -----------------------------------------------------------
+  !
+  ! Cartesian grid step vectors g_i = a_i/N_i (columns): grid point with
+  ! integer indices n is at sum_i n_i g_i (the general-cell CONQUEST grid)
+  !
+  subroutine grid_steps(g)
+
+    use local, only: nptsx, nptsy, nptsz
+    use global_module, only: lat_vec
+
+    implicit none
+
+    real(double), dimension(3,3), intent(out) :: g
+
+    g(:,1) = lat_vec(:,1)/real(nptsx,double)
+    g(:,2) = lat_vec(:,2)/real(nptsy,double)
+    g(:,3) = lat_vec(:,3)/real(nptsz,double)
+    return
+  end subroutine grid_steps
+
+  ! -----------------------------------------------------------
+  ! Subroutine atom_grid_bounds
+  ! -----------------------------------------------------------
+  !
+  ! Range of (unwrapped) grid indices along each lattice vector containing
+  ! every grid point within rc of the atom at tau.  A point r with
+  ! |r - tau| <= rc has fractional coordinate i within rc |row_i(A^-1)| of
+  ! that of tau; one extra point on each side guards against rounding.
+  !
+  subroutine atom_grid_bounds(tau, rc, lo, hi)
+
+    use local, only: nptsx, nptsy, nptsz
+    use global_module, only: lat_vec_inv
+
+    implicit none
+
+    real(double), dimension(3), intent(in) :: tau
+    real(double), intent(in) :: rc
+    integer, dimension(3), intent(out) :: lo, hi
+
+    integer :: i
+    integer, dimension(3) :: npts
+    real(double) :: f, h
+
+    npts = (/nptsx, nptsy, nptsz/)
+    do i = 1, 3
+       f = dot_product(lat_vec_inv(i,:), tau)
+       h = rc*sqrt(dot_product(lat_vec_inv(i,:), lat_vec_inv(i,:)))
+       lo(i) = floor((f - h)*real(npts(i),double)) - 1
+       hi(i) = floor((f + h)*real(npts(i),double)) + 1
+    end do
+    return
+  end subroutine atom_grid_bounds
+
+  ! -----------------------------------------------------------
   ! Subroutine overlap_phase
   ! -----------------------------------------------------------
   !
   ! M_mn = sum_r conjg(psiA_m(r)) psiB_n(r) exp(-i dk.r) dV, dk = b_alpha/J;
-  ! returns arg det M and ln|det M| from the LU decomposition (no overflow).
+  ! with r = sum_i (n_i/N_i) a_i, dk.r = 2pi n_alpha/(J N_alpha) in any cell.
+  ! Returns arg det M and ln|det M| from the LU decomposition (no overflow).
   !
   subroutine overlap_phase(psiA, psiB, n, nmax, ngrid, npts, alpha, J, gpv, arg, logabs)
 
@@ -748,19 +824,18 @@ contains
   ! -----------------------------------------------------------
   ! Subroutine init_run
   ! -----------------------------------------------------------
-  subroutine init_run(run, cell, mesh, nspin)
+  subroutine init_run(run, lat, mesh, nspin)
 
     use numbers
 
     implicit none
 
     type(berry_run), intent(inout) :: run
-    real(double), dimension(3), intent(in) :: cell
+    real(double), dimension(3,3), intent(in) :: lat
     integer, dimension(3), intent(in) :: mesh
     integer, intent(in) :: nspin
 
-    run%cell = cell
-    run%volume = cell(1)*cell(2)*cell(3)
+    call set_run_lattice(run, lat)
     run%mesh = mesh
     run%nspin = nspin
     if(nspin==1) then
@@ -771,6 +846,127 @@ contains
     run%dir(:)%nstr = 0
     return
   end subroutine init_run
+
+  ! -----------------------------------------------------------
+  ! Subroutine set_run_lattice
+  ! -----------------------------------------------------------
+  subroutine set_run_lattice(run, lat)
+
+    use global_module, only: invert_3x3
+    use GenComms, only: cq_abort
+
+    implicit none
+
+    type(berry_run), intent(inout) :: run
+    real(double), dimension(3,3), intent(in) :: lat
+
+    real(double) :: det
+
+    run%lat = lat
+    call invert_3x3(lat, run%lat_inv, det)
+    if(abs(det)<1.0e-12_double) call cq_abort("Berry phase: singular lattice")
+    run%volume = abs(det)
+    return
+  end subroutine set_run_lattice
+
+  ! -----------------------------------------------------------
+  ! Function axis_aligned
+  ! -----------------------------------------------------------
+  !
+  ! True when every a_alpha is along the Cartesian axis alpha: then the
+  ! Cartesian component alpha of P needs only the strings along b_alpha
+  !
+  logical function axis_aligned(lat)
+
+    use numbers
+
+    implicit none
+
+    real(double), dimension(3,3), intent(in) :: lat
+
+    integer :: i, j
+
+    axis_aligned = .true.
+    do j = 1, 3
+       do i = 1, 3
+          if(i/=j .and. abs(lat(i,j))>1.0e-10_double*maxval(abs(lat))) axis_aligned = .false.
+       end do
+    end do
+  end function axis_aligned
+
+  ! -----------------------------------------------------------
+  ! Subroutine reduced_to_cartesian
+  ! -----------------------------------------------------------
+  !
+  ! Cartesian vector P = (1/Omega) sum_alpha pi_alpha a_alpha from reduced
+  ! components pi_alpha (units of e).  Component i is known (ok(i)) when all
+  ! three pi_alpha are, or, for an axis-aligned cell, when pi_i is.
+  !
+  subroutine reduced_to_cartesian(run, red, have, cart, ok)
+
+    use numbers
+
+    implicit none
+
+    type(berry_run), intent(in) :: run
+    real(double), dimension(3), intent(in) :: red
+    logical, dimension(3), intent(in) :: have
+    real(double), dimension(3), intent(out) :: cart
+    logical, dimension(3), intent(out) :: ok
+
+    integer :: i
+
+    cart = zero
+    if(all(have)) then
+       cart = matmul(run%lat, red)/run%volume
+       ok = .true.
+    else if(axis_aligned(run%lat)) then
+       do i = 1, 3
+          if(have(i)) cart(i) = run%lat(i,i)*red(i)/run%volume
+       end do
+       ok = have
+    else
+       ok = .false.
+    end if
+    return
+  end subroutine reduced_to_cartesian
+
+  ! -----------------------------------------------------------
+  ! Subroutine min_image
+  ! -----------------------------------------------------------
+  !
+  ! Shortest lattice-equivalent of the displacement du: nearest integer in
+  ! fractional coordinates, then the 26 neighbouring translations (exact for
+  ! the small displacements used here, also in skewed cells).  du is changed
+  ! only by subtracting whole lattice vectors.
+  !
+  subroutine min_image(run, du)
+
+    use numbers
+
+    implicit none
+
+    type(berry_run), intent(in) :: run
+    real(double), dimension(3), intent(inout) :: du
+
+    integer :: n1, n2, n3
+    real(double), dimension(3) :: n, best, trial
+
+    n = anint(matmul(run%lat_inv, du))
+    if(any(n/=zero)) du = du - matmul(run%lat, n)
+    best = du
+    do n3 = -1, 1
+       do n2 = -1, 1
+          do n1 = -1, 1
+             if(n1==0 .and. n2==0 .and. n3==0) cycle
+             trial = du - matmul(run%lat, real((/n1,n2,n3/),double))
+             if(dot_product(trial,trial) < dot_product(best,best) - 1.0e-12_double) best = trial
+          end do
+       end do
+    end do
+    du = best
+    return
+  end subroutine min_image
 
   ! -----------------------------------------------------------
   ! Subroutine average_strings
@@ -818,27 +1014,42 @@ contains
 
     type(berry_run), intent(in) :: run
 
-    integer :: alpha, i_spin
-    real(double) :: xbar, spread, fac_C, pel, pion, ptot, pq, pred
+    integer :: alpha, i_spin, i
+    logical, dimension(3) :: have, ok
+    real(double) :: xbar, spread, fac_C, pel, pion, ptot, pq, pred, alen
+    real(double), dimension(3) :: red_el, red_ion, red_tot, cart_el, cart_ion, cart_tot, cart_mod
     character(len=*), parameter :: sub_name = "report_polarisation"
 
     fac_C = eVToJ/(BohrToAng*1.0e-10_double)**2  ! e/bohr^2 -> C/m^2
     write(*,fmt='(/4x,"Polarisation (electronic, ionic, total)")')
     write(*,fmt='(4x,"Cell volume ",f16.6," bohr^3; spin factor ",f4.1)') run%volume, run%spin_factor
+    write(*,fmt='(4x,"Direction alpha: strings along b_alpha; values are pi_alpha |a_alpha|/Omega, the")')
+    write(*,fmt='(4x,"contribution along a_alpha (P = sum_alpha pi_alpha a_alpha/Omega; for an")')
+    write(*,fmt='(4x,"orthorhombic cell, the Cartesian component alpha)")')
+    have = run%dir(:)%nstr>0
+    red_el = zero
     do alpha = 1, 3
-       if(run%dir(alpha)%nstr==0) cycle
-       pel = zero
+       ! Reduced ionic polarisation sum_I Z_I s_I,alpha (fractional coordinates)
+       red_ion(alpha) = zero
+       do i = 1, run%natoms
+          red_ion(alpha) = red_ion(alpha) + run%zion(i)*dot_product(run%lat_inv(alpha,:), run%pos(:,i))
+       end do
+    end do
+    do alpha = 1, 3
+       if(.not.have(alpha)) cycle
+       alen = sqrt(dot_product(run%lat(:,alpha), run%lat(:,alpha)))
        do i_spin = 1, run%nspin
           call average_strings(run%dir(alpha)%x(:,i_spin), xbar, spread)
           write(*,fmt='(/4x,"Direction ",i1," spin ",i1,": mean phase/2pi ",f15.11, &
                &"  spread over strings ",f12.8)') alpha, i_spin, xbar, spread
           if(spread>string_spread_warn) call cq_warn(sub_name, &
                "Berry phases of strings disagree; increase the k-point mesh. Spread ", spread)
-          pel = pel - run%spin_factor*xbar*run%cell(alpha)/run%volume
+          red_el(alpha) = red_el(alpha) - run%spin_factor*xbar
        end do
-       pion = sum(run%zion(:)*run%pos(alpha,:))/run%volume
+       pel = red_el(alpha)*alen/run%volume
+       pion = red_ion(alpha)*alen/run%volume
        ptot = pel + pion
-       pq = run%cell(alpha)/run%volume
+       pq = alen/run%volume
        pred = ptot - pq*anint(ptot/pq)
        write(*,fmt='(4x,"Direction ",i1)') alpha
        write(*,fmt='(6x,"P electronic         ",es20.11," e/bohr^2")') pel
@@ -850,6 +1061,33 @@ contains
        write(*,fmt='(6x,"P total mod quantum  ",es20.11," e/bohr^2",f14.6," C/m^2",f14.6," uC/cm^2")') &
             pred, pred*fac_C, pred*fac_C*100.0_double
     end do
+    ! Cartesian vector
+    red_tot = red_el + red_ion
+    call reduced_to_cartesian(run, red_el, have, cart_el, ok)
+    cart_ion = zero
+    do i = 1, run%natoms
+       cart_ion = cart_ion + run%zion(i)*run%pos(:,i)
+    end do
+    cart_ion = cart_ion/run%volume
+    call reduced_to_cartesian(run, red_tot, have, cart_tot, ok)
+    call reduced_to_cartesian(run, red_tot - anint(red_tot), have, cart_mod, ok)
+    if(all(ok)) then
+       write(*,fmt='(/4x,"Reduced polarisation pi_alpha (e):    ",3f16.10)') red_tot
+       write(*,fmt='(4x,"Cartesian polarisation (x, y, z):")')
+       write(*,fmt='(6x,"P electronic         ",3es20.11," e/bohr^2")') cart_el
+       write(*,fmt='(6x,"P ionic              ",3es20.11," e/bohr^2")') cart_ion
+       write(*,fmt='(6x,"P total              ",3es20.11," e/bohr^2")') cart_tot
+       write(*,fmt='(6x,"P total              ",3f20.8," C/m^2")') cart_tot*fac_C
+       write(*,fmt='(6x,"P, pi in [-1/2,1/2)  ",3es20.11," e/bohr^2")') cart_mod
+       write(*,fmt='(6x,"P, pi in [-1/2,1/2)  ",3f20.8," C/m^2")') cart_mod*fac_C
+       do alpha = 1, 3
+          write(*,fmt='(6x,"Quantum e.a_",i1,"/Omega  ",3es20.11," e/bohr^2")') alpha, &
+               run%lat(:,alpha)/run%volume
+       end do
+    else if(.not.axis_aligned(run%lat)) then
+       write(*,fmt='(/4x,"The Cartesian polarisation of a non-orthorhombic cell needs all three")')
+       write(*,fmt='(4x,"directions (Process.BerryDirection 0).")')
+    end if
     write(*,fmt='(/4x,"Only polarisation differences between structures with the same cell are physical;")')
     write(*,fmt='(4x,"use Process.Job dpo (mode effective charge) or bec (Born effective charges).")')
     return
@@ -872,10 +1110,11 @@ contains
     call io_assign(lun)
     open(unit=lun, file=filename, status='replace')
     write(lun,'(a)') '# CONQUEST PostProcessCQ Berry-phase polarisation data (atomic units, bohr)'
-    write(lun,'(a)') '# Atoms: index species Z_ion x y z; Direction: alpha nstrings;'
-    write(lun,'(a)') '# string lines: k_perp(2, fractional) phase/2pi per spin channel in [-1/2,1/2)'
+    write(lun,'(a)') '# Lattice: a_1, a_2, a_3 (Cartesian); Atoms: index species Z_ion x y z (Cartesian);'
+    write(lun,'(a)') '# Direction: alpha nstrings (strings along b_alpha); string lines:'
+    write(lun,'(a)') '# k_perp(2, fractional) phase/2pi per spin channel in [-1/2,1/2)'
     write(lun,'("BerryFormat ",i4)') berry_format
-    write(lun,'("Cell ",3es25.16)') run%cell
+    write(lun,'("Lattice ",9es25.16)') run%lat
     write(lun,'("NSpin ",i4)') run%nspin
     write(lun,'("SpinFactor ",f6.2)') run%spin_factor
     write(lun,'("Mesh ",3i6)') run%mesh
@@ -915,7 +1154,9 @@ contains
     integer :: lun, i, idum, alpha, nstr, ios, fmt_in
     character(len=512) :: line
     character(len=32) :: key
-    logical :: exists
+    logical :: exists, have_lattice
+    real(double), dimension(3) :: cell
+    real(double), dimension(3,3) :: lat
 
     inquire(file=filename, exist=exists)
     if(.not.exists) call cq_abort("Berry phase: data file not found: "//trim(filename))
@@ -925,6 +1166,7 @@ contains
     run%nspin = 0
     run%dir(:)%nstr = 0
     fmt_in = 0
+    have_lattice = .false.
     do
        read(lun,'(a)',iostat=ios) line
        if(ios/=0) call cq_abort("Berry phase: unexpected end of data file "//trim(filename))
@@ -935,10 +1177,20 @@ contains
        select case(trim(key))
        case('BerryFormat')
           read(line,*) key, fmt_in
-          if(fmt_in/=berry_format) call cq_abort("Berry phase: unknown data file format ",fmt_in)
+          if(fmt_in<1 .or. fmt_in>berry_format) call cq_abort("Berry phase: unknown data file format ",fmt_in)
        case('Cell')
-          read(line,*) key, run%cell
-          run%volume = run%cell(1)*run%cell(2)*run%cell(3)
+          ! Format 1: orthorhombic cell lengths along x, y, z
+          read(line,*) key, cell
+          lat = zero
+          do i = 1, 3
+             lat(i,i) = cell(i)
+          end do
+          call set_run_lattice(run, lat)
+          have_lattice = .true.
+       case('Lattice')
+          read(line,*) key, lat
+          call set_run_lattice(run, lat)
+          have_lattice = .true.
        case('NSpin')
           read(line,*) key, run%nspin
        case('SpinFactor')
@@ -973,7 +1225,8 @@ contains
        end select
     end do
     call io_close(lun)
-    if(fmt_in==0 .or. run%natoms==0) call cq_abort("Berry phase: incomplete data file "//trim(filename))
+    if(fmt_in==0 .or. run%natoms==0 .or. .not.have_lattice) &
+         call cq_abort("Berry phase: incomplete data file "//trim(filename))
     return
   end subroutine read_berry_file
 
@@ -1014,7 +1267,7 @@ contains
 
     integer :: alpha
 
-    if(any(abs(a%cell-b%cell)>1.0e-8_double*maxval(a%cell))) &
+    if(any(abs(a%lat-b%lat)>1.0e-8_double*maxval(abs(a%lat)))) &
          call cq_abort("Berry phase: different cells in "//trim(a%label)//" and "//trim(b%label))
     if(a%natoms/=b%natoms) call cq_abort("Berry phase: different numbers of atoms in "// &
          trim(a%label)//" and "//trim(b%label))
@@ -1044,34 +1297,37 @@ contains
   !
   ! Polarisation change from run a to run b (same cell and mesh).  Each
   ! string's phase change is taken on the branch nearest zero, so the result
-  ! is exact when every |dphase/2pi| < 1/2 (small displacements); the ionic
-  ! part uses minimum-image displacements, so atoms wrapped across the cell
-  ! boundary do not add a quantum.
+  ! is exact when every |dphase/2pi| < 1/2 (small displacements).  Returns
+  ! the change of the reduced electronic polarisation dred_el(alpha) (units
+  ! of e, along a_alpha; valid where have(alpha)) and the Cartesian ionic
+  ! change from minimum-image displacements du, so atoms wrapped across the
+  ! cell boundary do not add a quantum.  dP_el is the Cartesian electronic
+  ! change, valid for the components with ok(i) (see reduced_to_cartesian).
   !
-  subroutine delta_pol(a, b, dP_el, dP_ion, du, have, max_dx, max_spread)
+  subroutine delta_pol(a, b, dP_el, dP_ion, du, have, ok, dred_el, max_dx, max_spread)
 
     use numbers
 
     implicit none
 
     type(berry_run), intent(in) :: a, b
-    real(double), dimension(3), intent(out) :: dP_el, dP_ion
+    real(double), dimension(3), intent(out) :: dP_el, dP_ion, dred_el
     real(double), dimension(:,:), intent(out) :: du
-    logical, dimension(3), intent(out) :: have
+    logical, dimension(3), intent(out) :: have, ok
     real(double), intent(out) :: max_dx, max_spread
 
     integer :: alpha, i_spin, i, n
     real(double) :: dx, mean, spread
     real(double), allocatable, dimension(:) :: d
 
+    dP_ion = zero
     do i = 1, a%natoms
        du(:,i) = b%pos(:,i) - a%pos(:,i)
-       du(:,i) = du(:,i) - a%cell(:)*anint(du(:,i)/a%cell(:))
+       call min_image(a, du(:,i))
+       dP_ion = dP_ion + a%zion(i)*du(:,i)
     end do
-    do alpha = 1, 3
-       dP_ion(alpha) = sum(a%zion(:)*du(alpha,:))/a%volume
-    end do
-    dP_el = zero
+    dP_ion = dP_ion/a%volume
+    dred_el = zero
     max_dx = zero
     max_spread = zero
     do alpha = 1, 3
@@ -1088,10 +1344,11 @@ contains
           spread = maxval(abs(d - mean))
           max_dx = max(max_dx, maxval(abs(d)))
           max_spread = max(max_spread, spread)
-          dP_el(alpha) = dP_el(alpha) - a%spin_factor*mean*a%cell(alpha)/a%volume
+          dred_el(alpha) = dred_el(alpha) - a%spin_factor*mean
        end do
        deallocate(d)
     end do
+    call reduced_to_cartesian(a, dred_el, have, dP_el, ok)
     return
   end subroutine delta_pol
 
@@ -1126,8 +1383,8 @@ contains
 
     type(berry_run), allocatable, dimension(:) :: runs
     integer :: i, n, alpha, natoms
-    logical, dimension(3) :: have, have_all
-    real(double), dimension(3) :: dP_el, dP_ion, P_el, P_ion, P_tot, zmode
+    logical, dimension(3) :: have, ok, have_all, ok_all
+    real(double), dimension(3) :: dP_el, dP_ion, P_el, P_ion, P_tot, zmode, dred_el, red_el, red_ion
     real(double), allocatable, dimension(:,:) :: du, du_tot
     real(double) :: max_dx, max_spread, fac_C, norm_u, worst
     character(len=*), parameter :: sub_name = "process_pol_difference"
@@ -1141,13 +1398,17 @@ contains
          trim(runs(1)%label)
     P_el = zero
     P_ion = zero
+    red_el = zero
     du_tot = zero
     have_all = .true.
+    ok_all = .true.
     worst = zero
     write(*,fmt='(/4x,"Step  |du| (bohr)   dP_x            dP_y            dP_z  (e/bohr^2)  max|dphase/2pi|")')
     do i = 2, n
-       call delta_pol(runs(i-1), runs(i), dP_el, dP_ion, du, have, max_dx, max_spread)
+       call delta_pol(runs(i-1), runs(i), dP_el, dP_ion, du, have, ok, dred_el, max_dx, max_spread)
        have_all = have_all .and. have
+       ok_all = ok_all .and. ok
+       red_el = red_el + dred_el
        P_el = P_el + dP_el
        P_ion = P_ion + dP_ion
        du_tot = du_tot + du
@@ -1164,9 +1425,27 @@ contains
     P_tot = P_el + P_ion
     norm_u = sqrt(sum(du_tot*du_tot))
     write(*,fmt='(/4x,"Total change (reference -> ",a,")")') trim(runs(n)%label)
+    if(.not.axis_aligned(runs(1)%lat)) then
+       ! Changes of the reduced polarisation along each lattice vector a_alpha
+       red_ion = runs(1)%volume*matmul(runs(1)%lat_inv, P_ion)
+       write(*,fmt='(6x,"Reduced change along a_alpha (e): electronic, ionic, total")')
+       do alpha = 1, 3
+          if(have_all(alpha)) then
+             write(*,fmt='(6x,"Lattice direction ",i1,": ",3es16.7)') alpha, red_el(alpha), &
+                  red_ion(alpha), red_el(alpha) + red_ion(alpha)
+          else
+             write(*,fmt='(6x,"Lattice direction ",i1,": no Berry phase data")') alpha
+          end if
+       end do
+       write(*,fmt='(6x,"Cartesian change (x, y, z):")')
+    end if
     do alpha = 1, 3
-       if(.not.have_all(alpha)) then
-          write(*,fmt='(6x,"Direction ",i1,": no Berry phase data")') alpha
+       if(.not.ok_all(alpha)) then
+          if(axis_aligned(runs(1)%lat)) then
+             write(*,fmt='(6x,"Direction ",i1,": no Berry phase data")') alpha
+          else
+             write(*,fmt='(6x,"Direction ",i1,": needs Berry phases along all three lattice directions")') alpha
+          end if
           cycle
        end if
        write(*,fmt='(6x,"Direction ",i1,": dP_el ",es16.7," dP_ion ",es16.7," dP ",es16.7, &
@@ -1178,7 +1457,7 @@ contains
     if(norm_u<1.0e-8_double) call cq_abort("Berry phase: the structures are identical (du = 0)")
     zmode = zero
     do alpha = 1, 3
-       if(have_all(alpha)) zmode(alpha) = runs(1)%volume*P_tot(alpha)/norm_u
+       if(ok_all(alpha)) zmode(alpha) = runs(1)%volume*P_tot(alpha)/norm_u
     end do
     write(*,fmt='(/4x,"Mode effective charge Z*_mode = (Omega/e) dP/|du| (e): ",3f14.6)') zmode
     write(*,fmt='(4x,"Norm of Z*_mode (e): ",f14.6)') sqrt(sum(zmode*zmode))
@@ -1230,10 +1509,10 @@ contains
 
     type(berry_run), allocatable, dimension(:) :: runs
     integer :: i, n, natoms, k, a, b, nmoved, kk, bb, n_skip, n_used
-    logical, dimension(3) :: have
+    logical, dimension(3) :: have, ok
     logical :: complete
     logical, allocatable, dimension(:,:) :: plus, minus
-    real(double), dimension(3) :: dP_el, dP_ion
+    real(double), dimension(3) :: dP_el, dP_ion, dred_el
     real(double), dimension(3,3) :: asr
     real(double), allocatable, dimension(:,:) :: du, sdd
     real(double), allocatable, dimension(:,:,:) :: sdp, zstar, zstar_asr
@@ -1260,7 +1539,7 @@ contains
          bec_disp_tol
     write(*,fmt='(/4x,"Run                                  atom  dir   delta (bohr)  max|dphase/2pi|")')
     do i = 2, n
-       call delta_pol(runs(1), runs(i), dP_el, dP_ion, du, have, max_dx, max_spread)
+       call delta_pol(runs(1), runs(i), dP_el, dP_ion, du, have, ok, dred_el, max_dx, max_spread)
        nmoved = count(abs(du)>bec_disp_tol)
        if(nmoved==0) then
           call cq_warn(sub_name, "Run identical to the reference, skipped: "//trim(runs(i)%label))
@@ -1277,8 +1556,8 @@ contains
           n_skip = n_skip + 1
           cycle
        end if
-       if(.not.all(have)) call cq_abort("Berry phase: run lacks Berry phases along all three "// &
-            "directions: "//trim(runs(i)%label))
+       if(.not.all(have) .or. .not.all(ok)) call cq_abort("Berry phase: run lacks Berry phases along "// &
+            "all three directions: "//trim(runs(i)%label))
        ! The one displaced coordinate
        do kk = 1, natoms
           do bb = 1, 3
@@ -1397,8 +1676,7 @@ contains
     call io_assign(lun)
     open(unit=lun, file='BEC_extended.xyz', status='replace')
     write(lun,'(i8)') ref%natoms
-    write(lun,'(a,9f16.8,a,a,a)') 'Lattice="', ref%cell(1)*BohrToAng, zero, zero, zero, &
-         ref%cell(2)*BohrToAng, zero, zero, zero, ref%cell(3)*BohrToAng, &
+    write(lun,'(a,9f16.8,a,a,a)') 'Lattice="', ref%lat*BohrToAng, &
          '" Properties=species:S:1:pos:R:3:born_effective_charges:R:9 '// &
          'bec_tensor_convention="Z[polarization_cartesian,displacement_cartesian]" asr_corrected=', tf, &
          ' pbc="T T T"'
@@ -1444,8 +1722,10 @@ contains
     else
        write(lun,'(a)') '  "complete": false,'
     end if
-    write(lun,'(a,3(f16.8,a))') '  "lattice": [[', ref%cell(1)*BohrToAng, ', 0.0, 0.0], [0.0, ', &
-         ref%cell(2)*BohrToAng, ', 0.0], [0.0, 0.0, ', ref%cell(3)*BohrToAng, ']],'
+    ! Rows a_1, a_2, a_3 (Cartesian)
+    write(lun,'(a,3(a,f16.8,a,f16.8,a,f16.8,a))') '  "lattice": [', &
+         ('[', ref%lat(1,a)*BohrToAng, ', ', ref%lat(2,a)*BohrToAng, ', ', ref%lat(3,a)*BohrToAng, &
+         merge('], ', ']],', a<3), a=1,3)
     write(lun,'(a)') '  "atoms": ['
     do k = 1, ref%natoms
        sep = ', '

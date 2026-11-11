@@ -394,7 +394,7 @@ contains
     use local, only: berry_mp, berry_mp_shift, berry_direction, berry_nocc_in, berry_net_charge, &
          berry_file, berry_n_runs, berry_runs, bec_disp_tol, flag_bec_asr, i_job, berry_table_mb
     use input_module
-    use dimens, only: r_super_x, r_super_y, r_super_z
+    use global_module, only: lat_vec_inv
     use GenComms, only: cq_abort
 
     implicit none
@@ -412,9 +412,10 @@ contains
        flag_gamma = fdf_boolean('Diag.GammaCentred',.false.)
        dk = fdf_double('Diag.dk',zero)
        if(dk>zero) then
-          berry_mp(1) = ceiling(two*pi/(dk*r_super_x))
-          berry_mp(2) = ceiling(two*pi/(dk*r_super_y))
-          berry_mp(3) = ceiling(two*pi/(dk*r_super_z))
+          ! |b_i|/(2 pi) = norm of row i of A^-1 (reciprocal_lattice_norm in CONQUEST)
+          do i = 1, 3
+             berry_mp(i) = ceiling(two*pi*sqrt(dot_product(lat_vec_inv(i,:),lat_vec_inv(i,:)))/dk)
+          end do
        else
           berry_mp(1) = fdf_integer('Diag.MPMeshX',1)
           berry_mp(2) = fdf_integer('Diag.MPMeshY',1)
@@ -480,6 +481,7 @@ contains
          grid_x, grid_y, grid_z, nptsx, nptsy, nptsz, stm_z_min, stm_z_max, stm_x_min, stm_x_max, &
          stm_y_min, stm_y_max, nxmin, nymin, nzmin, gpv
     use dimens, ONLY: r_super_x, r_super_y, r_super_z, volume
+    use global_module, ONLY: cell_vol
     use block_module, only: n_pts_in_block, in_block_x,in_block_y,in_block_z
     !use units, ONLY: BohrToAng
     
@@ -505,7 +507,7 @@ contains
     grid_y = BohrToAng*r_super_y/real(nblocky*in_block_y,double)
     grid_z = BohrToAng*r_super_z/real(nblockz*in_block_z,double)
     ! Cell volume
-    volume = BohrToAng*BohrToAng*BohrToAng*r_super_x*r_super_y*r_super_z
+    volume = BohrToAng*BohrToAng*BohrToAng*cell_vol
     ! Number of points in the area that the user has specified
     nptsx = floor(BohrToAng*(stm_x_max - stm_x_min)/grid_x+very_small)
     nptsy = floor(BohrToAng*(stm_y_max - stm_y_min)/grid_y+very_small)

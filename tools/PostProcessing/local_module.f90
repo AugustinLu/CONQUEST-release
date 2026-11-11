@@ -61,7 +61,7 @@ module local
   ! Berry-phase polarisation and Born effective charges (berry_module)
   integer, dimension(3) :: berry_mp              ! Monkhorst-Pack mesh of the run
   real(double), dimension(3) :: berry_mp_shift   ! and its shift (fractional)
-  integer :: berry_direction                     ! 0 = all, 1-3 = x, y, z
+  integer :: berry_direction                     ! 0 = all, 1-3 = lattice direction a_1, a_2, a_3
   integer, dimension(2) :: berry_nocc_in         ! occupied bands per spin (0 = from Ef)
   real(double) :: berry_net_charge               ! General.NetCharge
   character(len=80) :: berry_file                ! data file for one structure

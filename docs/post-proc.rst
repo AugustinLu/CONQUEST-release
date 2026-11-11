@@ -379,28 +379,38 @@ Resta approach in CONQUEST itself (see :ref:`es_pol`), which needs a
 large cell and :math:`\Gamma`-point sampling, this works with the
 primitive cell and a Monkhorst-Pack mesh.
 
-The polarisation is :math:`\mathbf{P} = \mathbf{P}_{ion} + \mathbf{P}_{el}`
-with :math:`\mathbf{P}_{ion} = \frac{e}{\Omega}\sum_\kappa Z_\kappa \mathbf{r}_\kappa`
-and, along each cell vector :math:`\mathbf{a}_\alpha`,
+The cell may be general (non-orthogonal): lattice vectors
+:math:`\mathbf{a}_\alpha` with reciprocal vectors :math:`\mathbf{b}_\alpha`
+(:math:`\mathbf{a}_\alpha\cdot\mathbf{b}_\beta = 2\pi\delta_{\alpha\beta}`).
+The polarisation is the Cartesian vector
 
 .. math::
-   P_{el,\alpha} = -\frac{f e}{\Omega} \frac{\bar{\phi}_\alpha}{2\pi} a_\alpha, \qquad
+   \mathbf{P} = \frac{e}{\Omega}\sum_\alpha \pi_\alpha \mathbf{a}_\alpha, \qquad
+   \pi_\alpha = -f \frac{\bar{\phi}_\alpha}{2\pi} + \sum_\kappa Z_\kappa s_{\kappa\alpha}, \qquad
    \phi_\alpha(\mathbf{k}_\perp) = -\mathrm{Im}\ln \prod_{j=0}^{J-1}
    \det \langle u_{m\mathbf{k}_j} \vert u_{n\mathbf{k}_{j+1}} \rangle
 
-where :math:`f` is 2 without spin polarisation (1 per spin channel
-otherwise), the product runs over the :math:`J` k-points of a string
-along :math:`\mathbf{b}_\alpha`, and :math:`\bar{\phi}_\alpha` is the
-average over the strings.  The overlaps are calculated on the real-space
-integration grid from the wavefunction coefficients written by CONQUEST.
-The polarisation is defined only modulo the quantum
-:math:`e\mathbf{a}_\alpha/\Omega`, and only *differences* between
-structures with the same cell are physical.
+where :math:`\pi_\alpha` is the reduced polarisation along
+:math:`\mathbf{a}_\alpha` (units of e), :math:`s_{\kappa\alpha}` are the
+fractional coordinates of the ions, :math:`f` is 2 without spin
+polarisation (1 per spin channel otherwise), the product runs over the
+:math:`J` k-points of a string along :math:`\mathbf{b}_\alpha`, and
+:math:`\bar{\phi}_\alpha` is the average over the strings.  The ionic part
+equals :math:`\frac{e}{\Omega}\sum_\kappa Z_\kappa \mathbf{r}_\kappa`.  For
+an orthorhombic cell with the lattice vectors along x, y and z,
+:math:`P_\alpha = e\pi_\alpha a_\alpha/\Omega` is the Cartesian component
+:math:`\alpha`.  The overlaps are calculated on the real-space
+integration grid (points :math:`\sum_i (n_i/N_i)\mathbf{a}_i`) from the
+wavefunction coefficients written by CONQUEST.  The polarisation is
+defined only modulo the quanta :math:`e\mathbf{a}_\alpha/\Omega`, and
+only *differences* between structures with the same cell are physical.
 
-**Limitations:** orthorhombic cells; insulators (the number of bands
+**Limitations:** insulators (the number of bands
 below the Fermi level must be the same at every k-point); PAO basis sets
 (not blips; tested with primitive PAOs only, not yet with MSSFs);
-collinear spin.
+collinear spin.  (Of the other ``PostProcessCQ`` jobs, coordinate
+conversion, charge density, band densities and STM still assume an
+orthorhombic cell along x, y and z, and stop for any other cell.)
 
 **The CONQUEST run** must be a static diagonalisation on a
 Monkhorst-Pack mesh (``Diag.MPMesh T``) that writes the coefficients of
@@ -438,15 +448,21 @@ Set ``Process.Job pol`` and run ``PostProcessCQ`` in the directory of
 the CONQUEST run (it needs ``Conquest_input``, the coordinates, the ion
 files, ``eigenvalues.dat``, ``hilbert_make_blk.dat`` or
 ``raster_make_blk.dat`` and ``ProcessNNNNNNNWF.dat``).  For each
-direction it prints the phase of every string, the electronic, ionic and
-total polarisation (in e/bohr\ :sup:`2`, C/m\ :sup:`2` and
-:math:`\mu`\ C/cm\ :sup:`2`), the quantum, and the total reduced modulo
-the quantum.  The string phases are written to ``BerryPolarisation.dat``
-for the jobs below.
+lattice direction :math:`\alpha` it prints the phase of every string and
+the electronic, ionic and total contributions
+:math:`e\pi_\alpha\vert\mathbf{a}_\alpha\vert/\Omega` (in
+e/bohr\ :sup:`2`, C/m\ :sup:`2` and :math:`\mu`\ C/cm\ :sup:`2`), the
+quantum, and the total reduced modulo the quantum.  When all three
+directions are computed it also prints the reduced polarisation
+:math:`\pi_\alpha` and the Cartesian vector :math:`\mathbf{P}`
+(electronic, ionic, total, and with each :math:`\pi_\alpha` reduced to
+:math:`[-1/2,1/2)`).  For a non-orthorhombic cell the Cartesian vector
+needs all three directions.  The string phases and the lattice are written
+to ``BerryPolarisation.dat`` for the jobs below.
 
 ::
 
-   Process.BerryDirection int (default: 0, all three; 1, 2 or 3 for x, y or z)
+   Process.BerryDirection int (default: 0, all three; 1, 2 or 3 for strings along b_1, b_2 or b_3)
    Process.BerryNumOccupied int (default: 0, count bands below Ef)
    Process.BerryNumOccupiedDown int (default: Process.BerryNumOccupied)
    Process.BerryFile string (default: BerryPolarisation.dat)
@@ -463,7 +479,9 @@ string's phase on the branch nearest zero.  For a large distortion,
 list intermediate structures (e.g. :math:`\lambda = 0, 0.25, \ldots, 1`)
 so that each step stays well inside half a quantum; a warning is given
 when it does not.  All structures must have the same cell, atoms and
-k-point mesh.  The ionic part uses minimum-image displacements.  From
+k-point mesh.  The ionic part uses minimum-image displacements.  The
+change is reported in Cartesian components (for a non-orthorhombic cell
+also as reduced changes along each lattice vector).  From
 the total change :math:`\Delta\mathbf{P}` and displacement
 :math:`\Delta\mathbf{u}` the mode effective charge is
 
@@ -487,7 +505,8 @@ Born effective charges
 
 With ``Process.Job bec``, the runs listed in
 ``Process.PolarisationRuns`` (the undisplaced reference first) must each
-displace one Cartesian coordinate of one atom; the atom and direction
+displace one Cartesian coordinate (x, y or z, also in a non-orthogonal
+cell) of one atom; the atom and direction
 are found from the coordinates.  For each atom and direction the slope
 :math:`\partial P_\alpha/\partial u_{\kappa\beta}` is the least-squares
 fit through the origin, which is the central difference for a
@@ -503,7 +522,9 @@ reported, and the tensors are written to ``BEC_tensors.json`` (raw and
 ASR-corrected, :math:`Z^* - \frac{1}{N}\sum_\kappa Z^*_\kappa`) and
 ``BEC_extended.xyz`` (extended XYZ with ``born_effective_charges:R:9`` in
 row-major order, rows = polarisation, columns = displacement, as used
-for SevenNet-Polar training data).
+for SevenNet-Polar training data); the tensors are Cartesian and the
+lattice is written as the full vectors :math:`\mathbf{a}_1,
+\mathbf{a}_2, \mathbf{a}_3`.
 
 ::
 
@@ -511,7 +532,9 @@ for SevenNet-Polar training data).
    Process.BECApplyASR boolean (default: F; ASR-corrected tensors in BEC_extended.xyz)
 
 The script ``tools/PostProcessing/make_bec_displacements.py`` creates
-the displaced run directories from a reference directory, sets
+the displaced run directories from a reference directory (displacements
+along the Cartesian axes, converted to fractional coordinates with the
+inverse lattice when the coordinates are fractional), sets
 ``Process.Job pol`` in each, and writes a ``Conquest_input`` with the
 ``Process.PolarisationRuns`` block for the final step:
 
