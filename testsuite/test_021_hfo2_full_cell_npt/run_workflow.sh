@@ -47,4 +47,4 @@ cp "$SCRIPT_DIR/../test_011_hfo2/OCQ.ion" "$RESTART_DIR/OCQ.ion"
   "$MPI_LAUNCHER" -np "$NP" "$CONQUEST_BIN" > restart_mpi.log 2>&1
 )
 grep -q "MD step:      2" "$RESTART_DIR/Conquest_out"
-"$PYTHON" "$SCRIPT_DIR/analyse_full_npt.py"
+"$PYTHON" "$SCRIPT_DIR/analyse_full_npt.py" "$RESULTS_DIR" "$RESTART_DIR"

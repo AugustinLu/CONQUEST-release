@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -65,8 +66,11 @@ def final_positions(path: Path) -> np.ndarray:
 
 
 def main() -> None:
-    root = HERE / "results"
-    restart_root = HERE / "results_restart"
+    # run_workflow.sh passes RESULTS_DIR and RESTART_DIR; default to the
+    # in-tree locations when the script is run by hand.
+    root = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "results"
+    restart_root = (Path(sys.argv[2]) if len(sys.argv) > 2
+                    else HERE / "results_restart")
     lattice, stress = read_extxyz(root / "trajectory.xyz")
     restart_lattice, _ = read_extxyz(restart_root / "trajectory.xyz")
     beta = np.asarray([beta_angle(cell) for cell in lattice])

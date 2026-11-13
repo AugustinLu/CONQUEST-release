@@ -27,4 +27,4 @@ cp "$SCRIPT_DIR/../test_010_graphite_monoclinic/C_PBE_SZP_CQ.ion" \
   "$MPI_LAUNCHER" -np "$NP" "$CONQUEST_BIN" > mpi.log 2>&1
 )
 grep -q "MD step:      2" "$RESULTS_DIR/Conquest_out"
-"$PYTHON" "$SCRIPT_DIR/analyse_xy_npt.py"
+"$PYTHON" "$SCRIPT_DIR/analyse_xy_npt.py" "$RESULTS_DIR"

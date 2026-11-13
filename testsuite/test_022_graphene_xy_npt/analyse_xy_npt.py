@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -36,7 +37,8 @@ def read_extxyz(path: Path) -> tuple[np.ndarray, np.ndarray]:
 
 
 def main() -> None:
-    root = HERE / "results"
+    # run_workflow.sh passes RESULTS_DIR; default to the in-tree location.
+    root = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "results"
     lattice, stress = read_extxyz(root / "trajectory.xyz")
     areas = np.linalg.norm(np.cross(lattice[:, 0], lattice[:, 1]), axis=1)
     z_row_change = float(np.max(np.abs(lattice[:, 2] - lattice[0, 2])))
