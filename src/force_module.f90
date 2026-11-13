@@ -264,7 +264,7 @@ contains
                                       nspin, spin_factor, &
                                       flag_analytic_blip_int, flag_DFTplusU, &
                                       flag_neutral_atom, flag_stress, flag_full_stress, &
-                                      cell_vec_len, cell_vol, flag_mix_L_SC_min, &
+                                      recip_lat_vec, cell_vol, flag_mix_L_SC_min, &
                                       flag_atomic_stress, non_atomic_stress, &
                                       flag_heat_flux, &
                                       atom_coord, species_glob, min_layer
@@ -302,7 +302,7 @@ contains
     integer        :: i, j, ii, stat, max_atom, max_compt, ispin, &
                       direction, dir1, dir2, counter
     real(double), dimension(3) :: dipole_correction_force
-    real(double)   :: max_force, volume, scale, g0, r_super_norm
+    real(double)   :: max_force, volume, scale, g0
     type(cq_timer) :: tmr_l_tmp1
     type(cq_timer) :: backtrace_timer
     integer        :: backtrace_level
@@ -612,14 +612,6 @@ contains
        write (io_ase, fmt='(4x,a)') &
             trim(prefix)//"  Atom   X              Y              Z"             
     end if
-    select case(surface_normal)
-    case(1) ! X
-       r_super_norm = cell_vec_len(1)
-    case(2) ! Y
-       r_super_norm = cell_vec_len(2)
-    case(3) ! Z
-       r_super_norm = cell_vec_len(3)
-    end select
     !
     ! END %%%% ASE printing %%%%
     !    
@@ -627,9 +619,12 @@ contains
     g0 = zero
     do i = 1, ni_in_cell
        if(flag_surface_dipole_correction) then
-          dipole_correction_force = zero
-          dipole_correction_force(surface_normal) = charge(species_glob(i)) * fourpi * &
-               surface_dipole_density / r_super_norm
+          ! The ionic dipole energy depends on the fractional coordinate
+          ! s_n = b_n . r along the surface normal, where b_n is row n of the
+          ! inverse lattice (column n of recip_lat_vec), so the force is along
+          ! b_n.  This reduces to e_n/|a_n| only for an orthogonal cell.
+          dipole_correction_force = charge(species_glob(i)) * fourpi * &
+               surface_dipole_density * recip_lat_vec(:,surface_normal)
           ! Mathematically, we need something like this term for the stress, except
           ! that I don't think that stress can be defined sensibly when there is a vacuum
           ! gap as there should be along the surface normal! I have left this here for
