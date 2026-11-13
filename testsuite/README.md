@@ -55,9 +55,10 @@ earlier complete summary and regenerate a consolidated report:
   --base-summary test_runs/20260809-230103/summary.json
 ```
 
-Timestamped logs and machine-readable summaries are stored under
-`test_runs/`.  The latest PDF is written to
-`../output/pdf/conquest_all_tests_report.pdf`.
+Timestamped logs, machine-readable summaries and the PDF report
+(`conquest_all_tests_report.pdf`) are stored together under
+`test_runs/<timestamp>/`.  Reports built from these runs are kept outside
+the source tree.
 
 ## Contributing
 
