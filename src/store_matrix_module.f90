@@ -768,7 +768,8 @@ contains
        write (lun,*) flag_velocity, flag_MDstep,'  = flag_velocity, flag_MDstep'
        write (lun,*) mat_global_tmp%ni_in_cell, mat_global_tmp%numprocs, ' # of atoms, # of process '
        write (lun,*) mat_global_tmp%npcellx,mat_global_tmp%npcelly,mat_global_tmp%npcellz,' npcellx,y,z'
-       write (lun,fmt='(3f25.15,a)') mat_global_tmp%cell_vec_len(1),mat_global_tmp%cell_vec_len(2),mat_global_tmp%cell_vec_len(3),' cell_vec_len(1),y,z'
+       write (lun,fmt='(3f25.15,a)') mat_global_tmp%cell_vec_len(1), &
+            mat_global_tmp%cell_vec_len(2),mat_global_tmp%cell_vec_len(3),' cell_vec_len(1),y,z'
        write (lun,*) mat_global_tmp%glob_to_node(1:mat_global_tmp%ni_in_cell)   
        write (lun,*) mat_global_tmp%MDstep,'  MD step'
 
@@ -1098,7 +1099,9 @@ contains
     integer      :: ig
 
     ! Test for unit cell size change
-    scale_x = cell_vec_len(1)/InfoGlob%cell_vec_len(1); scale_y = cell_vec_len(2)/InfoGlob%cell_vec_len(2); scale_z = cell_vec_len(3)/InfoGlob%cell_vec_len(3)
+    scale_x = cell_vec_len(1)/InfoGlob%cell_vec_len(1)
+    scale_y = cell_vec_len(2)/InfoGlob%cell_vec_len(2)
+    scale_z = cell_vec_len(3)/InfoGlob%cell_vec_len(3)
     rms_change = (scale_x - one)**2 + (scale_y - one)**2 + (scale_z - one)**2
     rms_change = sqrt(rms_change)
     lattice_change = zero

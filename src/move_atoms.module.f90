@@ -5060,8 +5060,11 @@ contains
     end do
     recip_lat_vec = transpose(lat_vec_inv)
     if(inode==ionode.and.iprint_MD>2) then
-       write(io_lun,fmt='(6x,"Scaling cell dimenstions by: ",3f9.6)') cell_vec_len(1)/start_rcellx, cell_vec_len(2)/start_rcelly, cell_vec_len(3)/start_rcellz
-       write(io_lun,fmt='(6x,"Updated cell dimensions: ",f10.6," a0 x",f10.6," a0 x",f10.6," a0")') cell_vec_len(1), cell_vec_len(2), cell_vec_len(3)
+       write(io_lun,fmt='(6x,"Scaling cell dimenstions by: ",3f9.6)') &
+            cell_vec_len(1)/start_rcellx, cell_vec_len(2)/start_rcelly, &
+            cell_vec_len(3)/start_rcellz
+       write(io_lun,fmt='(6x,"Updated cell dimensions: ",f10.6," a0 x",f10.6," a0 x",f10.6," a0")') &
+            cell_vec_len(1), cell_vec_len(2), cell_vec_len(3)
     end if
   end subroutine update_cell_dims
   !!***
