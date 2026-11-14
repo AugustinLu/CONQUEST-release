@@ -23,7 +23,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 TESTSUITE = ROOT / "testsuite"
-DEFAULT_PDF = ROOT / "output" / "pdf" / "conquest_all_tests_report.pdf"
+PDF_NAME = "conquest_all_tests_report.pdf"  # written inside the run directory
 TEST_PATTERN = re.compile(r"test_(\d{3})_")
 COORDINATE_PATTERN = re.compile(
     r"^\s*IO\.Coordinates\s*(?:=|:)??\s+([^\s#;]+)", re.IGNORECASE
@@ -95,10 +95,32 @@ def discover_atom_counts(test_dir: Path) -> list[int]:
     return sorted(counts)
 
 
-def rank_limit(atom_count: int | None, maximum: int) -> int:
+DEFAULT_ATOMS_PER_RANK = 3
+ATOMS_PER_RANK_PATTERN = re.compile(r"run_all_tests:\s*atoms-per-rank\s+(\d+)")
+
+
+def rank_limit(atom_count: int | None, maximum: int,
+               atoms_per_rank: int = DEFAULT_ATOMS_PER_RANK) -> int:
     if atom_count is None:
         return 1
-    return max(1, min(maximum, atom_count // 3))
+    return max(1, min(maximum, atom_count // atoms_per_rank))
+
+
+def workflow_atoms_per_rank(command: list[str]) -> int:
+    """Return a workflow's declared atoms-per-rank floor, default three.
+
+    A workflow that must run on more ranks than the default allows (for
+    example to check that a result does not depend on the rank count)
+    declares it with a comment such as `# run_all_tests: atoms-per-rank 1`.
+    """
+    if len(command) < 2:
+        return DEFAULT_ATOMS_PER_RANK
+    try:
+        source = Path(command[1]).read_text(errors="replace")
+    except OSError:
+        return DEFAULT_ATOMS_PER_RANK
+    match = ATOMS_PER_RANK_PATTERN.search(source)
+    return max(1, int(match.group(1))) if match else DEFAULT_ATOMS_PER_RANK
 
 
 def canonical_entrypoint(test_dir: Path, number: int) -> tuple[str, list[str]]:
@@ -199,7 +221,8 @@ for index, value in enumerate(args[:-1]):
 
 atoms = current_atom_count()
 maximum = int(os.environ.get("CONQUEST_MPI_MAX", "3"))
-allowed = 1 if atoms is None else max(1, min(maximum, atoms // 3))
+per_rank = max(1, int(os.environ.get("CONQUEST_ATOMS_PER_RANK", "3")))
+allowed = 1 if atoms is None else max(1, min(maximum, atoms // per_rank))
 used = min(requested, allowed) if requested is not None else allowed
 if rank_index is not None:
     args[rank_index] = str(used)
@@ -541,7 +564,8 @@ def main() -> int:
                         help="test numbers or ranges, e.g. 1-9,12,28")
     parser.add_argument("--no-build", action="store_true")
     parser.add_argument("--no-pdf", action="store_true")
-    parser.add_argument("--pdf", type=Path, default=DEFAULT_PDF)
+    parser.add_argument("--pdf", type=Path, default=None,
+                        help="PDF path (default: <run-root>/" + PDF_NAME + ")")
     parser.add_argument(
         "--base-summary", type=Path,
         help="replace rerun test records in an earlier complete summary",
@@ -606,10 +630,13 @@ def main() -> int:
         atom_count = min(counts) if counts else None
         entrypoint, command = canonical_entrypoint(test_dir, number)
         workflow_max = workflow_rank_ceiling(command, args.max_mpi)
-        ranks = min(rank_limit(atom_count, args.max_mpi), workflow_max)
+        atoms_per_rank = workflow_atoms_per_rank(command)
+        ranks = min(rank_limit(atom_count, args.max_mpi, atoms_per_rank),
+                    workflow_max)
         log_path = log_dir / f"{name}.log"
         env = base_env.copy()
         env["NP"] = str(ranks)
+        env["CONQUEST_ATOMS_PER_RANK"] = str(atoms_per_rank)
         env["MPI_RANKS"] = str(ranks)
         if atom_count:
             env["CONQUEST_ATOM_FALLBACK"] = str(atom_count)
@@ -719,8 +746,9 @@ def main() -> int:
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
     print(f"Summary: {summary_path}")
     if not args.no_pdf:
-        pdf_report(summary, args.pdf.resolve())
-        print(f"PDF: {args.pdf.resolve()}")
+        pdf_path = (args.pdf or run_root / PDF_NAME).resolve()
+        pdf_report(summary, pdf_path)
+        print(f"PDF: {pdf_path}")
     return 0 if build_code == 0 and all(item["status"] == "PASS" for item in records) else 1
 
 

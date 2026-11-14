@@ -309,9 +309,15 @@ contains
        nqy=1+mod(ny_o+nsy+nmody-1,groups%ngcelly)
        nqz=1+mod(nz_o+nsz+nmodz-1,groups%ngcellz)
        ! Calculate exact periodic shifts to avoid floating point round-off mismatches
-       xadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(1,1) + ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(1,2) + ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(1,3)
-       yadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(2,1) + ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(2,2) + ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(2,3)
-       zadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(3,1) + ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(3,2) + ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(3,3)
+       xadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(1,1) + &
+             ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(1,2) + &
+             ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(1,3)
+       yadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(2,1) + &
+             ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(2,2) + &
+             ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(2,3)
+       zadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(3,1) + &
+             ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(3,2) + &
+             ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(3,3)
        ind_qart=(nqx-1)*groups%ngcelly*groups%ngcellz+&
             (nqy-1)*groups%ngcellz+nqz
        set%lab_cell(ind_cover)=ind_qart
@@ -379,9 +385,15 @@ contains
           nqy=1+mod(ny_o+nsy+nmody-1,groups%ngcelly)
           nqz=1+mod(nz_o+nsz+nmodz-1,groups%ngcellz)
           ! Calculate exact periodic shifts to avoid floating point round-off mismatches
-          xadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(1,1) + ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(1,2) + ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(1,3)
-          yadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(2,1) + ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(2,2) + ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(2,3)
-          zadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(3,1) + ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(3,2) + ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(3,3)
+          xadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(1,1) + &
+                ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(1,2) + &
+                ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(1,3)
+          yadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(2,1) + &
+                ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(2,2) + &
+                ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(2,3)
+          zadd= ((nx_o+nsx-nqx)/groups%ngcellx)*lat_vec(3,1) + &
+                ((ny_o+nsy-nqy)/groups%ngcelly)*lat_vec(3,2) + &
+                ((nz_o+nsz-nqz)/groups%ngcellz)*lat_vec(3,3)
           ind_qart= set%lab_cell(ind_cover)
           if(groups%nm_group(ind_qart)>0) then
              set%n_ing_cover(ind_cover)=groups%nm_group(ind_qart)

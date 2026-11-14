@@ -28,6 +28,8 @@
 !! MODIFICATION HISTORY
 !! 2026/07/29 lu
 !!  Corrected nonlocal vdW reciprocal normalization for arbitrary cells
+!! 2026/11/14 lu
+!!  Normalise the theta FFT by the total grid size, not maxngrid (per process)
 !! SOURCE
 !!
 module vdWDFT_module
@@ -2274,8 +2276,12 @@ contains
     do iq = 1, nq
        call fft3(u_vdW(:,iq), rcp_u_vdW(:,iq), maxngrid, -1)
     end do
-    ! scale to make the fft consistent with radial fft on phi
-    rcp_u_vdW = grid_point_volume * rcp_u_vdW * sqrt(real(maxngrid, double))
+    ! scale to make the fft consistent with radial fft on phi.  fft3 is
+    ! unitary (1/sqrt(N) overall), so the factor is sqrt of the total number
+    ! of grid points.  maxngrid is the per-process array size and must not
+    ! be used here: it made E_vdW depend on the number of MPI processes.
+    rcp_u_vdW = grid_point_volume * rcp_u_vdW * &
+         sqrt(real(n_grid_x, double)*real(n_grid_y, double)*real(n_grid_z, double))
     call stop_print_timer(tmr_fft_theta, "vdW: FFT theta", &
                           IPRINT_TIME_THRES2)
 

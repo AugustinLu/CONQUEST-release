@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# run_all_tests: atoms-per-rank 1
+# Two-atom graphene must run on two ranks: the vdW-DF energy once depended
+# on the MPI rank count, and the harness default (three atoms per rank)
+# would otherwise pin this test to one rank and hide that.
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 RELEASE_DIR="$(cd -- "$SCRIPT_DIR/../.." && pwd)"

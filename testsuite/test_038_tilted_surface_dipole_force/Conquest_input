@@ -1,0 +1,27 @@
+AtomMove.TypeOfRun               static
+Basis.BasisSet                   PAOs
+DM.SolutionMethod                diagon
+General.NumberOfSpecies          2
+General.PseudopotentialType      hamann
+Grid.PointsAlongX                48
+Grid.PointsAlongY                48
+Grid.PointsAlongZ                48
+IO.Coordinates                   coords.in
+IO.Iprint                        0
+IO.Title                         Tilted water layer with surface dipole correction
+SC.KerkerPreCondition            T
+SC.MaxIters                      400
+SC.SurfaceDipoleCorrection       T
+SC.OutputAveragePotential        F
+SC.SurfaceNormal                 z
+minE.SCTolerance                 1.0e-11
+minE.SelfConsistent              True
+Diag.MPMesh                      True
+Diag.MPMeshX                     1
+Diag.MPMeshY                     1
+Diag.MPMeshZ                     1
+
+%block ChemicalSpeciesLabel
+ 1   15.999  O
+ 2    1.000  H
+%endblock ChemicalSpeciesLabel
