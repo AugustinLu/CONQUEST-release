@@ -960,20 +960,25 @@ contains
     integer :: i, n1, n2, n3
     integer, dimension(3) :: lo, hi
     real(double) :: best_sq, trial_sq, bound
-    real(double), dimension(3) :: f, n, best, trial
+    real(double), dimension(3) :: f, n, best, trial, rlo, rhi
 
     f = matmul(run%lat_inv, du)
+    if(any(abs(f)>1.0e6_double)) call cq_abort("Berry phase: displacement of more than 10^6 lattice "// &
+         "vectors in the minimum-image search")
     n = anint(f)
     best = du
     if(any(n/=zero)) best = du - matmul(run%lat, n)
     best_sq = dot_product(best, best)
     do i = 1, 3
        bound = sqrt(best_sq*dot_product(run%lat_inv(i,:), run%lat_inv(i,:)))
-       lo(i) = ceiling(f(i) - bound - 1.0e-9_double)
-       hi(i) = floor(f(i) + bound + 1.0e-9_double)
+       rlo(i) = f(i) - bound - 1.0e-9_double
+       rhi(i) = f(i) + bound + 1.0e-9_double
     end do
-    if(product(real(hi-lo+1,double))>1.0e7_double) call cq_abort( &
+    ! Size of the box from the real bounds, before any conversion to integer
+    if(product(rhi - rlo + one)>1.0e7_double) call cq_abort( &
          "Berry phase: lattice basis too skewed for the minimum-image search; use a reduced cell")
+    lo = ceiling(rlo)
+    hi = floor(rhi)
     do n3 = lo(3), hi(3)
        do n2 = lo(2), hi(2)
           do n1 = lo(1), hi(1)
@@ -1194,7 +1199,14 @@ contains
     write(lun,'("Mesh ",3i6)') run%mesh
     write(lun,'("Shift ",3es25.16)') run%shift
     write(lun,'("NOcc ",2i8)') run%nocc(1:run%nspin)
-    if(run%nsp>0) write(lun,'("SpeciesLabels ",i6,100(1x,a))') run%nsp, (trim(run%splabel(i)), i=1,run%nsp)
+    if(run%nsp>0) then
+       ! One record of any length: n, then the labels
+       write(lun,'("SpeciesLabels ",i6)', advance='no') run%nsp
+       do i = 1, run%nsp
+          write(lun,'(1x,a)', advance='no') trim(run%splabel(i))
+       end do
+       write(lun,'(a)') ''
+    end if
     write(lun,'("NAtoms ",i8)') run%natoms
     write(lun,'(a)') 'Atoms'
     do i = 1, run%natoms
@@ -1233,7 +1245,7 @@ contains
     character(len=*), intent(in) :: filename
 
     integer :: lun, i, idum, alpha, nstr, ios, fmt_in, nlines
-    character(len=512) :: line
+    character(len=8192) :: line   ! SpeciesLabels can be long
     character(len=32) :: key
     logical :: exists, have_cell, have_nspin, have_sf, have_mesh, have_shift, have_atoms
     logical, dimension(3) :: have_dir
@@ -1415,6 +1427,9 @@ contains
        if(n_species>0 .and. any(runs(i)%species>n_species)) call cq_abort("Berry phase: species index "// &
             "in "//trim(runs(i)%label)//" exceeds the number of species in Conquest_input ", n_species)
        ! Data files from format 2 on record the species labels; they must match
+       if(runs(i)%nsp>0 .and. n_species>0 .and. runs(i)%nsp/=n_species) call cq_abort("Berry phase: "// &
+            trim(runs(i)%label)//" records a different number of species than Conquest_input here ", &
+            runs(i)%nsp, n_species)
        do j = 1, min(runs(i)%nsp, n_species)
           if(.not.leqi(runs(i)%splabel(j), species_label(j))) call cq_abort("Berry phase: species "// &
                trim(runs(i)%splabel(j))//" in "//trim(runs(i)%label)//" is "//trim(species_label(j))// &
@@ -1423,7 +1438,7 @@ contains
        if(i>1 .and. runs(i)%nsp>0 .and. runs(1)%nsp>0) then
           if(runs(i)%nsp/=runs(1)%nsp) call cq_abort("Berry phase: different species lists in "// &
                trim(runs(1)%label)//" and "//trim(runs(i)%label))
-          if(any(runs(i)%splabel/=runs(1)%splabel)) call cq_abort("Berry phase: different species "// &
+          if(.not.all(leqi_vec(runs(i)%splabel, runs(1)%splabel))) call cq_abort("Berry phase: different species "// &
                "labels in "//trim(runs(1)%label)//" and "//trim(runs(i)%label))
        end if
        if(i>1) call check_compatible(runs(1), runs(i))
@@ -1854,6 +1869,23 @@ contains
     return
   end subroutine process_bec
   !!***
+
+  ! Element-wise case-insensitive comparison of two label lists of equal length
+  function leqi_vec(a, b) result(same)
+
+    use input_module, only: leqi
+
+    implicit none
+
+    character(len=*), dimension(:), intent(in) :: a, b
+    logical, dimension(size(a)) :: same
+
+    integer :: j
+
+    do j = 1, size(a)
+       same(j) = leqi(a(j), b(j))
+    end do
+  end function leqi_vec
 
   character(len=1) function method_char(plus, minus, sym)
 
