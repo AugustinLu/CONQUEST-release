@@ -66,6 +66,7 @@ module local
   real(double) :: berry_net_charge               ! General.NetCharge
   character(len=80) :: berry_file                ! data file for one structure
   real(double) :: berry_table_mb                 ! memory limit for PAO tables (MB)
+  real(double) :: berry_max_mem_mb               ! abort above this estimated memory (MB; 0 = no check)
   integer :: berry_n_runs                        ! directories in Process.PolarisationRuns
   character(len=256), dimension(:), allocatable :: berry_runs
   real(double) :: bec_disp_tol                   ! smallest displacement recognised (bohr)

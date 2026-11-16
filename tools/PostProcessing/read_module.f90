@@ -392,7 +392,7 @@ contains
     use datatypes
     use numbers
     use local, only: berry_mp, berry_mp_shift, berry_direction, berry_nocc_in, berry_net_charge, &
-         berry_file, berry_n_runs, berry_runs, bec_disp_tol, flag_bec_asr, i_job, berry_table_mb
+         berry_file, berry_n_runs, berry_runs, bec_disp_tol, flag_bec_asr, i_job, berry_table_mb, berry_max_mem_mb
     use input_module
     use global_module, only: lat_vec_inv
     use GenComms, only: cq_abort
@@ -406,6 +406,8 @@ contains
 
     berry_file = fdf_string(80,'Process.BerryFile','BerryPolarisation.dat')
     if(i_job==9) then
+       ! General cells are supported here (the full lattice is read); PDB input with
+       ! angles other than 90 degrees is rejected by the reader
        ! The k-point mesh, rebuilt exactly as in Conquest (initial_read_module)
        mp_mesh = fdf_boolean('Diag.MPMesh',.false.)
        if(.not.mp_mesh) call cq_abort("Berry phase needs a Monkhorst-Pack mesh (Diag.MPMesh T)")
@@ -442,6 +444,7 @@ contains
        berry_nocc_in(2) = fdf_integer('Process.BerryNumOccupiedDown',berry_nocc_in(1))
        berry_net_charge = fdf_double('General.NetCharge',zero)
        berry_table_mb = fdf_double('Process.BerryTableMB',4000.0_double)
+       berry_max_mem_mb = fdf_double('Process.BerryMaxMemoryMB',0.0_double)
     else
        ! Directories holding the data files, one per line (first = reference)
        if(fdf_block('Process.PolarisationRuns')) then
@@ -685,6 +688,7 @@ contains
     use global_module, ONLY: ni_in_cell, species_glob, nspin
     use local, ONLY: nkp, nprocs, n_bands_active, band_active_kp, eigenvalues, evec_coeff, n_bands_active, band_no
     use io_module, ONLY: flag_MatrixFile_BinaryFormat
+    use GenComms, ONLY: cq_abort
 
     implicit none
 
@@ -715,6 +719,8 @@ contains
                 do i_band = 1, n_bands_active
                    if(band_active_kp(band_no(i_band), i_kp, i_spin) == 1) then
                       read(17) i, eval
+                      if(i/=band_no(i_band)) call cq_abort("Wavefunction file does not match the "// &
+                           "bands expected from WaveFunctionsOut/IO.maxnoWF: file, expected ", i, band_no(i_band))
                       ! Loop over primary atoms
                       do i_prim = 1, n_prim
                          read(17) i_atom ! Global number of atom
@@ -744,6 +750,8 @@ contains
                 do i_band = 1, n_bands_active
                    if(band_active_kp(band_no(i_band), i_kp, i_spin) == 1) then
                       read(17,*) i, eval
+                      if(i/=band_no(i_band)) call cq_abort("Wavefunction file does not match the "// &
+                           "bands expected from WaveFunctionsOut/IO.maxnoWF: file, expected ", i, band_no(i_band))
                       ! Loop over primary atoms
                       do i_prim = 1, n_prim
                          read(17,*) i_atom ! Global number of atom

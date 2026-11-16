@@ -94,6 +94,10 @@ module io_module
   logical           :: pdb_format, append_coords, pdb_output 
   character(len=1)  :: pdb_altloc
   character(len=80) :: pdb_template
+  ! Departure of the cell read from an orthorhombic one: largest off-diagonal
+  ! component of the cell vectors (coordinate file, file units) or largest
+  ! |angle - 90| (degrees, PDB CRYST1).  Only the diagonal is used here.
+  real(double)      :: cell_nonortho = zero
 
   !Maximum of wallclock time (in seconds): See subroutine 'check_stop' 2018.Jan.17 TM 
   real(double)      :: time_max =zero
@@ -379,6 +383,7 @@ second:   do
              case ('CRYST1')
                 read (pdb_line,'(6x,3f9.3,3f7.2,15x)') &
                      r_super_x, r_super_y, r_super_z, angle
+                cell_nonortho = maxval(abs(angle - 90.0_double))
                 r_super_x = AngToBohr * r_super_x
                 r_super_y = AngToBohr * r_super_y
                 r_super_z = AngToBohr * r_super_z

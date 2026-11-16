@@ -77,20 +77,57 @@ def get(keys, name, default=None):
     return keys.get(norm_label(name), default)
 
 
+def first_token(value):
+    """First value token as CONQUEST's FDF tokenizer gives it: a quoted string
+    (single or double quotes) is one token without its delimiters."""
+    if value is None:
+        return None
+    v = value.strip()
+    if v[:1] in ("'", '"'):
+        end = v.find(v[0], 1)
+        if end < 0:
+            sys.exit(f"Unclosed quote in value {value!r}")
+        return v[1:end]
+    return v.split()[0] if v else ""
+
+
 def is_true(value):
-    return value is not None and value.strip().lower() in ("t", "true", ".true.", "y", "yes")
+    tok = first_token(value)
+    return tok is not None and tok.lower() in ("t", "true", ".true.", "y", "yes")
 
 
 def read_coords(path):
-    """Lattice vectors (rows a_1, a_2, a_3) and atom lines of a CONQUEST coordinate file."""
+    """Lattice vectors (rows a_1, a_2, a_3) and atoms of a CONQUEST coordinate file; exits on any
+    malformed, truncated or non-finite entry."""
     with open(path) as fh:
         lines = [l for l in fh if l.strip()]
-    cell = [[float(v) for v in lines[i].split()[:3]] for i in range(3)]
-    nat = int(lines[3].split()[0])
+
+    def numbers(line, n, what):
+        try:
+            vals = [float(v) for v in line.split()[:n]]
+        except ValueError:
+            sys.exit(f"{path}: cannot read {what}: {line.strip()!r}")
+        if len(vals) < n or not all(math.isfinite(v) for v in vals):
+            sys.exit(f"{path}: need {n} finite numbers for {what}: {line.strip()!r}")
+        return vals
+
+    if len(lines) < 4:
+        sys.exit(f"{path}: truncated coordinate file (no atom count)")
+    cell = [numbers(lines[i], 3, f"cell vector {i + 1}") for i in range(3)]
+    try:
+        nat = int(lines[3].split()[0])
+    except (ValueError, IndexError):
+        sys.exit(f"{path}: cannot read the number of atoms: {lines[3].strip()!r}")
+    if nat < 1:
+        sys.exit(f"{path}: number of atoms must be positive")
+    if len(lines) < 4 + nat:
+        sys.exit(f"{path}: {nat} atoms declared but only {len(lines) - 4} atom lines found")
     atoms = []
-    for l in lines[4:4 + nat]:
+    for k, l in enumerate(lines[4:4 + nat]):
         p = l.split()
-        atoms.append([float(p[0]), float(p[1]), float(p[2])] + p[3:])
+        if len(p) < 4:
+            sys.exit(f"{path}: atom {k + 1} needs x y z species: {l.strip()!r}")
+        atoms.append(numbers(l, 3, f"atom {k + 1}") + p[3:])
     return cell, atoms
 
 
@@ -205,15 +242,15 @@ def main():
     coord_path = get(keys, "IO.Coordinates")
     if coord_path is None:
         sys.exit("IO.Coordinates not found in " + inp)
-    coord_path = coord_path.split()[0]
-    proc_coords = get(keys, "Process.Coordinates")
-    if proc_coords is not None and proc_coords.split()[0] != coord_path:
-        print(f"Note: Process.Coordinates {proc_coords.split()[0]} in REF is removed; PostProcessCQ "
+    coord_path = first_token(coord_path)
+    proc_coords = first_token(get(keys, "Process.Coordinates"))
+    if proc_coords is not None and proc_coords != coord_path:
+        print(f"Note: Process.Coordinates {proc_coords} in REF is removed; PostProcessCQ "
               "will read the displaced IO.Coordinates file")
     if is_true(get(keys, "IO.PdbIn", "F")):
         sys.exit("PDB coordinate input (IO.PdbIn T) is not supported; use a CONQUEST coordinate file")
     frac = is_true(get(keys, "IO.FractionalAtomicCoords", "T"))
-    units = (get(keys, "General.DistanceUnits", "bohr") or "bohr").lower()
+    units = (first_token(get(keys, "General.DistanceUnits", "bohr")) or "bohr").lower()
     to_file = 1.0  # bohr -> file distance units
     if units.startswith("a") and not units.startswith("a0"):
         to_file = BOHR_TO_ANG  # file distances in Angstrom
@@ -227,8 +264,8 @@ def main():
     else:
         frac_step = inverse3(cell)
     berry_dir = get(keys, "Process.BerryDirection")
-    if berry_dir is not None and berry_dir.split()[0] != "0":
-        print(f"Note: Process.BerryDirection {berry_dir.split()[0]} in REF is replaced by 0 "
+    if berry_dir is not None and first_token(berry_dir) != "0":
+        print(f"Note: Process.BerryDirection {first_token(berry_dir)} in REF is replaced by 0 "
               "(BEC needs all three directions)")
 
     selection = parse_atoms(args.atoms, len(atoms)) if args.atoms else list(range(1, len(atoms) + 1))

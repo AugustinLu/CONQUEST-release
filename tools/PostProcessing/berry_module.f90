@@ -79,8 +79,9 @@ module berry
      real(double) :: volume, spin_factor
      integer :: natoms, nspin
      integer, dimension(3) :: mesh
-     integer, dimension(2) :: nocc = 0                ! 0 = not recorded
+     integer, dimension(2) :: nocc = 0
      real(double), dimension(3) :: shift = 0.0_double
+     logical :: have_nocc = .false., have_shift = .false. ! recorded in the data file
      integer, allocatable, dimension(:) :: species
      integer :: nsp = 0                               ! species labels recorded (0 = none)
      character(len=30), allocatable, dimension(:) :: splabel
@@ -129,7 +130,7 @@ contains
 
     use numbers
     use local, only: nptsx, nptsy, nptsz, grid_x, grid_y, grid_z, &
-         berry_mp, berry_mp_shift, berry_direction, berry_file, berry_table_mb
+         berry_mp, berry_mp_shift, berry_direction, berry_file, berry_table_mb, berry_max_mem_mb, evec_coeff
     use global_module, only: nspin, ni_in_cell, atom_coord, species_glob, lat_vec, cell_vol
     use species_module, only: charge, n_species, species_label
     use dimens, only: r_super_x, r_super_y, r_super_z
@@ -148,10 +149,13 @@ contains
     logical, allocatable, dimension(:) :: kconj
     real(double), dimension(3) :: cell, dg
     real(double), allocatable, dimension(:,:) :: fmesh
-    real(double) :: gpv, sum_arg, arg, logabs, min_logabs, x
+    real(double) :: gpv, sum_arg, arg, logabs, min_logabs, x, mem_psi, mem_coef
     complex(double_cplx), allocatable, dimension(:,:) :: psi_first, psi_cur, psi_nxt
     character(len=*), parameter :: sub_name = "process_berry"
 
+    call check_serial
+    ! A data file from an earlier run must not survive a failed run
+    call remove_file(trim(berry_file))
     cell = (/r_super_x, r_super_y, r_super_z/)
     npts = (/nptsx, nptsy, nptsz/)
     dg = (/grid_x, grid_y, grid_z/)
@@ -178,6 +182,16 @@ contains
     nmax = maxval(nocc(1:nspin))
     ! Map the full mesh onto the k-points in the files (time reversal)
     call map_mesh(nfull, fmesh, kfile, kconj)
+    ! Memory: four wavefunction-sized arrays (three here, one in overlap_phase)
+    ! and the coefficients read from the files; the PAO tables are capped by
+    ! Process.BerryTableMB and added in build_pao_tables
+    mem_psi = four*real(nmax,double)*real(ngrid,double)*16.0_double/1.0e6_double
+    mem_coef = real(size(evec_coeff),double)*16.0_double/1.0e6_double
+    write(*,fmt='(4x,"Memory estimate: wavefunctions on grid ",f10.1," MB, coefficients ",f10.1, &
+         &" MB, PAO tables up to ",f10.1," MB")') mem_psi, mem_coef, berry_table_mb
+    if(berry_max_mem_mb>zero .and. mem_psi+mem_coef+berry_table_mb>berry_max_mem_mb) call cq_abort( &
+         "Berry phase: estimated memory (MB) exceeds Process.BerryMaxMemoryMB ", &
+         mem_psi+mem_coef+berry_table_mb, berry_max_mem_mb)
     ! PAO values on the grid, reused for every k-point if they fit in memory
     call build_pao_tables(berry_table_mb)
     ! Set up the run record
@@ -185,10 +199,10 @@ contains
     run%label = '.'
     run%nocc = nocc
     run%shift = berry_mp_shift
+    run%have_nocc = .true.
+    run%have_shift = .true.
     allocate(psi_first(nmax,ngrid), psi_cur(nmax,ngrid), psi_nxt(nmax,ngrid), STAT=stat)
     if(stat/=0) call cq_abort("Berry phase: cannot allocate wavefunctions on grid ",nmax,ngrid)
-    write(*,fmt='(4x,"Memory for wavefunctions on grid: ",f10.1," MB")') &
-         four*real(nmax,double)*real(ngrid,double)*16.0_double/1.0e6_double
     do alpha = 1, 3
        if(berry_direction/=0 .and. berry_direction/=alpha) cycle
        p1 = 1 + mod(alpha,3)
@@ -402,8 +416,11 @@ contains
     integer, dimension(3) :: ijk
     real(double), dimension(3) :: d
     real(double), allocatable, dimension(:,:) :: kfrac
+    real(double) :: tol
     logical :: found
 
+    ! Matching tolerance: well below the mesh spacing for any mesh
+    tol = min(kmatch_tol, 0.1_double/real(maxval(berry_mp),double))
     nfull = product(berry_mp)
     allocate(fmesh(3,nfull), kfile(nfull), kconj(nfull))
     do i = 1, berry_mp(1)
@@ -423,7 +440,7 @@ contains
        found = .false.
        do n = 1, nfull
           d = kfrac(:,i_kp) - fmesh(:,n)
-          if(all(abs(d-anint(d))<kmatch_tol)) then
+          if(all(abs(d-anint(d))<tol)) then
              kfrac(:,i_kp) = fmesh(:,n) + anint(d)
              found = .true.
              exit
@@ -443,7 +460,7 @@ contains
        kconj(n) = .false.
        do i_kp = 1, nkp
           d = kfrac(:,i_kp) - fmesh(:,n)
-          if(all(abs(d-anint(d))<kmatch_tol)) then
+          if(all(abs(d-anint(d))<tol)) then
              kfile(n) = i_kp
              exit
           end if
@@ -451,7 +468,7 @@ contains
        if(kfile(n)==0) then
           do i_kp = 1, nkp
              d = -kfrac(:,i_kp) - fmesh(:,n)
-             if(all(abs(d-anint(d))<kmatch_tol)) then
+             if(all(abs(d-anint(d))<tol)) then
                 kfile(n) = i_kp
                 kconj(n) = .true.
                 n_conj = n_conj + 1
@@ -1230,8 +1247,9 @@ contains
   !
   ! Reads and validates a data file written by write_berry_file: every
   ! keyword is required once (NOcc and Shift are optional, for files from
-  ! early versions; a missing Shift is zero), BerryFormat comes first, and
-  ! every number must be readable and finite.
+  ! early versions, and then recorded as unknown), BerryFormat comes first,
+  ! records hold exactly the expected fields, and every number must be
+  ! readable and finite.
   !
   subroutine read_berry_file(run, filename)
 
@@ -1245,9 +1263,10 @@ contains
     character(len=*), intent(in) :: filename
 
     integer :: lun, i, idum, alpha, nstr, ios, fmt_in, nlines
+    real(double) :: extra
     character(len=8192) :: line   ! SpeciesLabels can be long
     character(len=32) :: key
-    logical :: exists, have_cell, have_nspin, have_sf, have_mesh, have_shift, have_atoms
+    logical :: exists, have_cell, have_nspin, have_sf, have_mesh, have_shift, have_atoms, have_nocc
     logical, dimension(3) :: have_dir
     real(double), dimension(3) :: cell
     real(double), dimension(3,3) :: lat
@@ -1269,16 +1288,18 @@ contains
     have_sf = .false.
     have_mesh = .false.
     have_shift = .false.
+    have_nocc = .false.
     have_atoms = .false.
     have_dir = .false.
     do
        read(lun,'(a)',iostat=ios) line
-       nlines = nlines + 1
        if(ios/=0) call cq_abort("Berry phase: unexpected end of data file (no End) "//trim(filename))
        line = adjustl(line)
        if(len_trim(line)==0) cycle
        if(line(1:1)=='#') cycle
-       read(line,*) key
+       key = ' '
+       read(line,*,iostat=ios) key
+       if(ios/=0 .or. len_trim(key)==0) call bad("unreadable keyword line: "//trim(line))
        if(fmt_in==0 .and. trim(key)/='BerryFormat') &
             call bad("BerryFormat must come first, found "//trim(key))
        select case(trim(key))
@@ -1324,7 +1345,7 @@ contains
           if(have_sf) call bad("duplicate SpinFactor")
           if(.not.have_nspin) call bad("SpinFactor before NSpin")
           read(line,*,iostat=ios) key, run%spin_factor
-          if(ios/=0) call bad("unreadable SpinFactor")
+          if(ios/=0 .or. .not.finite(run%spin_factor)) call bad("unreadable SpinFactor")
           if(abs(run%spin_factor-real(3-run%nspin,double))>1.0e-8_double) &
                call bad("SpinFactor must be 2 for NSpin 1 and 1 for NSpin 2")
           have_sf = .true.
@@ -1339,9 +1360,11 @@ contains
           if(ios/=0 .or. .not.all(finite(run%shift))) call bad("unreadable Shift")
           have_shift = .true.
        case('NOcc')
+          if(have_nocc) call bad("duplicate NOcc")
           if(.not.have_nspin) call bad("NOcc before NSpin")
           read(line,*,iostat=ios) key, run%nocc(1:run%nspin)
-          if(ios/=0 .or. any(run%nocc(1:run%nspin)<0)) call bad("unreadable NOcc")
+          if(ios/=0 .or. any(run%nocc(1:run%nspin)<1)) call bad("NOcc must hold one positive integer per spin")
+          have_nocc = .true.
        case('NAtoms')
           if(run%natoms/=0) call bad("duplicate NAtoms")
           read(line,*,iostat=ios) key, run%natoms
@@ -1351,8 +1374,13 @@ contains
           if(run%natoms==0) call bad("Atoms before NAtoms")
           if(have_atoms) call bad("duplicate Atoms block")
           do i = 1, run%natoms
-             read(lun,*,iostat=ios) idum, run%species(i), run%zion(i), run%pos(:,i)
-             if(ios/=0) call bad("unreadable or truncated Atoms block")
+             ! One record per atom, exactly six fields
+             read(lun,'(a)',iostat=ios) line
+             if(ios/=0) call bad("truncated Atoms block")
+             read(line,*,iostat=ios) idum, run%species(i), run%zion(i), run%pos(:,i)
+             if(ios/=0) call bad("unreadable line in Atoms block")
+             read(line,*,iostat=ios) idum, run%species(i), run%zion(i), run%pos(:,i), extra
+             if(ios==0) call bad("extra field in Atoms block")
              if(idum/=i .or. run%species(i)<1) call bad("bad atom index or species in Atoms block")
              if(.not.finite(run%zion(i)) .or. .not.all(finite(run%pos(:,i)))) &
                   call bad("non-finite value in Atoms block")
@@ -1369,8 +1397,13 @@ contains
           run%dir(alpha)%nstr = nstr
           allocate(run%dir(alpha)%kperp(2,nstr), run%dir(alpha)%x(nstr,run%nspin))
           do i = 1, nstr
-             read(lun,*,iostat=ios) run%dir(alpha)%kperp(:,i), run%dir(alpha)%x(i,1:run%nspin)
-             if(ios/=0) call bad("unreadable or truncated string list")
+             ! One record per string: k_perp(2) and one phase per spin
+             read(lun,'(a)',iostat=ios) line
+             if(ios/=0) call bad("truncated string list")
+             read(line,*,iostat=ios) run%dir(alpha)%kperp(:,i), run%dir(alpha)%x(i,1:run%nspin)
+             if(ios/=0) call bad("unreadable line in string list")
+             read(line,*,iostat=ios) run%dir(alpha)%kperp(:,i), run%dir(alpha)%x(i,1:run%nspin), extra
+             if(ios==0) call bad("extra field in string list")
              if(.not.all(finite(run%dir(alpha)%kperp(:,i))) .or. &
                   .not.all(finite(run%dir(alpha)%x(i,1:run%nspin)))) call bad("non-finite string phase")
           end do
@@ -1386,6 +1419,8 @@ contains
          call bad("missing Cell/Lattice, NSpin, SpinFactor, Mesh or Atoms")
     if(.not.any(have_dir)) call bad("no Direction data")
     if(run%nsp>0 .and. any(run%species>run%nsp)) call bad("species index above SpeciesLabels")
+    run%have_nocc = have_nocc
+    run%have_shift = have_shift
     return
 
   contains
@@ -1410,7 +1445,7 @@ contains
     use local, only: berry_runs, berry_n_runs, berry_file
     use species_module, only: n_species, species_label
     use input_module, only: leqi
-    use GenComms, only: cq_abort
+    use GenComms, only: cq_abort, cq_warn
 
     implicit none
 
@@ -1443,6 +1478,11 @@ contains
        end if
        if(i>1) call check_compatible(runs(1), runs(i))
     end do
+    ! Old data files lack these records; they are then not compared
+    if(.not.all(runs(:)%have_shift)) call cq_warn("load_runs", "Mesh shift not recorded in some data "// &
+         "files (old format): shifts not compared")
+    if(.not.all(runs(:)%have_nocc)) call cq_warn("load_runs", "Occupied bands not recorded in some data "// &
+         "files (old format): band counts not compared")
     return
   end subroutine load_runs
 
@@ -1471,11 +1511,14 @@ contains
          "Berry phase: different spin treatment in "//trim(a%label)//" and "//trim(b%label))
     if(any(a%mesh/=b%mesh)) call cq_abort("Berry phase: different k-point meshes in "// &
          trim(a%label)//" and "//trim(b%label))
-    if(any(abs(a%shift-b%shift)>1.0e-8_double)) call cq_abort("Berry phase: different k-point mesh "// &
-         "shifts in "//trim(a%label)//" and "//trim(b%label))
-    if(all(a%nocc(1:a%nspin)>0) .and. all(b%nocc(1:a%nspin)>0) .and. &
-         any(a%nocc(1:a%nspin)/=b%nocc(1:a%nspin))) call cq_abort( &
-         "Berry phase: different numbers of occupied bands in "//trim(a%label)//" and "//trim(b%label))
+    if(a%have_shift .and. b%have_shift) then
+       if(any(abs(a%shift-b%shift)>1.0e-8_double)) call cq_abort("Berry phase: different k-point mesh "// &
+            "shifts in "//trim(a%label)//" and "//trim(b%label))
+    end if
+    if(a%have_nocc .and. b%have_nocc) then
+       if(any(a%nocc(1:a%nspin)/=b%nocc(1:a%nspin))) call cq_abort( &
+            "Berry phase: different numbers of occupied bands in "//trim(a%label)//" and "//trim(b%label))
+    end if
     do alpha = 1, 3
        if(a%dir(alpha)%nstr==0 .or. b%dir(alpha)%nstr==0) cycle
        if(a%dir(alpha)%nstr/=b%dir(alpha)%nstr) call cq_abort("Berry phase: different strings in "// &
@@ -1586,6 +1629,7 @@ contains
     character(len=16), dimension(3) :: cval
     character(len=*), parameter :: sub_name = "process_pol_difference"
 
+    call check_serial
     fac_C = eVToJ/(BohrToAng*1.0e-10_double)**2
     call load_runs(runs)
     n = size(runs)
@@ -1739,6 +1783,7 @@ contains
     real(double) :: max_dx, max_spread, delta, net
     character(len=*), parameter :: sub_name = "process_bec"
 
+    call check_serial
     call remove_file('BEC_extended.xyz')
     call remove_file('BEC_tensors.json')
     call load_runs(runs)
@@ -1828,10 +1873,11 @@ contains
        end do
        write(*,fmt='(8x,"Tr/3 ",f12.6)') (zstar(1,1,k)+zstar(2,2,k)+zstar(3,3,k))/three
     end do
-    ! Charge neutrality from the recorded ionic charges and occupied bands
-    neutral = .true.
+    ! Charge neutrality from the recorded ionic charges and occupied bands;
+    ! unknown (old data file without NOcc) is not taken as neutral
+    neutral = .false.
     net = zero
-    if(all(runs(1)%nocc(1:runs(1)%nspin)>0)) then
+    if(runs(1)%have_nocc) then
        net = sum(runs(1)%zion) - runs(1)%spin_factor*real(sum(runs(1)%nocc(1:runs(1)%nspin)),double)
        neutral = abs(net) < 1.0e-6_double
     end if
@@ -1853,9 +1899,12 @@ contains
           do k = 1, natoms
              zstar_asr(:,:,k) = zstar(:,:,k) - asr/real(natoms,double)
           end do
-       else
+       else if(runs(1)%have_nocc) then
           call cq_warn(sub_name, "Charged cell (ionic charge minus electrons): the acoustic sum rule "// &
                "does not apply; no ASR-corrected tensors are written. Net charge ", net)
+       else
+          call cq_warn(sub_name, "Number of electrons not recorded in the reference data file (old "// &
+               "format): neutrality unknown, no ASR-corrected tensors are written")
        end if
        apply_asr = flag_bec_asr .and. neutral
        if(apply_asr) write(*,fmt='(4x,"Process.BECApplyASR T: output files hold Z* - (1/N) sum_k Z*_k")')
@@ -1864,7 +1913,11 @@ contains
             "no extended XYZ file; missing columns are written as zeros with method -")
     end if
     call write_bec_json(runs(1), zstar, zstar_asr, plus, minus, sym, complete, complete .and. neutral, asr)
-    if(complete) call write_bec_xyz(runs(1), merge(zstar_asr, zstar, apply_asr), apply_asr)
+    if(complete) then
+       if(any(sym .eqv. .false.)) call cq_warn(sub_name, "Not every column is a symmetric central "// &
+            "difference (method A or F): the extended XYZ file holds first-order estimates for those")
+       call write_bec_xyz(runs(1), merge(zstar_asr, zstar, apply_asr), apply_asr, all(sym))
+    end if
     deallocate(du, sdd, sd3, sa3, sdp, zstar, zstar_asr, plus, minus, sym, runs)
     return
   end subroutine process_bec
@@ -1911,7 +1964,7 @@ contains
   ! Extended XYZ in the layout of SevenNet-Polar BEC datasets:
   ! species, positions (A), born_effective_charges (9, row-major Z[pol,disp])
   !
-  subroutine write_bec_xyz(ref, zstar, asr_applied)
+  subroutine write_bec_xyz(ref, zstar, asr_applied, all_central)
 
     use numbers
     use units, only: BohrToAng
@@ -1922,20 +1975,24 @@ contains
 
     type(berry_run), intent(in) :: ref
     real(double), dimension(:,:,:), intent(in) :: zstar
-    logical, intent(in) :: asr_applied
+    logical, intent(in) :: asr_applied, all_central
 
     integer :: lun, k, a
     character(len=1) :: tf
+    character(len=7) :: fd
 
     tf = 'F'
     if(asr_applied) tf = 'T'
+    ! Finite-difference method of the whole set (per column: BEC_tensors.json)
+    fd = 'mixed'
+    if(all_central) fd = 'central'
     call io_assign(lun)
     open(unit=lun, file='BEC_extended.xyz', status='replace')
     write(lun,'(i8)') ref%natoms
     write(lun,'(a,9f16.8,a,a,a)') 'Lattice="', ref%lat*BohrToAng, &
          '" Properties=species:S:1:pos:R:3:born_effective_charges:R:9 '// &
          'bec_tensor_convention="Z[polarization_cartesian,displacement_cartesian]" asr_corrected=', tf, &
-         ' pbc="T T T"'
+         ' bec_finite_difference='//trim(fd)//' pbc="T T T"'
     do k = 1, ref%natoms
        write(lun,'(a4,3f16.8,9f14.8)') species_label(ref%species(k)), ref%pos(:,k)*BohrToAng, &
             ((zstar(a,1:3,k)), a=1,3)
@@ -2011,6 +2068,23 @@ contains
     write(*,fmt='(4x,"Written BEC_tensors.json")')
     return
   end subroutine write_bec_json
+
+  ! -----------------------------------------------------------
+  ! Subroutine check_serial
+  ! -----------------------------------------------------------
+  !
+  ! The Berry-phase jobs are serial: every process would write the same files
+  !
+  subroutine check_serial
+
+    use GenComms, only: numprocs, cq_abort
+
+    implicit none
+
+    if(numprocs>1) call cq_abort("Berry phase: Process.Job pol, dpo and bec run on one MPI "// &
+         "process; run one PostProcessCQ per structure. Processes: ", numprocs)
+    return
+  end subroutine check_serial
 
   ! -----------------------------------------------------------
   ! Function json_string

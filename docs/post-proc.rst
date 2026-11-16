@@ -412,19 +412,24 @@ wavefunction coefficients written by CONQUEST.  The polarisation is
 defined only modulo the quanta :math:`e\mathbf{a}_\alpha/\Omega`, and
 only *differences* between structures with the same cell are physical.
 
-**Limitations:** insulators; PAO basis sets (not blips; tested with
-primitive PAOs only, not yet with MSSFs); collinear spin with at least
-one occupied band in each spin channel (a fully polarised insulator with
-an empty channel is not supported).  The method needs a gapped, fully
+**Limitations:** insulators; PAO basis sets (not blips); collinear spin
+with at least one occupied band in each spin channel (a fully polarised
+insulator with an empty channel is not supported).  **Not yet tested:**
+multi-site support functions, spin-polarised calculations and meshes
+that are not Gamma-centred; all validation so far used primitive PAOs,
+no spin and ``Diag.GammaCentred T``.  The method needs a gapped, fully
 occupied manifold: ``PostProcessCQ`` checks only that the same number of
 bands lies below the Fermi level at every k-point and that the electron
 count matches, and warns for a small gap.  It does not check that the
 SCF occupations were integer, so use a gap that is large compared with
-the smearing.  ``PostProcessCQ`` runs these jobs serially: start one
-process per structure.  PDB coordinates are read for orthorhombic cells
-only.  (Of the other ``PostProcessCQ`` jobs, coordinate conversion,
-charge density, band densities and STM still assume an orthorhombic cell
-along x, y and z, and stop for any other cell.)
+the smearing.  ``PostProcessCQ`` runs these jobs serially and stops if
+started on more than one MPI process: start one process per structure.
+It does not check that the SCF converged: check ``Conquest_out`` of every
+run, in particular in a finite-difference campaign, where one
+unconverged run spoils a whole column.  PDB coordinates are read for
+orthorhombic cells only.  (Of the other ``PostProcessCQ`` jobs, coordinate
+conversion, charge density, band densities and STM still assume an
+orthorhombic cell along x, y and z, and stop for any other cell.)
 
 **The CONQUEST run** must be a static diagonalisation on a
 Monkhorst-Pack mesh (``Diag.MPMesh T``) that writes the coefficients of
@@ -482,6 +487,14 @@ which the jobs below check against their own ``Conquest_input``.
    Process.BerryNumOccupiedDown int (default: Process.BerryNumOccupied)
    Process.BerryFile string (default: BerryPolarisation.dat)
    Process.BerryTableMB real (default: 4000; memory for storing PAOs on the grid)
+   Process.BerryMaxMemoryMB real (default: 0, no check; stop if the estimated memory is larger)
+
+The memory estimate is printed before the calculation: the PAO tables
+(at most ``Process.BerryTableMB``), four arrays of the occupied
+wavefunctions on the grid (16 bytes per band and grid point each) and
+the coefficients read.  The wavefunction arrays grow as the number of
+bands times the number of grid points, so large cells need a lot of
+memory.  A data file left by an earlier run is deleted at the start.
 
 Polarisation change and mode effective charge
 ---------------------------------------------
@@ -561,7 +574,17 @@ as complete.  If some columns are missing, ``BEC_tensors.json`` has
 files from an earlier ``bec`` run in the directory are deleted at the
 start, so a failed or incomplete run never leaves an old XYZ file.  For
 a charged cell (ionic charge different from the number of electrons) the
-ASR does not apply and no ASR-corrected tensors are written.
+ASR does not apply and no ASR-corrected tensors are written; the same
+holds when the number of electrons is unknown (data files from early
+versions without ``NOcc``).  The header of ``BEC_extended.xyz`` states
+``bec_finite_difference=central`` when every column is a central
+difference and ``mixed`` otherwise (the method per column is in
+``BEC_tensors.json``).
+
+The finite-difference results depend on the k-point sampling along the
+strings, which is the SCF mesh: for the Ti charge in cubic BaTiO\ :sub:`3`
+meshes of 4, 6 and 8 points gave 7.515, 7.501 and 7.531, not a monotonic
+series, so allow about 0.03 e for sampling at such meshes.
 
 ::
 
