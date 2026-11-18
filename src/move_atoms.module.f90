@@ -3216,6 +3216,7 @@ contains
     use numbers
     use timer_module
     use density_module,         only: build_Becke_weights
+    use cdft_module,            only: free_cdft_matrices, realloc_cdft_matrices
     use DiagModule, only: end_scalapack_format, init_scalapack_format
     
     implicit none
@@ -3251,9 +3252,11 @@ contains
        ! finish blip-grid indexing
        call finish_blipgrid
        ! finish matrix multiplication indexing
+       call free_cdft_matrices
        call fmmi(bundle)
        ! Reallocate and find new indices
        call immi(parts,bundle,BCS_parts,myid+1)
+       call realloc_cdft_matrices
        ! Reallocate for blip grid
        call set_blipgrid(myid, RadiusAtomf, core_radius)
        !call set_blipgrid(myid,r_h,sqrt(r_core_squared))
@@ -3315,6 +3318,7 @@ contains
     use GenComms,               only: myid, cq_abort, gsum
     use functions_on_grid,      only: associate_fn_on_grid
     use density_module,         only: build_Becke_weights
+    use cdft_module,            only: free_cdft_matrices, realloc_cdft_matrices
     use numbers
     use DiagModule, only: end_scalapack_format, init_scalapack_format
 
@@ -3352,9 +3356,11 @@ contains
        ! finish blip-grid indexing
        call finish_blipgrid
        ! finish matrix multiplication indexing
+       call free_cdft_matrices
        call fmmi(bundle)
        ! Reallocate and find new indices
        call immi(parts,bundle,BCS_parts,myid+1,1)
+       call realloc_cdft_matrices
        ! Reallocate for blip grid
        call set_blipgrid(myid, RadiusAtomf, core_radius)
        !call set_blipgrid(myid,r_h,sqrt(r_core_squared))
@@ -3422,6 +3428,7 @@ contains
     use pseudopotential_common, ONLY: core_radius
     use functions_on_grid, ONLy: associate_fn_on_grid
     use density_module, ONLY: build_Becke_weights
+    use cdft_module, ONLY: free_cdft_matrices, realloc_cdft_matrices
     use UpdateMember_module, ONLY: updateMembers_group, updateMembers_cs
     use atoms, ONLY: distribute_atoms,deallocate_distribute_atom
     use timer_module
@@ -3468,6 +3475,7 @@ contains
     ! finish blip-grid indexing
     call finish_blipgrid
     ! finish matrix multiplication indexing
+    call free_cdft_matrices   ! cDFT matrices are above the XL ones: free first
     if (flag_XLBOMD) call fmmi_XL()
     call fmmi(bundle)
     ! Now we need to redistribute; if the cell is changing or one process
@@ -3543,6 +3551,7 @@ contains
        call immi(parts,bundle,BCS_parts,myid+1)
        if (flag_XLBOMD) call immi_XL(parts,bundle,BCS_parts,myid+1)
     end if
+    call realloc_cdft_matrices
     ! Write out new coordinates
     append_coords_bkup = append_coords
     append_coords = .false.

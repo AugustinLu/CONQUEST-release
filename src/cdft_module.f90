@@ -119,6 +119,45 @@ contains
   end subroutine init_cdft
   !!***
 
+  ! fmmi/immi (atom moves) discard the temporary matrices of init_cdft,
+  ! so they are freed before and re-allocated after (see move_atoms)
+  subroutine free_cdft_matrices
+
+    use mult_module,   only: free_temp_matrix
+    use global_module, only: nspin
+
+    implicit none
+
+    integer :: i
+
+    if (.not. allocated(matHzero)) return
+    do i = nspin, 1, -1
+       call free_temp_matrix(matHzero(i))
+    end do
+    do i = cDFT_NumberAtomGroups, 1, -1
+       call free_temp_matrix(matWc(i))
+    end do
+  end subroutine free_cdft_matrices
+
+  subroutine realloc_cdft_matrices
+
+    use mult_module,   only: allocate_temp_matrix
+    use matrix_data,   only: Hrange
+    use global_module, only: nspin
+
+    implicit none
+
+    integer :: i
+
+    if (.not. allocated(matHzero)) return
+    do i = 1, cDFT_NumberAtomGroups
+       matWc(i) = allocate_temp_matrix(Hrange, 0)
+    end do
+    do i = 1, nspin
+       matHzero(i) = allocate_temp_matrix(Hrange, 0)
+    end do
+  end subroutine realloc_cdft_matrices
+
   !!****f* cdt_module/make_weights *
   !!
   !!  NAME 
